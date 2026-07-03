@@ -28,14 +28,14 @@ export function DashboardPage() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-heading">My results</h1>
-          <p className="mt-1 text-sm font-semibold text-ink-soft">
+          <h1 className="text-2xl font-bold text-heading">My results</h1>
+          <p className="mt-1 text-sm text-ink-soft">
             Every attempt is saved here so you can watch your progress.
           </p>
         </div>
         <Link
           to="/reading"
-          className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-extrabold text-white shadow-pop hover:bg-brand-deep"
+          className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-deep"
         >
           <PlayIcon width={13} height={13} />
           Take a test
@@ -43,8 +43,8 @@ export function DashboardPage() {
       </div>
 
       {attempts && attempts.length === 0 && (
-        <div className="rounded-3xl border border-line bg-white p-10 text-center shadow-card">
-          <p className="text-lg font-extrabold text-heading">No attempts yet</p>
+        <div className="rounded-xl border border-line bg-white p-10 text-center shadow-card">
+          <p className="text-lg font-semibold text-heading">No attempts yet</p>
           <p className="mt-1 text-sm text-ink-soft">
             Take your first reading test and your results will appear here.
           </p>
@@ -54,18 +54,18 @@ export function DashboardPage() {
       {attempts && attempts.length > 0 && (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-line bg-white p-5 shadow-card">
-              <p className="text-sm font-bold text-ink-soft">Tests taken</p>
-              <p className="mt-1 font-num text-4xl font-bold text-heading">{attempts.length}</p>
+            <div className="rounded-xl border border-line bg-white p-5 shadow-card">
+              <p className="text-sm font-medium text-ink-soft">Tests taken</p>
+              <p className="mt-1 font-num text-4xl font-semibold text-heading">{attempts.length}</p>
             </div>
-            <div className="rounded-2xl border border-line bg-white p-5 shadow-card">
-              <p className="text-sm font-bold text-ink-soft">Best result</p>
+            <div className="rounded-xl border border-line bg-white p-5 shadow-card">
+              <p className="text-sm font-medium text-ink-soft">Best result</p>
               <p className="mt-1 flex items-baseline gap-2.5">
-                <span className="font-num text-4xl font-bold text-heading">
+                <span className="font-num text-4xl font-semibold text-heading">
                   {best!.rawScore}/{best!.total}
                 </span>
                 <span
-                  className={`rounded-lg px-2.5 py-0.5 text-sm font-extrabold ${BAND_INFO[best!.band].className}`}
+                  className={`rounded-lg px-2.5 py-0.5 text-sm font-semibold ${BAND_INFO[best!.band].className}`}
                 >
                   {BAND_INFO[best!.band].label}
                 </span>
@@ -77,11 +77,11 @@ export function DashboardPage() {
             {attempts.map((attempt) => (
               <li
                 key={attempt.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-4 shadow-card"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-white p-4 shadow-card"
               >
                 <div className="min-w-0">
-                  <p className="font-bold text-heading">{attempt.testTitle}</p>
-                  <p className="text-sm font-semibold text-ink-soft">
+                  <p className="font-semibold text-heading">{attempt.testTitle}</p>
+                  <p className="text-sm text-ink-soft">
                     {new Date(attempt.createdAt).toLocaleString(undefined, {
                       dateStyle: 'medium',
                       timeStyle: 'short',
@@ -89,17 +89,17 @@ export function DashboardPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="font-num text-lg font-bold text-heading">
+                  <span className="font-num text-lg font-semibold text-heading">
                     {attempt.rawScore}/{attempt.total}
                   </span>
                   <span
-                    className={`rounded-lg px-2.5 py-1 text-sm font-extrabold ${BAND_INFO[attempt.band].className}`}
+                    className={`rounded-lg px-2.5 py-1 text-sm font-semibold ${BAND_INFO[attempt.band].className}`}
                   >
                     {BAND_INFO[attempt.band].label}
                   </span>
                   <Link
                     to={`/results/${attempt.id}`}
-                    className="rounded-xl border-2 border-brand px-3.5 py-1.5 text-sm font-bold text-brand transition-colors hover:bg-brand hover:text-white"
+                    className="rounded-lg border border-brand/70 px-4 py-1.5 text-sm font-semibold text-brand transition-colors hover:bg-brand hover:text-white"
                   >
                     Review
                   </Link>

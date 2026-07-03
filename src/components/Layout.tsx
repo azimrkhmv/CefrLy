@@ -19,12 +19,12 @@ import {
 function Logo() {
   return (
     <Link to="/" className="flex items-center gap-2.5 px-2">
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-brand-deep text-xl font-black text-white">
+      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-deep text-lg font-bold text-white">
         C
       </span>
       <span className="leading-tight">
-        <span className="block text-lg font-black tracking-tight text-heading">Cefrly</span>
-        <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-ink-soft">
+        <span className="block text-lg font-bold tracking-tight text-heading">Cefrly</span>
+        <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-soft">
           CEFR Exams
         </span>
       </span>
@@ -33,16 +33,16 @@ function Logo() {
 }
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-3 rounded-xl px-4 py-2.5 text-[15px] font-bold transition-colors ${
-    isActive ? 'bg-brand text-white shadow-pop' : 'text-heading/80 hover:bg-brand-soft/70'
+  `flex items-center gap-3.5 rounded-lg px-4 py-2.5 text-[15px] transition-colors ${
+    isActive ? 'bg-brand font-semibold text-white' : 'font-medium text-heading/75 hover:bg-brand-soft/60'
   }`
 
 function SoonItem({ icon, label }: { icon: ReactNode; label: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-[15px] font-bold text-heading/40">
+    <div className="flex items-center gap-3.5 rounded-lg px-4 py-2.5 text-[15px] font-medium text-heading/35">
       {icon}
       {label}
-      <span className="ml-auto rounded-full bg-sun-soft px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-sun-ink">
+      <span className="ml-auto rounded-md bg-base px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-soft/80">
         Soon
       </span>
     </div>
@@ -52,8 +52,8 @@ function SoonItem({ icon, label }: { icon: ReactNode; label: string }) {
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { session, role } = useAuth()
   return (
-    <div className="flex h-full flex-col gap-6 p-4">
-      <div className="pt-2">
+    <div className="flex h-full flex-col gap-7 p-4">
+      <div className="pt-3">
         <Logo />
       </div>
 
@@ -83,27 +83,25 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         )}
       </nav>
 
-      <div className="mt-auto space-y-3">
-        <div className="rounded-2xl bg-brand-soft p-4">
-          <p className="text-sm font-extrabold text-heading">Full mock test</p>
-          <p className="mt-0.5 text-xs font-semibold text-ink-soft">
-            35 questions · 5 parts · 60 minutes
-          </p>
+      <div className="mt-auto space-y-3 border-t border-line pt-4">
+        <div className="rounded-xl bg-brand-soft/70 p-4">
+          <p className="text-sm font-semibold text-brand">Full mock test</p>
+          <p className="mt-0.5 text-xs text-ink-soft">35 questions · 5 parts · 60 minutes</p>
         </div>
         {session ? (
           <Link
             to="/reading"
             onClick={onNavigate}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-extrabold text-white shadow-pop transition-colors hover:bg-brand-deep"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-bright px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand"
           >
-            <PlayIcon width={14} height={14} />
+            <PlayIcon width={13} height={13} />
             Start Reading test
           </Link>
         ) : (
           <Link
             to="/login"
             onClick={onNavigate}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-extrabold text-white shadow-pop transition-colors hover:bg-brand-deep"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-bright px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand"
           >
             Sign in — it's free
           </Link>
@@ -133,7 +131,7 @@ export function Layout() {
   return (
     <div className="min-h-screen bg-base text-ink">
       {!isSupabaseConfigured && (
-        <div className="bg-sun-soft px-4 py-2 text-center text-sm font-semibold text-sun-ink">
+        <div className="bg-sun-soft px-4 py-2 text-center text-sm font-medium text-sun-ink">
           Supabase is not configured — copy <code className="font-mono">.env.example</code> to{' '}
           <code className="font-mono">.env</code> and fill in your project keys (see README).
         </div>
@@ -148,7 +146,7 @@ export function Layout() {
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div
-            className="absolute inset-0 bg-heading/40"
+            className="absolute inset-0 bg-black/30"
             onClick={() => setDrawerOpen(false)}
             aria-hidden
           />
@@ -166,30 +164,30 @@ export function Layout() {
       )}
 
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-20 border-b border-line/70 bg-base/80 backdrop-blur">
+        <header className="sticky top-0 z-20 border-b border-line/60 bg-white">
           <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
             <button
               onClick={() => setDrawerOpen(true)}
-              className="rounded-lg p-1.5 text-heading hover:bg-brand-soft lg:hidden"
+              className="rounded-lg p-1.5 text-heading hover:bg-base lg:hidden"
               aria-label="Open menu"
             >
               <MenuIcon />
             </button>
-            <span className="rounded-xl bg-white px-4 py-1.5 text-sm font-extrabold text-heading shadow-card">
+            <span className="rounded-lg bg-base px-4 py-1.5 text-sm font-semibold text-heading">
               {pageTitle}
             </span>
             <div className="ml-auto flex items-center gap-3">
               {session ? (
                 <>
-                  <span className="hidden text-sm font-semibold text-ink-soft md:inline">
+                  <span className="hidden text-sm text-ink-soft md:inline">
                     {session.user.email}
                   </span>
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-soft text-sm font-extrabold text-brand">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-soft text-sm font-bold text-brand">
                     {initial}
                   </span>
                   <button
                     onClick={() => supabase.auth.signOut()}
-                    className="flex items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-1.5 text-sm font-bold text-heading hover:bg-brand-soft"
+                    className="flex items-center gap-1.5 rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-heading hover:bg-base"
                   >
                     <LogoutIcon width={16} height={16} />
                     <span className="hidden sm:inline">Sign out</span>
@@ -198,7 +196,7 @@ export function Layout() {
               ) : (
                 <Link
                   to="/login"
-                  className="rounded-xl bg-brand px-4 py-2 text-sm font-extrabold text-white hover:bg-brand-deep"
+                  className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-deep"
                 >
                   Sign in
                 </Link>

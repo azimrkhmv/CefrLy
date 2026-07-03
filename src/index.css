@@ -6,20 +6,21 @@
   --font-num: "Oxanium", "Nunito", ui-sans-serif, sans-serif;
 
   --color-base: #f7f5ff; /* lavender app background */
-  --color-ink: #303030; /* body text */
-  --color-ink-soft: #6f6c8f; /* muted purple-gray text */
-  --color-heading: #2e2a5d; /* dark navy headings */
-  --color-brand: #6d28d9; /* primary purple: buttons, active nav */
-  --color-brand-deep: #3f2682; /* deep indigo: hero panels, dark buttons */
-  --color-brand-soft: #ede7fb; /* light purple fills */
-  --color-line: #e7e2f6; /* hairline borders on lavender */
+  --color-ink: #3a3a3a; /* body text */
+  --color-ink-soft: #8b89a0; /* muted gray text */
+  --color-heading: #333333; /* headings */
+  --color-brand: #4b2e9e; /* primary purple: buttons, active nav */
+  --color-brand-deep: #3f2682; /* deep indigo: hero panels, dark chips */
+  --color-brand-bright: #8b45ff; /* single promo CTA only */
+  --color-brand-soft: #f3edfd; /* light purple fills */
+  --color-line: #e9e6f4; /* hairline borders */
   --color-sun: #ffb733; /* yellow accent */
-  --color-sun-soft: #fff1d1; /* badge background */
-  --color-sun-ink: #a16207; /* badge text */
+  --color-sun-soft: #fdf1cf; /* badge background */
+  --color-sun-ink: #9c7c22; /* badge text */
   --color-mint: #28af60; /* success green */
 
-  --shadow-card: 0 2px 12px rgb(63 38 130 / 0.06);
-  --shadow-pop: 0 8px 24px rgb(63 38 130 / 0.16);
+  --shadow-card: 0 1px 4px rgb(63 38 130 / 0.05);
+  --shadow-pop: 0 8px 24px rgb(63 38 130 / 0.14);
 }
 
 body {

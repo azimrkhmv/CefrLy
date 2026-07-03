@@ -57,11 +57,11 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
       {/* Brand panel */}
       <div className="hidden flex-col bg-brand-deep p-10 text-white lg:flex">
         <Link to="/" className="flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-xl font-black">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/15 text-lg font-bold">
             C
           </span>
           <span className="leading-tight">
-            <span className="block text-lg font-black tracking-tight">Cefrly</span>
+            <span className="block text-lg font-bold tracking-tight">Cefrly</span>
             <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-white/60">
               CEFR Exams
             </span>
@@ -69,24 +69,24 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
         </Link>
 
         <div className="my-auto py-14">
-          <h1 className="max-w-md text-3xl font-black leading-tight">
+          <h1 className="max-w-md text-3xl font-bold leading-tight">
             See your <span className="text-sun">Reading band</span> in 60 minutes.
           </h1>
           <div className="mt-10 flex items-center gap-4">
             <div className="rounded-2xl border border-white/15 bg-white/10 px-7 py-5 text-center">
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-white/60">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
                 Before
               </p>
               <p className="font-num text-5xl font-bold">B1</p>
             </div>
             <div className="text-center">
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-sun">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sun">
                 Practice
               </p>
               <ArrowRightIcon className="mx-auto mt-1 text-sun" width={40} height={22} />
             </div>
             <div className="rounded-2xl border border-sun/40 bg-white/10 px-7 py-5 text-center">
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-sun">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sun">
                 After
               </p>
               <p className="font-num text-5xl font-bold text-sun">C1</p>
@@ -102,14 +102,14 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
       {/* Form panel */}
       <div className="flex flex-col px-6 py-8 sm:px-10">
         <Link to="/" className="flex items-center gap-2.5 self-start lg:hidden">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-brand-deep text-lg font-black text-white">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-deep text-lg font-bold text-white">
             C
           </span>
-          <span className="text-lg font-black tracking-tight text-heading">Cefrly</span>
+          <span className="text-lg font-bold tracking-tight text-heading">Cefrly</span>
         </Link>
 
         <div className="mx-auto my-auto w-full max-w-sm py-10">
-          <h2 className="text-center text-3xl font-black text-heading sm:text-4xl">
+          <h2 className="text-center text-3xl font-bold text-heading sm:text-4xl">
             {isLogin ? 'Welcome back' : 'Create an account'}
           </h2>
           <p className="mt-2 text-center text-sm font-semibold text-ink-soft">
@@ -160,7 +160,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             <button
               type="submit"
               disabled={busy}
-              className="w-full rounded-xl bg-brand px-4 py-3 text-sm font-extrabold text-white shadow-pop transition-colors hover:bg-brand-deep disabled:opacity-50"
+              className="w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-deep disabled:opacity-50"
             >
               {busy ? 'Please wait…' : isLogin ? 'Sign in' : 'Create account'}
             </button>

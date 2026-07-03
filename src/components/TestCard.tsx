@@ -26,45 +26,45 @@ export function TestCard({
       : 'No attempts yet'
 
   return (
-    <div className="flex flex-col rounded-2xl border border-line bg-white p-5 shadow-card transition-shadow hover:shadow-pop">
-      <div className="flex items-start gap-3.5">
+    <div className="flex flex-col rounded-xl border border-line bg-white p-6 transition-colors hover:border-brand/30">
+      <div className="flex items-start gap-4">
         <span
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white"
           style={{ backgroundColor: color }}
         >
-          <BookIcon width={22} height={22} />
+          <BookIcon width={20} height={20} />
         </span>
         <div className="min-w-0">
-          <h3 className="text-[17px] font-bold leading-snug text-heading">{test.title}</h3>
-          <span className="mt-1.5 inline-block rounded-full bg-sun-soft px-2.5 py-0.5 text-xs font-bold text-sun-ink">
+          <h3 className="text-base font-semibold leading-snug text-heading">{test.title}</h3>
+          <span className="mt-2 inline-block rounded-md bg-sun-soft px-2.5 py-1 text-xs font-semibold text-sun-ink">
             Full Mock Test
           </span>
         </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-between gap-3">
-        <p className="text-sm text-ink-soft">{attemptsLabel}</p>
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <p className="text-[15px] text-ink-soft">{attemptsLabel}</p>
         <Link
           to={`/test/${test.id}`}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border-2 border-brand px-4 py-1.5 text-sm font-bold text-brand transition-colors hover:bg-brand hover:text-white"
+          className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-brand/70 px-5 py-2 text-[15px] font-semibold text-brand transition-colors hover:bg-brand hover:text-white"
         >
-          <PlayIcon width={14} height={14} />
+          <PlayIcon width={13} height={13} />
           Start
         </Link>
       </div>
 
-      <div className="mt-4 border-t border-line pt-3.5">
-        <p className="mb-2 text-sm text-ink-soft">Question levels:</p>
+      <div className="mt-5 border-t border-line pt-4">
+        <p className="mb-2.5 text-sm text-ink-soft">Question levels:</p>
         <div className="flex flex-wrap gap-2">
           {test.target_levels.map((level) => (
             <span
               key={level}
-              className="rounded-lg border border-line px-3.5 py-1 text-sm font-semibold text-heading"
+              className="rounded-full border border-line px-4 py-1.5 text-sm font-medium text-ink"
             >
               {level}
             </span>
           ))}
-          <span className="rounded-lg border border-line px-3.5 py-1 text-sm font-semibold text-heading">
+          <span className="rounded-full border border-line px-4 py-1.5 text-sm font-medium text-ink">
             {Math.round(test.duration_sec / 60)} min
           </span>
         </div>

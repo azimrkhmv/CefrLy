@@ -33,27 +33,27 @@ export function ReadingPage() {
   const attemptInfo = buildAttemptInfo(attempts)
 
   return (
-    <div className="rounded-3xl border border-line bg-white p-5 shadow-card sm:p-7">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <span className="rounded-xl bg-brand-deep px-5 py-2.5 text-sm font-extrabold text-white">
+    <div className="rounded-2xl border border-line bg-white p-6 shadow-card sm:p-8">
+      <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-lg bg-brand-deep px-5 py-2.5 text-sm font-semibold text-white">
           Mock Test
         </span>
         {tests && (
-          <span className="text-sm font-semibold text-ink-soft">
+          <span className="text-sm text-ink-soft">
             {tests.length} test{tests.length === 1 ? '' : 's'} available
           </span>
         )}
       </div>
 
       {!session && (
-        <div className="rounded-2xl bg-brand-soft/60 p-10 text-center">
-          <p className="text-lg font-extrabold text-heading">Sign in to see the tests</p>
+        <div className="rounded-xl bg-brand-soft/50 p-10 text-center">
+          <p className="text-lg font-semibold text-heading">Sign in to see the tests</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-ink-soft">
             A free account keeps every attempt so you can track your progress.
           </p>
           <Link
             to="/login"
-            className="mt-5 inline-block rounded-xl bg-brand px-6 py-2.5 text-sm font-extrabold text-white hover:bg-brand-deep"
+            className="mt-5 inline-block rounded-lg bg-brand px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-deep"
           >
             Sign in
           </Link>
@@ -62,17 +62,17 @@ export function ReadingPage() {
 
       {session && isLoading && <p className="py-10 text-center text-ink-soft">Loading tests…</p>}
       {session && error && (
-        <p className="rounded-xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">
+        <p className="rounded-xl bg-rose-50 p-4 text-sm text-rose-700">
           Could not load tests: {(error as Error).message}
         </p>
       )}
       {session && tests && tests.length === 0 && (
-        <p className="rounded-2xl bg-brand-soft/60 p-10 text-center text-ink-soft">
+        <p className="rounded-xl bg-brand-soft/50 p-10 text-center text-ink-soft">
           No tests published yet — check back soon.
         </p>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
         {tests?.map((test, index) => (
           <TestCard key={test.id} test={test} index={index} attemptInfo={attemptInfo.get(test.id)} />
         ))}
