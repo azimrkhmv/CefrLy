@@ -67,16 +67,24 @@ const contentJson = JSON.stringify(test, null, 2)
 if (contentJson.includes('$seed$')) throw new Error('Content may not contain the $seed$ delimiter')
 
 const levels = `{${test.targetLevels.join(',')}}`
-const sql = `-- Generated from reading-test-1.json by scripts/generate-seed.mjs. Do not edit by hand.
--- Run this in the Supabase SQL editor (or via supabase db execute) AFTER the migration.
+const slug =
+  test.slug ??
+  test.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
 
-insert into public.tests (id, title, skill, target_levels, duration_sec, published)
-values ('${test.id}', '${test.title.replace(/'/g, "''")}', '${test.skill}', '${levels}', ${test.durationSec}, true)
+const sql = `-- Generated from reading-test-1.json by scripts/generate-seed.mjs. Do not edit by hand.
+-- Run this in the Supabase SQL editor (or via supabase db execute) AFTER the migrations.
+
+insert into public.tests (id, slug, title, skill, target_levels, duration_sec, status)
+values ('${test.id}', '${slug}', '${test.title.replace(/'/g, "''")}', '${test.skill}', '${levels}', ${test.durationSec}, 'published')
 on conflict (id) do update
-  set title = excluded.title,
+  set slug = excluded.slug,
+      title = excluded.title,
       target_levels = excluded.target_levels,
       duration_sec = excluded.duration_sec,
-      published = true;
+      status = 'published';
 
 insert into public.test_content (test_id, content)
 values ('${test.id}', $seed$${contentJson}$seed$::jsonb)

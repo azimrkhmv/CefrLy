@@ -1,17 +1,19 @@
 -- Generated from reading-test-1.json by scripts/generate-seed.mjs. Do not edit by hand.
--- Run this in the Supabase SQL editor (or via supabase db execute) AFTER the migration.
+-- Run this in the Supabase SQL editor (or via supabase db execute) AFTER the migrations.
 
-insert into public.tests (id, title, skill, target_levels, duration_sec, published)
-values ('00000000-0000-4000-8000-000000000001', 'CEFR Reading Mock Test 1', 'reading', '{B1,B2,C1}', 3600, true)
+insert into public.tests (id, slug, title, skill, target_levels, duration_sec, status)
+values ('00000000-0000-4000-8000-000000000001', 'reading-mock-1', 'CEFR Reading Mock Test 1', 'reading', '{B1,B2,C1}', 3600, 'published')
 on conflict (id) do update
-  set title = excluded.title,
+  set slug = excluded.slug,
+      title = excluded.title,
       target_levels = excluded.target_levels,
       duration_sec = excluded.duration_sec,
-      published = true;
+      status = 'published';
 
 insert into public.test_content (test_id, content)
 values ('00000000-0000-4000-8000-000000000001', $seed${
   "id": "00000000-0000-4000-8000-000000000001",
+  "slug": "reading-mock-1",
   "skill": "reading",
   "title": "CEFR Reading Mock Test 1",
   "targetLevels": [

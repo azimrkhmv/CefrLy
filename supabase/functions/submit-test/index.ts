@@ -44,11 +44,11 @@ Deno.serve(async (req) => {
 
   const { data: test, error: testError } = await admin
     .from('tests')
-    .select('id, title, published')
+    .select('id, title, status')
     .eq('id', testId)
     .maybeSingle()
   if (testError) return json({ error: testError.message }, 500)
-  if (!test || !test.published) return json({ error: 'Test not found' }, 404)
+  if (!test || test.status !== 'published') return json({ error: 'Test not found' }, 404)
 
   const { data: contentRow, error: contentError } = await admin
     .from('test_content')

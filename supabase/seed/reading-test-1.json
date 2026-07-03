@@ -1,5 +1,6 @@
 {
   "id": "00000000-0000-4000-8000-000000000001",
+  "slug": "reading-mock-1",
   "skill": "reading",
   "title": "CEFR Reading Mock Test 1",
   "targetLevels": ["B1", "B2", "C1"],
