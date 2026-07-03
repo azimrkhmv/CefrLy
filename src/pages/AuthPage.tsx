@@ -55,7 +55,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
   return (
     <div className="grid min-h-screen bg-white lg:grid-cols-2">
       {/* Brand panel */}
-      <div className="hidden flex-col bg-brand-deep p-10 text-white lg:flex">
+      <div className="hidden flex-col bg-brand p-10 text-white lg:flex">
         <Link to="/" className="flex items-center gap-2.5">
           <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/15 text-lg font-bold">
             C
@@ -102,7 +102,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
       {/* Form panel */}
       <div className="flex flex-col px-6 py-8 sm:px-10">
         <Link to="/" className="flex items-center gap-2.5 self-start lg:hidden">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-deep text-lg font-bold text-white">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand text-lg font-bold text-white">
             C
           </span>
           <span className="text-lg font-bold tracking-tight text-heading">Cefrly</span>
@@ -160,7 +160,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             <button
               type="submit"
               disabled={busy}
-              className="w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-deep disabled:opacity-50"
+              className="w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand disabled:opacity-50"
             >
               {busy ? 'Please wait…' : isLogin ? 'Sign in' : 'Create account'}
             </button>

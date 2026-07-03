@@ -23,7 +23,7 @@ export function HomePage() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl bg-brand-deep px-6 py-10 text-white sm:px-10 sm:py-12">
+      <section className="rounded-2xl bg-brand px-6 py-10 text-white sm:px-10 sm:py-12">
         <h1 className="max-w-2xl text-3xl font-bold leading-tight sm:text-4xl">
           Know your real English level — <span className="text-sun">before</span> exam day.
         </h1>
@@ -57,7 +57,7 @@ export function HomePage() {
           {session ? (
             <Link
               to="/reading"
-              className="inline-flex items-center gap-2 rounded-lg bg-white px-6 py-2.5 text-sm font-semibold text-brand-deep transition-colors hover:bg-brand-soft"
+              className="inline-flex items-center gap-2 rounded-lg bg-white px-6 py-2.5 text-sm font-semibold text-brand transition-colors hover:bg-brand-soft"
             >
               <PlayIcon width={13} height={13} />
               Start Reading test
@@ -66,7 +66,7 @@ export function HomePage() {
             <>
               <Link
                 to="/signup"
-                className="inline-flex items-center gap-2 rounded-lg bg-white px-6 py-2.5 text-sm font-semibold text-brand-deep transition-colors hover:bg-brand-soft"
+                className="inline-flex items-center gap-2 rounded-lg bg-white px-6 py-2.5 text-sm font-semibold text-brand transition-colors hover:bg-brand-soft"
               >
                 Create free account
               </Link>

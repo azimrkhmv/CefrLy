@@ -2,8 +2,9 @@ import { Link } from 'react-router-dom'
 import type { TestCatalogEntry } from '../types/attempt'
 import { BookIcon, PlayIcon } from './icons'
 
-// Pastel circle colors cycle so the grid gets the friendly multi-color look.
-const ICON_COLORS = ['#c4b5fd', '#f9a8d4', '#93c5fd', '#5eead4', '#fdba74', '#d8b4fe']
+// Circle colors cycle so the grid gets the friendly multi-color look
+// (pixel-measured from the reference design).
+const ICON_COLORS = ['#12ad9d', '#f06310', '#a048f2', '#e73e8f', '#3174f1', '#e13383']
 
 export interface TestAttemptInfo {
   count: number
@@ -43,17 +44,17 @@ export function TestCard({
       </div>
 
       <div className="mt-7 flex items-center justify-between gap-3">
-        <p className="text-[15px] text-ink-faint">{attemptsLabel}</p>
+        <p className="text-[15px] text-ink-soft">{attemptsLabel}</p>
         <Link
           to={`/test/${test.id}`}
-          className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-brand-line px-6 py-2 text-[15px] font-medium text-brand-mid transition-colors hover:bg-brand-soft/60 hover:text-brand"
+          className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-brand px-6 py-2 text-[15px] font-medium text-brand transition-colors hover:bg-brand hover:text-white"
         >
           <PlayIcon width={13} height={13} />
           Start
         </Link>
       </div>
 
-      <div className="mt-6 border-t border-line pt-5">
+      <div className="mt-6 border-t border-[#ececec] pt-5">
         <p className="mb-3 text-sm text-ink-soft">Question levels:</p>
         <div className="flex flex-wrap gap-2.5">
           {test.target_levels.map((level) => (

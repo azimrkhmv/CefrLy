@@ -5,21 +5,20 @@
   /* Oxanium is only for big numbers: scores, timers, stats. */
   --font-num: "Oxanium", "Nunito", ui-sans-serif, sans-serif;
 
+  /* Every value below is pixel-measured from the reference screenshots. */
   --color-page: #f7f5ff; /* lavender app background */
-  --color-ink: #4a4864; /* body text */
-  --color-ink-soft: #8b89a0; /* muted gray text */
-  --color-ink-faint: #b3b1c5; /* placeholder-level gray ("No attempts yet") */
-  --color-heading: #3f3d56; /* headings — soft dark, never black */
-  --color-brand: #4b2e9e; /* primary purple: buttons, active nav */
-  --color-brand-deep: #3f2682; /* deep indigo: hero panels, dark chips */
-  --color-brand-mid: #7a55d6; /* soft purple: outlined button text */
-  --color-brand-line: #d9ccf4; /* light purple button borders */
-  --color-brand-bright: #8b45ff; /* single promo CTA only */
-  --color-brand-soft: #f3edfd; /* light purple fills */
-  --color-line: #edeaf6; /* hairline borders */
+  --color-ink: #303030; /* universal text: body, nav, titles */
+  --color-ink-soft: #7e8299; /* muted text ("No attempts yet", labels) */
+  --color-ink-faint: #bec0cc; /* disabled-level gray */
+  --color-heading: #303030; /* same ink for headings */
+  --color-brand: #3f2682; /* the one purple: active nav, buttons, chips */
+  --color-brand-deep: #2f1c62; /* darker shade for hovers */
+  --color-brand-bright: #9333ea; /* promo CTA + promo subtitle */
+  --color-brand-soft: #efeefc; /* light lavender chips (page pill) */
+  --color-line: #e5e5e5; /* neutral gray borders (cards, pills) */
   --color-sun: #ffb733; /* yellow accent */
-  --color-sun-soft: #fdf1cf; /* badge background */
-  --color-sun-ink: #9c7c22; /* badge text */
+  --color-sun-soft: #fef7cd; /* badge background */
+  --color-sun-ink: #b39450; /* badge text */
   --color-mint: #28af60; /* success green */
 
   --shadow-card: 0 1px 4px rgb(63 38 130 / 0.05);

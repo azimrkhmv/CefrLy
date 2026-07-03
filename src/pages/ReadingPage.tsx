@@ -37,12 +37,12 @@ export function ReadingPage() {
       <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div className="max-w-full overflow-x-auto">
           <div className="inline-flex overflow-hidden whitespace-nowrap rounded-lg border border-line text-[15px]">
-            <span className="bg-brand-deep px-6 py-2.5 font-medium text-white">Mock Test</span>
+            <span className="bg-brand px-6 py-2.5 font-medium text-white">Mock Test</span>
             {['Part 1', 'Part 2', 'Part 3', 'Part 4', 'Part 5'].map((part) => (
               <span
                 key={part}
                 title="Practice by part is coming soon"
-                className="cursor-not-allowed border-l border-line px-6 py-2.5 font-medium text-ink-faint"
+                className="cursor-not-allowed border-l border-line px-6 py-2.5 font-medium text-ink/40"
               >
                 {part}
               </span>

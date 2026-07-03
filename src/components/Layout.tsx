@@ -19,11 +19,11 @@ import {
 function Logo() {
   return (
     <Link to="/" className="flex items-center gap-3 px-2">
-      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-deep text-lg font-bold text-white">
+      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand text-lg font-bold text-white">
         C
       </span>
       <span className="leading-tight">
-        <span className="block text-[17px] font-bold uppercase tracking-[0.08em] text-[#26253a]">
+        <span className="block text-[17px] font-bold uppercase tracking-[0.08em] text-ink">
           Cefrly
         </span>
         <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-soft">
@@ -35,14 +35,14 @@ function Logo() {
 }
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-4 rounded-xl px-4 py-3 text-base transition-colors ${
-    isActive ? 'bg-brand font-medium text-white' : 'font-medium text-[#26253a] hover:bg-page'
+  `flex items-center gap-4 rounded-xl px-5 py-2.5 text-[16px] transition-colors ${
+    isActive ? 'bg-brand font-medium text-white' : 'font-medium text-ink hover:bg-page'
   }`
 
 function SoonItem({ icon, label }: { icon: ReactNode; label: string }) {
   return (
     <div
-      className="flex cursor-not-allowed items-center gap-4 rounded-xl px-4 py-3 text-base font-medium text-[#26253a]/40"
+      className="flex cursor-not-allowed items-center gap-4 rounded-xl px-5 py-2.5 text-[16px] font-medium text-ink/40"
       title="Coming soon"
     >
       {icon}
@@ -87,9 +87,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="mt-auto space-y-3.5 border-t border-line pt-5">
-        <div className="rounded-xl bg-brand-soft/70 px-4 py-3.5">
-          <p className="text-[15px] font-semibold text-[#26253a]">Full mock test</p>
-          <p className="mt-0.5 text-[13px] font-medium text-brand-mid">
+        <div className="rounded-xl bg-[#faf5ff] px-4 py-3.5">
+          <p className="text-[15px] font-semibold text-[#581c87]">Full mock test</p>
+          <p className="mt-0.5 text-[13px] font-medium text-brand-bright">
             35 questions · 5 parts · 60 minutes
           </p>
         </div>
@@ -143,7 +143,7 @@ export function Layout() {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-line bg-white lg:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[330px] border-r border-line bg-white lg:block">
         <SidebarContent />
       </aside>
 
@@ -168,7 +168,7 @@ export function Layout() {
         </div>
       )}
 
-      <div className="lg:pl-72">
+      <div className="lg:pl-[330px]">
         <header className="sticky top-0 z-20 bg-white">
           <div className="flex h-[72px] items-center gap-3 px-4 sm:px-8">
             <button
@@ -178,7 +178,7 @@ export function Layout() {
             >
               <MenuIcon />
             </button>
-            <span className="rounded-lg bg-[#f1edfa] px-5 py-2 text-[15px] font-semibold text-heading">
+            <span className="rounded-lg bg-brand-soft px-5 py-2 text-[15px] font-semibold text-heading">
               {pageTitle}
             </span>
             <div className="ml-auto flex items-center gap-3">
@@ -210,14 +210,9 @@ export function Layout() {
           </div>
         </header>
 
-        <div
-          className="min-h-[calc(100vh-72px)]"
-          style={{ background: 'linear-gradient(180deg, #f2edfb 0%, #f7f5ff 260px)' }}
-        >
-          <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-12">
-            <Outlet />
-          </main>
-        </div>
+        <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-12">
+          <Outlet />
+        </main>
       </div>
     </div>
   )
