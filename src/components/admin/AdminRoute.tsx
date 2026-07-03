@@ -7,7 +7,9 @@ export function AdminRoute() {
   const { session, loading, role, roleLoading } = useAuth()
   const location = useLocation()
 
-  if (loading || (session && roleLoading)) {
+  // role === null while signed in means the profile fetch hasn't landed yet —
+  // deciding before it lands would wrongly bounce admins on a full page load.
+  if (loading || (session && (roleLoading || role === null))) {
     return <p className="py-24 text-center text-slate-400">Loading…</p>
   }
   if (!session) {
