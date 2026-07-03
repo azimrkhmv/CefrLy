@@ -55,7 +55,9 @@ export function TestCard({
       </div>
 
       <div className="mt-6 border-t border-[#ececec] pt-5">
-        <p className="mb-3 text-sm text-ink-soft">Question levels:</p>
+        <p className="mb-3 text-sm text-ink-soft">
+          Question levels · {Math.round(test.duration_sec / 60)} minutes
+        </p>
         <div className="flex flex-wrap gap-2.5">
           {test.target_levels.map((level) => (
             <span
@@ -65,9 +67,6 @@ export function TestCard({
               {level}
             </span>
           ))}
-          <span className="rounded-full border border-line px-4 py-1.5 text-sm font-medium text-ink">
-            {Math.round(test.duration_sec / 60)} min
-          </span>
         </div>
       </div>
     </div>

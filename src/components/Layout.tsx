@@ -72,6 +72,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <SoonItem icon={<HeadphonesIcon />} label="Listening" />
         <SoonItem icon={<PenIcon />} label="Writing" />
         <SoonItem icon={<MicIcon />} label="Speaking" />
+        {(session || role === 'admin' || role === 'super_admin') && (
+          <div className="my-3 border-t border-line" aria-hidden />
+        )}
         {session && (
           <NavLink to="/dashboard" className={navLinkClass}>
             <ChartIcon />
@@ -108,7 +111,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-brand-bright px-4 py-3.5 text-[15px] font-medium text-white transition-colors hover:bg-brand"
           >
-            Sign in — it's free
+            Sign in
           </Link>
         )}
       </div>
@@ -128,6 +131,7 @@ export function Layout() {
   const { session } = useAuth()
   const location = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const pageTitle =
     PAGE_TITLES.find(([prefix]) => location.pathname.startsWith(prefix))?.[1] ?? 'Home'
@@ -178,30 +182,53 @@ export function Layout() {
             >
               <MenuIcon />
             </button>
-            <span className="rounded-lg bg-brand-soft px-5 py-2 text-[15px] font-semibold text-heading">
+            <span className="rounded-lg bg-brand-soft px-5 py-2 text-[15px] font-medium text-heading">
               {pageTitle}
             </span>
-            <div className="ml-auto flex items-center gap-3">
+            <div className="ml-auto flex items-center">
               {session ? (
-                <>
-                  <span className="hidden text-sm text-ink-soft md:inline">
-                    {session.user.email}
-                  </span>
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-soft text-sm font-bold text-brand">
-                    {initial}
-                  </span>
+                <div className="relative">
                   <button
-                    onClick={() => supabase.auth.signOut()}
-                    className="flex items-center gap-1.5 rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-heading hover:bg-page"
+                    onClick={() => setMenuOpen((v) => !v)}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-soft text-sm font-bold text-brand"
+                    aria-label="Account menu"
+                    aria-expanded={menuOpen}
                   >
-                    <LogoutIcon width={16} height={16} />
-                    <span className="hidden sm:inline">Sign out</span>
+                    {initial}
                   </button>
-                </>
+                  {menuOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setMenuOpen(false)}
+                        aria-hidden
+                      />
+                      <div className="absolute right-0 top-12 z-20 w-60 rounded-xl border border-line bg-white py-1.5 shadow-pop">
+                        <p className="truncate border-b border-line px-4 py-2.5 text-sm text-ink-soft">
+                          {session.user.email}
+                        </p>
+                        <Link
+                          to="/dashboard"
+                          onClick={() => setMenuOpen(false)}
+                          className="block px-4 py-2.5 text-[15px] text-ink hover:bg-page"
+                        >
+                          My results
+                        </Link>
+                        <button
+                          onClick={() => supabase.auth.signOut()}
+                          className="flex w-full items-center gap-2 px-4 py-2.5 text-[15px] text-ink hover:bg-page"
+                        >
+                          <LogoutIcon width={16} height={16} />
+                          Sign out
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               ) : (
                 <Link
                   to="/login"
-                  className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-deep"
+                  className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-deep"
                 >
                   Sign in
                 </Link>

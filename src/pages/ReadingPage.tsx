@@ -33,7 +33,7 @@ export function ReadingPage() {
   const attemptInfo = buildAttemptInfo(attempts)
 
   return (
-    <div className="rounded-2xl border border-line bg-white p-6 sm:p-10">
+    <div className="rounded-2xl bg-white p-6 sm:p-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div className="max-w-full overflow-x-auto">
           <div className="inline-flex overflow-hidden whitespace-nowrap rounded-lg border border-line text-[15px]">
