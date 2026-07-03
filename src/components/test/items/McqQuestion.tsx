@@ -1,16 +1,18 @@
 import type { SanitizedMcqItem } from '../../../types/test'
 import { useAnswersStore } from '../../../store/answers'
+import { MarkButton } from './MarkButton'
 
 export function McqQuestion({ item, number }: { item: SanitizedMcqItem; number: number }) {
   const value = useAnswersStore((s) => s.answers[item.id] ?? '')
   const setAnswer = useAnswersStore((s) => s.setAnswer)
 
   return (
-    <fieldset className="rounded-lg border border-slate-200 bg-white p-4">
+    <fieldset id={`q-${item.id}`} className="rounded-lg border border-slate-200 bg-white p-4">
       <legend className="sr-only">Question {number}</legend>
       <div className="mb-3 flex items-start gap-2">
         <span className="q-badge">{number}</span>
-        <p className="text-sm font-medium leading-relaxed">{item.prompt}</p>
+        <p className="flex-1 text-sm font-medium leading-relaxed">{item.prompt}</p>
+        <MarkButton itemId={item.id} />
       </div>
       <div className="space-y-1.5">
         {item.options.map((option) => (

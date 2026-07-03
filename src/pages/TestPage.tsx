@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { fetchSanitizedTest, submitTest } from '../lib/api'
 import { useAnswersStore } from '../store/answers'
 import { PartRenderer } from '../components/test/PartRenderer'
+import { QuestionNavigator } from '../components/test/QuestionNavigator'
 import { Timer } from '../components/test/Timer'
 
 const draftKey = (sessionId: string) => `cefrly-draft-${sessionId}`
@@ -46,7 +47,15 @@ export function TestPage() {
     const saved = localStorage.getItem(draftKey(sessionId))
     if (saved) {
       try {
-        useAnswersStore.getState().hydrate(JSON.parse(saved) as Record<string, string>)
+        const parsed = JSON.parse(saved) as
+          | { answers?: Record<string, string>; marked?: Record<string, boolean> }
+          | Record<string, string>
+        if (parsed && typeof parsed === 'object' && 'answers' in parsed) {
+          const draft = parsed as { answers?: Record<string, string>; marked?: Record<string, boolean> }
+          useAnswersStore.getState().hydrate(draft.answers ?? {}, draft.marked ?? {})
+        } else {
+          useAnswersStore.getState().hydrate(parsed as Record<string, string>)
+        }
       } catch {
         localStorage.removeItem(draftKey(sessionId))
       }
@@ -54,11 +63,14 @@ export function TestPage() {
     return () => reset()
   }, [sessionId, reset])
 
-  // Save every answer change so nothing is lost on refresh.
+  // Save every answer/mark change so nothing is lost on refresh.
   useEffect(() => {
     if (!sessionId) return
     return useAnswersStore.subscribe((state) => {
-      localStorage.setItem(draftKey(sessionId), JSON.stringify(state.answers))
+      localStorage.setItem(
+        draftKey(sessionId),
+        JSON.stringify({ answers: state.answers, marked: state.marked }),
+      )
     })
   }, [sessionId])
 
@@ -80,6 +92,17 @@ export function TestPage() {
       navigate(`/results/${result.attemptId}`, { state: result, replace: true })
     },
   })
+
+  function jumpToQuestion(itemId: string) {
+    if (!test) return
+    const index = test.parts.findIndex((part) => part.items.some((item) => item.id === itemId))
+    if (index === -1) return
+    setPartIndex(index)
+    // wait for the part to render before scrolling to the question
+    setTimeout(() => {
+      document.getElementById(`q-${itemId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 60)
+  }
 
   function handleSubmit(auto = false) {
     if (submission.isPending) return
@@ -148,6 +171,8 @@ export function TestPage() {
           </button>
         ))}
       </nav>
+
+      <QuestionNavigator test={test} numbering={numbering} onJump={jumpToQuestion} />
 
       <section className="rounded-xl border border-slate-200 bg-white p-6">
         <PartRenderer part={part} numbering={numbering} />

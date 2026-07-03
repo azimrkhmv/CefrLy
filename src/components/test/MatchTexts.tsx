@@ -1,5 +1,6 @@
 import { useAnswersStore } from '../../store/answers'
 import type { PartProps } from './PartRenderer'
+import { MarkButton } from './items/MarkButton'
 
 // Part 2: each item.prompt is a short text; the shared optionPool (A–J) holds
 // the statements. Reusing a letter is allowed — wrong picks are marked on results.
@@ -28,10 +29,15 @@ export function MatchTexts({ part, numbering }: PartProps) {
         {part.items.map(
           (item) =>
             item.type === 'match' && (
-              <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-4">
+              <div
+                key={item.id}
+                id={`q-${item.id}`}
+                className="rounded-lg border border-slate-200 bg-white p-4"
+              >
                 <div className="mb-3 flex items-start gap-2">
                   <span className="q-badge">{numbering[item.id]}</span>
-                  <p className="text-sm leading-relaxed">{item.prompt}</p>
+                  <p className="flex-1 text-sm leading-relaxed">{item.prompt}</p>
+                  <MarkButton itemId={item.id} />
                 </div>
                 <select
                   value={answers[item.id] ?? ''}

@@ -1,6 +1,7 @@
 import { useAnswersStore } from '../../store/answers'
 import type { PartProps } from './PartRenderer'
 import { PassageHtml } from './PassageHtml'
+import { MarkButton } from './items/MarkButton'
 
 // Part 3: paragraphs I–VI each get a heading dropdown from the optionPool.
 // Items align with passage.paragraphs by order. Reusing a heading is not
@@ -34,7 +35,11 @@ export function MatchHeadings({ part, numbering }: PartProps) {
         {paragraphs.map((paragraph, index) => {
           const item = part.items[index]
           return (
-            <div key={paragraph.label} className="rounded-lg border border-slate-200 bg-white p-4">
+            <div
+              key={paragraph.label}
+              id={item ? `q-${item.id}` : undefined}
+              className="rounded-lg border border-slate-200 bg-white p-4"
+            >
               <div className="mb-3 flex flex-wrap items-center gap-3">
                 <span className="font-bold text-slate-700">Paragraph {paragraph.label}</span>
                 {item && (
@@ -53,6 +58,7 @@ export function MatchHeadings({ part, numbering }: PartProps) {
                         </option>
                       ))}
                     </select>
+                    <MarkButton itemId={item.id} />
                   </>
                 )}
               </div>

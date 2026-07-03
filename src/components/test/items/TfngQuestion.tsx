@@ -1,5 +1,6 @@
 import type { SanitizedTfngItem } from '../../../types/test'
 import { useAnswersStore } from '../../../store/answers'
+import { MarkButton } from './MarkButton'
 
 export function TfngQuestion({ item, number }: { item: SanitizedTfngItem; number: number }) {
   const value = useAnswersStore((s) => s.answers[item.id] ?? '')
@@ -12,10 +13,11 @@ export function TfngQuestion({ item, number }: { item: SanitizedTfngItem; number
   ] as const
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div id={`q-${item.id}`} className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="mb-3 flex items-start gap-2">
         <span className="q-badge">{number}</span>
-        <p className="text-sm font-medium leading-relaxed">{item.prompt}</p>
+        <p className="flex-1 text-sm font-medium leading-relaxed">{item.prompt}</p>
+        <MarkButton itemId={item.id} />
       </div>
       <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={`Question ${number}`}>
         {choices.map((choice) => (
