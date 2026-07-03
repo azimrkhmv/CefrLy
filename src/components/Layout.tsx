@@ -1,11 +1,18 @@
 import { Link, Outlet } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
-import { supabase } from '../lib/supabase'
+import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
 export function Layout() {
   const { session } = useAuth()
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
+      {!isSupabaseConfigured && (
+        <div className="bg-amber-100 px-4 py-2 text-center text-sm text-amber-900">
+          Supabase is not configured — copy <code className="font-mono">.env.example</code> to{' '}
+          <code className="font-mono">.env</code> and fill in your project keys (see README).
+          Sign-in and tests will not work until then.
+        </div>
+      )}
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
           <Link to="/" className="text-lg font-bold tracking-tight text-indigo-700">
