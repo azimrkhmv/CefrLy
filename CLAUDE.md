@@ -76,6 +76,13 @@ type explanation = { location, quote, reasoning }  // shown only after submit
 - In-test answers are drafted to localStorage (`cefrly-draft-<sessionId>`) so a
   refresh never loses progress; the draft is cleared on submit.
 - Local env goes in .env.local (gitignored). Never commit keys.
+- PHASE 2 (admin dashboard) is built: profiles.role (student/admin/super_admin;
+  role changes only via admin-users edge function — column grant blocks direct
+  updates), tests has slug + status (draft/published/archived), /admin area with
+  role guards, admin-tests edge function (list/get/upsert with full schema-v2
+  validation/setStatus/archive), fixed-template Reading form at /admin/tests/new
+  and /admin/tests/:slug, /admin/admins for the super admin. Owner accounts
+  (azimrkhmv@gmail.com, ysharpist@gmail.com) are super_admin.
 - DEV ONLY: an `auto_confirm_on_signup` trigger on auth.users confirms new accounts
   instantly (Supabase email confirmation is effectively bypassed). REMOVE before
   launch and set up real SMTP + confirmations.
