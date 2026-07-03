@@ -77,3 +77,43 @@ export function adminSetStatus(
 export function adminArchiveTest(slug: string): Promise<{ ok: true; slug: string }> {
   return invokeAdmin({ action: 'delete', slug })
 }
+
+// --- admin-users (super admin only) ----------------------------------------
+
+export interface AdminUserRow {
+  id: string
+  email: string
+  name: string | null
+  role: 'student' | 'admin' | 'super_admin'
+  created_at: string
+}
+
+async function invokeUsers<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('admin-users', { body })
+  if (error) {
+    let message = 'User management request failed.'
+    const ctx = (error as { context?: Response }).context
+    if (ctx) {
+      try {
+        const parsed = (await ctx.json()) as { error?: string }
+        if (parsed.error) message = parsed.error
+      } catch {
+        // keep generic message
+      }
+    }
+    throw new Error(message)
+  }
+  return data as T
+}
+
+export async function adminListUsers(): Promise<AdminUserRow[]> {
+  const { users } = await invokeUsers<{ users: AdminUserRow[] }>({ action: 'listUsers' })
+  return users
+}
+
+export function adminSetUserRole(
+  userId: string,
+  role: 'student' | 'admin',
+): Promise<{ ok: true; userId: string; role: string }> {
+  return invokeUsers({ action: 'setUserRole', userId, role })
+}
