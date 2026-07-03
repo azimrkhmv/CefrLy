@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage'
 import { AuthPage } from './pages/AuthPage'
 import { TestPage } from './pages/TestPage'
 import { ResultsPage } from './pages/ResultsPage'
+import { DashboardPage } from './pages/DashboardPage'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/test/:testId" element={<TestPage />} />
           <Route path="/results/:attemptId" element={<ResultsPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
         </Route>
       </Route>
     </Routes>

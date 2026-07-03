@@ -39,3 +39,13 @@ export interface StoredAttemptResult {
 export interface AttemptResult extends StoredAttemptResult {
   attemptId: string
 }
+
+/** One row on the "My results" dashboard. */
+export interface AttemptSummary {
+  id: string
+  testTitle: string
+  rawScore: number
+  total: number
+  band: Band
+  createdAt: string
+}

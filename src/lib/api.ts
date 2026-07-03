@@ -1,6 +1,11 @@
 import { supabase } from './supabase'
-import type { SanitizedReadingTest } from '../types/test'
-import type { AttemptResult, StoredAttemptResult, TestCatalogEntry } from '../types/attempt'
+import type { Band, SanitizedReadingTest } from '../types/test'
+import type {
+  AttemptResult,
+  AttemptSummary,
+  StoredAttemptResult,
+  TestCatalogEntry,
+} from '../types/attempt'
 
 async function invokeFunction<T>(name: string, body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(name, { body })
@@ -41,6 +46,27 @@ export function submitTest(
   answers: Record<string, string>,
 ): Promise<AttemptResult> {
   return invokeFunction<AttemptResult>('submit-test', { testId, answers })
+}
+
+/** All of the signed-in user's attempts, newest first (RLS: own rows only). */
+export async function fetchMyAttempts(): Promise<AttemptSummary[]> {
+  const { data, error } = await supabase
+    .from('attempts')
+    .select('id, raw_score, total, band, created_at, tests(title)')
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((row) => {
+    const test = row.tests as { title?: string } | { title?: string }[] | null
+    const title = Array.isArray(test) ? test[0]?.title : test?.title
+    return {
+      id: row.id as string,
+      testTitle: title ?? 'Reading test',
+      rawScore: row.raw_score as number,
+      total: row.total as number,
+      band: row.band as Band,
+      createdAt: row.created_at as string,
+    }
+  })
 }
 
 /** Re-load a past attempt (RLS: only the owner can read it). */

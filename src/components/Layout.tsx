@@ -21,6 +21,9 @@ export function Layout() {
           </Link>
           {session ? (
             <div className="flex items-center gap-3 text-sm">
+              <Link to="/dashboard" className="font-medium text-indigo-600 hover:underline">
+                My results
+              </Link>
               <span className="hidden text-slate-500 sm:inline">{session.user.email}</span>
               <button
                 onClick={() => supabase.auth.signOut()}

@@ -1,15 +1,8 @@
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchAttempt } from '../lib/api'
+import { BAND_INFO, BAND_ORDER } from '../lib/bands'
 import type { AttemptResult, ItemResult } from '../types/attempt'
-import type { Band } from '../types/test'
-
-const BAND_INFO: Record<Band, { label: string; className: string; range: string }> = {
-  C1: { label: 'C1', className: 'bg-emerald-100 text-emerald-800', range: '28–35' },
-  B2: { label: 'B2', className: 'bg-sky-100 text-sky-800', range: '18–27' },
-  B1: { label: 'B1', className: 'bg-amber-100 text-amber-800', range: '10–17' },
-  below_B1: { label: 'Below B1', className: 'bg-rose-100 text-rose-800', range: '0–9' },
-}
 
 export function ResultsPage() {
   const { attemptId } = useParams<{ attemptId: string }>()
@@ -58,11 +51,12 @@ export function ResultsPage() {
               Indicative READING band only — the full 4-skill result comes from a complete mock
               exam.
             </p>
+            <p className="mt-1 text-sm font-medium text-slate-700">{band.blurb}</p>
           </div>
         </div>
 
         <div className="mt-6 grid grid-cols-4 gap-1 text-center text-xs font-medium">
-          {(Object.keys(BAND_INFO) as Band[]).reverse().map((key) => (
+          {BAND_ORDER.map((key) => (
             <div
               key={key}
               className={`rounded-md py-2 ${
@@ -97,12 +91,18 @@ export function ResultsPage() {
           ))}
       </section>
 
-      <div>
+      <div className="flex flex-wrap gap-3">
         <Link
           to="/"
           className="inline-block rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
         >
           Take another test
+        </Link>
+        <Link
+          to="/dashboard"
+          className="inline-block rounded-md border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          View all my results
         </Link>
       </div>
     </div>
@@ -115,8 +115,8 @@ function ItemReview({ item, fallbackNumber }: { item: ItemResult; fallbackNumber
 
   return (
     <li
-      className={`rounded-lg border p-4 ${
-        item.correct ? 'border-emerald-200 bg-emerald-50/50' : 'border-rose-200 bg-rose-50/50'
+      className={`rounded-lg border border-slate-200 bg-white p-4 border-l-4 ${
+        item.correct ? 'border-l-emerald-400' : 'border-l-rose-400'
       }`}
     >
       <div className="flex items-start gap-3">
