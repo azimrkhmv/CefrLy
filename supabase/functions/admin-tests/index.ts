@@ -1,8 +1,12 @@
 // admin-tests: content management for admins. All actions re-check the
 // caller's profiles.role server-side (requireAdmin) — the UI gate is cosmetic.
-// Task 3: read actions (list, get). Write actions arrive in task 4.
+// Actions: list, get, upsert (validated; writes nothing on failure),
+// setStatus (draft|published), delete (soft archive).
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders, json } from './cors.ts'
+import { validateReadingTest } from './validate.ts'
+
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -71,6 +75,97 @@ Deno.serve(async (req) => {
         .single()
       if (contentError || !contentRow) return json({ error: 'Test content missing' }, 500)
       return json({ test, content: contentRow.content })
+    }
+
+    case 'upsert': {
+      const slug = body.slug
+      const status = body.status ?? 'draft'
+      const content = body.content
+      if (typeof slug !== 'string' || !SLUG_RE.test(slug)) {
+        return json({ ok: false, errors: ['slug must be lowercase letters, digits and hyphens (e.g. reading-mock-2).'] }, 400)
+      }
+      if (status !== 'draft' && status !== 'published') {
+        return json({ ok: false, errors: ["status must be 'draft' or 'published'."] }, 400)
+      }
+
+      const errors = validateReadingTest(content)
+      if (errors.length > 0) return json({ ok: false, errors }, 400)
+
+      const { data: existing, error: findError } = await admin
+        .from('tests')
+        .select('id, status')
+        .eq('slug', slug)
+        .maybeSingle()
+      if (findError) return json({ ok: false, errors: [findError.message] }, 500)
+
+      const meta = {
+        slug,
+        title: content.title,
+        skill: 'reading',
+        target_levels: content.targetLevels,
+        duration_sec: content.durationSec,
+        status,
+      }
+
+      let testId: string
+      if (existing) {
+        if (existing.status === 'archived') {
+          return json({ ok: false, errors: [`'${slug}' is archived. Restore it first or pick another slug.`] }, 409)
+        }
+        testId = existing.id
+        const { error: updateError } = await admin.from('tests').update(meta).eq('id', testId)
+        if (updateError) return json({ ok: false, errors: [updateError.message] }, 500)
+      } else {
+        const { data: inserted, error: insertError } = await admin
+          .from('tests')
+          .insert(meta)
+          .select('id')
+          .single()
+        if (insertError || !inserted) {
+          return json({ ok: false, errors: [insertError?.message ?? 'Could not create test'] }, 500)
+        }
+        testId = inserted.id
+      }
+
+      // keep the stored content self-consistent with the row
+      const finalContent = { ...content, id: testId, slug }
+      const { error: contentWriteError } = await admin
+        .from('test_content')
+        .upsert({ test_id: testId, content: finalContent, updated_at: new Date().toISOString() })
+      if (contentWriteError) return json({ ok: false, errors: [contentWriteError.message] }, 500)
+
+      return json({ ok: true, slug, id: testId })
+    }
+
+    case 'setStatus': {
+      const slug = body.slug
+      const status = body.status
+      if (typeof slug !== 'string' || !slug) return json({ error: 'slug is required' }, 400)
+      if (status !== 'draft' && status !== 'published') {
+        return json({ error: "status must be 'draft' or 'published'" }, 400)
+      }
+      const { data: updated, error } = await admin
+        .from('tests')
+        .update({ status })
+        .eq('slug', slug)
+        .neq('status', 'archived')
+        .select('id')
+      if (error) return json({ error: error.message }, 500)
+      if (!updated || updated.length === 0) return json({ error: 'Test not found' }, 404)
+      return json({ ok: true, slug, status })
+    }
+
+    case 'delete': {
+      const slug = body.slug
+      if (typeof slug !== 'string' || !slug) return json({ error: 'slug is required' }, 400)
+      const { data: archived, error } = await admin
+        .from('tests')
+        .update({ status: 'archived' })
+        .eq('slug', slug)
+        .select('id')
+      if (error) return json({ error: error.message }, 500)
+      if (!archived || archived.length === 0) return json({ error: 'Test not found' }, 404)
+      return json({ ok: true, slug, status: 'archived' })
     }
 
     default:
