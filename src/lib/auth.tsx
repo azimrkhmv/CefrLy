@@ -2,18 +2,30 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
+export type Role = 'student' | 'admin' | 'super_admin'
+
 interface AuthState {
   session: Session | null
+  /** True until the initial session restore finishes. */
   loading: boolean
+  /** The signed-in user's profiles.role; null while signed out or still loading. */
+  role: Role | null
+  /** True while the role for the current session is being fetched. */
+  roleLoading: boolean
 }
 
-const AuthContext = createContext<AuthState>({ session: null, loading: true })
+const AuthContext = createContext<AuthState>({
+  session: null,
+  loading: true,
+  role: null,
+  roleLoading: false,
+})
 
-// NOTE (later phase): the MilliyMock hand-off will land here — users arriving with
-// a hand-off token get signed in without re-registering. Not part of phase 1.
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [role, setRole] = useState<Role | null>(null)
+  const [roleLoading, setRoleLoading] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -28,7 +40,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  return <AuthContext.Provider value={{ session, loading }}>{children}</AuthContext.Provider>
+  const userId = session?.user.id ?? null
+
+  // RLS lets users read only their own profile row; role changes happen
+  // exclusively through the admin-users edge function.
+  useEffect(() => {
+    if (!userId) {
+      setRole(null)
+      return
+    }
+    let cancelled = false
+    setRoleLoading(true)
+    supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single()
+      .then(({ data }) => {
+        if (cancelled) return
+        setRole((data?.role as Role | undefined) ?? 'student')
+        setRoleLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
+
+  return (
+    <AuthContext.Provider value={{ session, loading, role, roleLoading }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

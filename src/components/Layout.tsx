@@ -3,7 +3,7 @@ import { useAuth } from '../lib/auth'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
 export function Layout() {
-  const { session } = useAuth()
+  const { session, role } = useAuth()
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       {!isSupabaseConfigured && (
@@ -21,6 +21,11 @@ export function Layout() {
           </Link>
           {session ? (
             <div className="flex items-center gap-3 text-sm">
+              {(role === 'admin' || role === 'super_admin') && (
+                <Link to="/admin/tests" className="font-medium text-indigo-600 hover:underline">
+                  Admin
+                </Link>
+              )}
               <Link to="/dashboard" className="font-medium text-indigo-600 hover:underline">
                 My results
               </Link>

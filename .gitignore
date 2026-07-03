@@ -21,3 +21,6 @@ dist/
 
 # logs
 *.log
+
+.vercel
+.env*
