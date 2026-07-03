@@ -79,3 +79,8 @@ type explanation = { location, quote, reasoning }  // shown only after submit
 - DEV ONLY: an `auto_confirm_on_signup` trigger on auth.users confirms new accounts
   instantly (Supabase email confirmation is effectively bypassed). REMOVE before
   launch and set up real SMTP + confirmations.
+- MilliyMock hand-off IS implemented: milliymock-handoff edge function (verify_jwt
+  off, verifies its own HS256 JWT against MILLIYMOCK_HANDOFF_SECRET, single-use jti
+  via handoff_tokens table, 60s lifetime) + /handoff frontend route that exchanges
+  the returned tokenHash via auth.verifyOtp. Requires the MILLIYMOCK_HANDOFF_SECRET
+  edge function secret to be set (same value on the MilliyMock side).

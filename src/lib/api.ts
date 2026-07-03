@@ -48,6 +48,11 @@ export function submitTest(
   return invokeFunction<AttemptResult>('submit-test', { testId, answers })
 }
 
+/** Exchange a MilliyMock hand-off token for a one-time login token hash. */
+export function milliymockHandoff(token: string): Promise<{ tokenHash: string }> {
+  return invokeFunction<{ tokenHash: string }>('milliymock-handoff', { token })
+}
+
 /** All of the signed-in user's attempts, newest first (RLS: own rows only). */
 export async function fetchMyAttempts(): Promise<AttemptSummary[]> {
   const { data, error } = await supabase
