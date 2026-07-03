@@ -33,11 +33,22 @@ export function ReadingPage() {
   const attemptInfo = buildAttemptInfo(attempts)
 
   return (
-    <div className="rounded-2xl border border-line bg-white p-6 shadow-card sm:p-8">
-      <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
-        <span className="rounded-lg bg-brand-deep px-5 py-2.5 text-sm font-semibold text-white">
-          Mock Test
-        </span>
+    <div className="rounded-2xl border border-line bg-white p-6 sm:p-10">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+        <div className="max-w-full overflow-x-auto">
+          <div className="inline-flex overflow-hidden whitespace-nowrap rounded-lg border border-line text-[15px]">
+            <span className="bg-brand-deep px-6 py-2.5 font-medium text-white">Mock Test</span>
+            {['Part 1', 'Part 2', 'Part 3', 'Part 4', 'Part 5'].map((part) => (
+              <span
+                key={part}
+                title="Practice by part is coming soon"
+                className="cursor-not-allowed border-l border-line px-6 py-2.5 font-medium text-ink-faint"
+              >
+                {part}
+              </span>
+            ))}
+          </div>
+        </div>
         {tests && (
           <span className="text-sm text-ink-soft">
             {tests.length} test{tests.length === 1 ? '' : 's'} available

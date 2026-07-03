@@ -18,7 +18,7 @@ import {
 
 function Logo() {
   return (
-    <Link to="/" className="flex items-center gap-2.5 px-2">
+    <Link to="/" className="flex items-center gap-3 px-2">
       <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-deep text-lg font-bold text-white">
         C
       </span>
@@ -33,16 +33,16 @@ function Logo() {
 }
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-3.5 rounded-lg px-4 py-2.5 text-[15px] transition-colors ${
-    isActive ? 'bg-brand font-semibold text-white' : 'font-medium text-heading/75 hover:bg-brand-soft/60'
+  `flex items-center gap-4 rounded-lg px-4 py-3 text-[15.5px] transition-colors ${
+    isActive ? 'bg-brand font-medium text-white' : 'font-medium text-heading/85 hover:bg-brand-soft/50'
   }`
 
 function SoonItem({ icon, label }: { icon: ReactNode; label: string }) {
   return (
-    <div className="flex items-center gap-3.5 rounded-lg px-4 py-2.5 text-[15px] font-medium text-heading/35">
+    <div className="flex items-center gap-4 rounded-lg px-4 py-3 text-[15.5px] font-medium text-heading/30">
       {icon}
       {label}
-      <span className="ml-auto rounded-md bg-base px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-soft/80">
+      <span className="ml-auto rounded-md bg-base px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-soft/70">
         Soon
       </span>
     </div>
@@ -52,12 +52,12 @@ function SoonItem({ icon, label }: { icon: ReactNode; label: string }) {
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { session, role } = useAuth()
   return (
-    <div className="flex h-full flex-col gap-7 p-4">
-      <div className="pt-3">
+    <div className="flex h-full flex-col gap-8 p-5">
+      <div className="pt-4">
         <Logo />
       </div>
 
-      <nav className="flex flex-col gap-1" aria-label="Main" onClick={onNavigate}>
+      <nav className="flex flex-col gap-1.5" aria-label="Main" onClick={onNavigate}>
         <NavLink to="/" end className={navLinkClass}>
           <HomeIcon />
           Home
@@ -138,7 +138,7 @@ export function Layout() {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-line bg-white lg:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-line bg-white lg:block">
         <SidebarContent />
       </aside>
 
@@ -163,9 +163,9 @@ export function Layout() {
         </div>
       )}
 
-      <div className="lg:pl-64">
-        <header className="sticky top-0 z-20 border-b border-line/60 bg-white">
-          <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
+      <div className="lg:pl-72">
+        <header className="sticky top-0 z-20 bg-white">
+          <div className="flex h-[72px] items-center gap-3 px-4 sm:px-8">
             <button
               onClick={() => setDrawerOpen(true)}
               className="rounded-lg p-1.5 text-heading hover:bg-base lg:hidden"
@@ -173,7 +173,7 @@ export function Layout() {
             >
               <MenuIcon />
             </button>
-            <span className="rounded-lg bg-base px-4 py-1.5 text-sm font-semibold text-heading">
+            <span className="rounded-lg bg-[#f1edfa] px-5 py-2 text-[15px] font-semibold text-heading">
               {pageTitle}
             </span>
             <div className="ml-auto flex items-center gap-3">
@@ -205,9 +205,14 @@ export function Layout() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-          <Outlet />
-        </main>
+        <div
+          className="min-h-[calc(100vh-72px)]"
+          style={{ background: 'linear-gradient(180deg, #f2edfb 0%, #f7f5ff 260px)' }}
+        >
+          <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-12">
+            <Outlet />
+          </main>
+        </div>
       </div>
     </div>
   )
