@@ -86,16 +86,22 @@ Deno.serve(async (req) => {
 
   const content = contentRow.content
   const itemResults = []
+  const sectionScores: Record<string, { correct: number; total: number }> = {}
   let rawScore = 0
   let total = 0
 
   for (const part of content.parts ?? []) {
+    const section = (sectionScores[part.number] ??= { correct: 0, total: 0 })
     for (const item of part.items ?? []) {
       total += 1
+      section.total += 1
       const raw = answerMap[item.id]
       const userAnswer = typeof raw === 'string' && raw.trim() !== '' ? raw : null
       const correct = isCorrect(item, userAnswer)
-      if (correct) rawScore += 1
+      if (correct) {
+        rawScore += 1
+        section.correct += 1
+      }
       itemResults.push({
         id: item.id,
         partNumber: part.number,
@@ -131,6 +137,7 @@ Deno.serve(async (req) => {
       raw_score: rawScore,
       total,
       band,
+      section_scores: sectionScores,
       result,
     })
     .select('id')
