@@ -1,15 +1,18 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-export function Timer({ durationSec, onExpire }: { durationSec: number; onExpire: () => void }) {
-  const [remaining, setRemaining] = useState(durationSec)
+// Counts down to a server-issued deadline. Refreshing the page does not reset
+// the clock — the deadline comes from the test session, not from mount time.
+export function Timer({ expiresAt, onExpire }: { expiresAt: string; onExpire: () => void }) {
+  const deadline = useMemo(() => new Date(expiresAt).getTime(), [expiresAt])
+  const [remaining, setRemaining] = useState(() =>
+    Math.max(0, Math.round((deadline - Date.now()) / 1000)),
+  )
   const onExpireRef = useRef(onExpire)
   onExpireRef.current = onExpire
 
   useEffect(() => {
-    const deadline = Date.now() + durationSec * 1000
     let fired = false
-    setRemaining(durationSec)
-    const interval = setInterval(() => {
+    const tick = () => {
       const left = Math.max(0, Math.round((deadline - Date.now()) / 1000))
       setRemaining(left)
       if (left <= 0 && !fired) {
@@ -17,9 +20,11 @@ export function Timer({ durationSec, onExpire }: { durationSec: number; onExpire
         clearInterval(interval)
         onExpireRef.current()
       }
-    }, 500)
+    }
+    const interval = setInterval(tick, 500)
+    tick()
     return () => clearInterval(interval)
-  }, [durationSec])
+  }, [deadline])
 
   const minutes = Math.floor(remaining / 60)
   const seconds = remaining % 60

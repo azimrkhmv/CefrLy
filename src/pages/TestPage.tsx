@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { fetchSanitizedTest, submitTest } from '../lib/api'
 import { useAnswersStore } from '../store/answers'
 import { PartRenderer } from '../components/test/PartRenderer'
 import { Timer } from '../components/test/Timer'
 
+const draftKey = (sessionId: string) => `cefrly-draft-${sessionId}`
+
 export function TestPage() {
   const { testId } = useParams<{ testId: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [partIndex, setPartIndex] = useState(0)
   const reset = useAnswersStore((s) => s.reset)
   const answeredCount = useAnswersStore(
@@ -27,10 +30,37 @@ export function TestPage() {
     retry: 1,
   })
 
+  const sessionId = test?.session.id
+
+  // Restore the saved draft for this session (survives page refreshes);
+  // drop drafts from older sessions.
   useEffect(() => {
+    if (!sessionId) return
     reset()
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i)
+      if (key?.startsWith('cefrly-draft-') && key !== draftKey(sessionId)) {
+        localStorage.removeItem(key)
+      }
+    }
+    const saved = localStorage.getItem(draftKey(sessionId))
+    if (saved) {
+      try {
+        useAnswersStore.getState().hydrate(JSON.parse(saved) as Record<string, string>)
+      } catch {
+        localStorage.removeItem(draftKey(sessionId))
+      }
+    }
     return () => reset()
-  }, [testId, reset])
+  }, [sessionId, reset])
+
+  // Save every answer change so nothing is lost on refresh.
+  useEffect(() => {
+    if (!sessionId) return
+    return useAnswersStore.subscribe((state) => {
+      localStorage.setItem(draftKey(sessionId), JSON.stringify(state.answers))
+    })
+  }, [sessionId])
 
   const numbering = useMemo(() => {
     const map: Record<string, number> = {}
@@ -44,6 +74,8 @@ export function TestPage() {
   const submission = useMutation({
     mutationFn: () => submitTest(testId!, useAnswersStore.getState().answers),
     onSuccess: (result) => {
+      if (sessionId) localStorage.removeItem(draftKey(sessionId))
+      queryClient.removeQueries({ queryKey: ['test', testId] })
       reset()
       navigate(`/results/${result.attemptId}`, { state: result, replace: true })
     },
@@ -84,7 +116,7 @@ export function TestPage() {
           <span className="text-sm text-slate-500">
             {answeredCount}/{totalItems} answered
           </span>
-          <Timer durationSec={test.durationSec} onExpire={() => handleSubmit(true)} />
+          <Timer expiresAt={test.session.expiresAt} onExpire={() => handleSubmit(true)} />
           <button
             onClick={() => handleSubmit()}
             disabled={submission.isPending}

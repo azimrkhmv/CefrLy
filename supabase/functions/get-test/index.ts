@@ -1,6 +1,9 @@
-// get-test: returns a SANITIZED test to the browser.
+// get-test: returns a SANITIZED test to the browser plus the user's test
+// session (server-side start/expiry time).
 // Every `answer` and `explanation` field is stripped before the payload leaves
 // the server. Options, optionPool, prompts, passages and thirdOptionLabel are kept.
+// An unexpired, unsubmitted session is REUSED, so refreshing the page resumes
+// the same countdown instead of restarting it.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders, json } from './cors.ts'
 
@@ -51,7 +54,41 @@ Deno.serve(async (req) => {
     .single()
   if (contentError || !contentRow) return json({ error: 'Test content missing' }, 500)
 
-  return json(sanitize(contentRow.content, test))
+  // Reuse the newest active session, or start a fresh one.
+  const { data: existing, error: sessionError } = await admin
+    .from('test_sessions')
+    .select('id, started_at, expires_at')
+    .eq('user_id', user.id)
+    .eq('test_id', testId)
+    .is('submitted_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (sessionError) return json({ error: sessionError.message }, 500)
+
+  let session = existing
+  if (!session) {
+    const expiresAt = new Date(Date.now() + test.duration_sec * 1000).toISOString()
+    const { data: created, error: createError } = await admin
+      .from('test_sessions')
+      .insert({ user_id: user.id, test_id: testId, expires_at: expiresAt })
+      .select('id, started_at, expires_at')
+      .single()
+    if (createError || !created) {
+      return json({ error: createError?.message ?? 'Could not start test session' }, 500)
+    }
+    session = created
+  }
+
+  return json({
+    ...sanitize(contentRow.content, test),
+    session: {
+      id: session.id,
+      startedAt: session.started_at,
+      expiresAt: session.expires_at,
+    },
+  })
 })
 
 // deno-lint-ignore no-explicit-any

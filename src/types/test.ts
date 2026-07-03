@@ -118,6 +118,14 @@ export interface SanitizedPart extends Omit<Part, 'items'> {
   items: SanitizedItem[]
 }
 
+/** Server-side attempt timing, created/reused by the get-test edge function. */
+export interface TestSession {
+  id: string
+  startedAt: string
+  expiresAt: string
+}
+
 export interface SanitizedReadingTest extends Omit<ReadingTest, 'parts'> {
   parts: SanitizedPart[]
+  session: TestSession
 }

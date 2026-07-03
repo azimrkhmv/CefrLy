@@ -70,4 +70,12 @@ type explanation = { location, quote, reasoning }  // shown only after submit
   (validates the rigid structure and writes supabase/seed/seed.sql).
 - Answer keys live in the test_content table (RLS, no policies = service_role only).
   Edge functions: supabase/functions/get-test (sanitizes) and submit-test (grades).
+- Timing is server-side: get-test creates/reuses a test_sessions row (started_at,
+  expires_at); refreshing resumes the same countdown. submit-test rejects attempts
+  past expires_at (+2 min grace) with 409 and closes the session.
+- In-test answers are drafted to localStorage (`cefrly-draft-<sessionId>`) so a
+  refresh never loses progress; the draft is cleared on submit.
 - Local env goes in .env.local (gitignored). Never commit keys.
+- DEV ONLY: an `auto_confirm_on_signup` trigger on auth.users confirms new accounts
+  instantly (Supabase email confirmation is effectively bypassed). REMOVE before
+  launch and set up real SMTP + confirmations.

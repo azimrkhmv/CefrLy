@@ -57,6 +57,33 @@ Deno.serve(async (req) => {
     .single()
   if (contentError || !contentRow) return json({ error: 'Test content missing' }, 500)
 
+  // Server-side time enforcement: there must be an open session, and it may
+  // not be past its deadline (small grace period for network/auto-submit lag).
+  const GRACE_MS = 120_000
+  const { data: session, error: sessionError } = await admin
+    .from('test_sessions')
+    .select('id, expires_at')
+    .eq('user_id', user.id)
+    .eq('test_id', testId)
+    .is('submitted_at', null)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (sessionError) return json({ error: sessionError.message }, 500)
+  if (!session) {
+    return json({ error: 'No active test session. Open the test before submitting.' }, 409)
+  }
+  if (Date.now() > new Date(session.expires_at).getTime() + GRACE_MS) {
+    await admin
+      .from('test_sessions')
+      .update({ submitted_at: new Date().toISOString() })
+      .eq('id', session.id)
+    return json(
+      { error: 'Time is up — this attempt expired before it was submitted. Start the test again for a fresh attempt.' },
+      409,
+    )
+  }
+
   const content = contentRow.content
   const itemResults = []
   let rawScore = 0
@@ -99,6 +126,7 @@ Deno.serve(async (req) => {
     .insert({
       user_id: user.id,
       test_id: test.id,
+      session_id: session.id,
       answers: answerMap,
       raw_score: rawScore,
       total,
@@ -110,6 +138,11 @@ Deno.serve(async (req) => {
   if (insertError || !inserted) {
     return json({ error: insertError?.message ?? 'Could not save attempt' }, 500)
   }
+
+  await admin
+    .from('test_sessions')
+    .update({ submitted_at: new Date().toISOString() })
+    .eq('id', session.id)
 
   return json({ attemptId: inserted.id, ...result })
 })
