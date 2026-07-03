@@ -5,7 +5,7 @@
   /* Oxanium is only for big numbers: scores, timers, stats. */
   --font-num: "Oxanium", "Nunito", ui-sans-serif, sans-serif;
 
-  --color-base: #f7f5ff; /* lavender app background */
+  --color-page: #f7f5ff; /* lavender app background */
   --color-ink: #4a4864; /* body text */
   --color-ink-soft: #8b89a0; /* muted gray text */
   --color-ink-faint: #b3b1c5; /* placeholder-level gray ("No attempts yet") */
@@ -27,7 +27,7 @@
 }
 
 body {
-  background: var(--color-base);
+  background: var(--color-page);
   color: var(--color-ink);
 }
 
