@@ -1,7 +1,6 @@
-import { useMemo } from 'react'
 import type { SanitizedItem } from '../../types/test'
 import type { PartProps } from './PartRenderer'
-import { GAP_MARKER_RE } from './gapMarkers'
+import { PassageHtml } from './PassageHtml'
 import { GapInput } from './items/GapInput'
 import { McqQuestion } from './items/McqQuestion'
 import { TfngQuestion } from './items/TfngQuestion'
@@ -9,22 +8,20 @@ import { TfngQuestion } from './items/TfngQuestion'
 // Parts 4 & 5: split-pane. Passage left ({{itemId}} markers become numbered
 // blanks), questions right in list order, each rendered per its own type.
 export function PassageQuestions({ part, numbering }: PartProps) {
-  const html = useMemo(
-    () =>
-      (part.passage?.html ?? '').replace(GAP_MARKER_RE, (_match, id: string) => {
-        const number = numbering[id]
-        return `<span class="gap-marker">${number ?? '?'} ________</span>`
-      }),
-    [part, numbering],
-  )
-
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="self-start rounded-lg border border-slate-200 bg-slate-50 p-5 lg:sticky lg:top-4 lg:max-h-[75vh] lg:overflow-y-auto">
         {part.passage?.title && (
           <h3 className="mb-3 text-base font-semibold">{part.passage.title}</h3>
         )}
-        <div className="passage text-[15px]" dangerouslySetInnerHTML={{ __html: html }} />
+        <div className="passage text-[15px]">
+          <PassageHtml
+            html={part.passage?.html ?? ''}
+            renderGap={(itemId) => (
+              <span className="gap-marker">{numbering[itemId] ?? '?'} ________</span>
+            )}
+          />
+        </div>
       </div>
 
       <div className="space-y-4">

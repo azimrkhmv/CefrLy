@@ -1,5 +1,6 @@
 import { useAnswersStore } from '../../store/answers'
 import type { PartProps } from './PartRenderer'
+import { PassageHtml } from './PassageHtml'
 
 // Part 3: paragraphs I–VI each get a heading dropdown from the optionPool.
 // Items align with passage.paragraphs by order. Reusing a heading is not
@@ -55,10 +56,9 @@ export function MatchHeadings({ part, numbering }: PartProps) {
                   </>
                 )}
               </div>
-              <div
-                className="passage text-sm text-slate-700"
-                dangerouslySetInnerHTML={{ __html: paragraph.html }}
-              />
+              <div className="passage text-sm text-slate-700">
+                <PassageHtml html={paragraph.html} />
+              </div>
             </div>
           )
         })}

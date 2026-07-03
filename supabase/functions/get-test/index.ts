@@ -2,7 +2,7 @@
 // Every `answer` and `explanation` field is stripped before the payload leaves
 // the server. Options, optionPool, prompts, passages and thirdOptionLabel are kept.
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { corsHeaders, json } from '../_shared/cors.ts'
+import { corsHeaders, json } from './cors.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })

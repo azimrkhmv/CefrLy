@@ -2,7 +2,7 @@
 // content (which the browser never sees), stores the attempt, and returns the
 // result including explanations.
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { corsHeaders, json } from '../_shared/cors.ts'
+import { corsHeaders, json } from './cors.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
