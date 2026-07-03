@@ -15,8 +15,9 @@ dist/
 .idea/
 .DS_Store
 
-# claude session history
+# claude session history / tooling artifacts
 .remember/
+.playwright-mcp/
 
 # logs
 *.log
