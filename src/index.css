@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+/* Passage typography (passage html comes from the sanitized test payload). */
+.passage p {
+  margin-bottom: 0.875rem;
+  line-height: 1.75;
+}
+.passage p:last-child {
+  margin-bottom: 0;
+}
+.passage h4 {
+  margin: 1.25rem 0 0.5rem;
+  font-weight: 600;
+}
+
+/* Numbered gap placeholder injected into passage html (parts 4 & 5). */
+.gap-marker {
+  display: inline-block;
+  border-radius: 0.25rem;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  padding: 0 0.375rem;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: #4338ca;
+  white-space: nowrap;
+}
+
+/* Question number badge. */
+.q-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.375rem;
+  border-radius: 0.375rem;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
