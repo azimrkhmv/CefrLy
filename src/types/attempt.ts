@@ -43,6 +43,7 @@ export interface AttemptResult extends StoredAttemptResult {
 /** One row on the "My results" dashboard. */
 export interface AttemptSummary {
   id: string
+  testId: string | null
   testTitle: string
   rawScore: number
   total: number

@@ -2,9 +2,10 @@ import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
+import { ArrowRightIcon } from '../components/icons'
 
-// Serves both /login and /signup. Session persistence is handled by the
-// supabase-js client (localStorage) + AuthProvider; this page only signs in/up.
+// Serves both /login and /signup as a standalone full-screen page (no app
+// shell). Session persistence is handled by supabase-js + AuthProvider.
 export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -48,80 +49,142 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
     }
   }
 
+  const inputClass =
+    'w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-base font-semibold text-heading placeholder:font-normal placeholder:text-ink-soft/60 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-soft sm:text-sm'
+
   return (
-    <div className="mx-auto w-full max-w-sm px-1 py-6 sm:py-12">
-      <h1 className="mb-1 text-2xl font-bold">{isLogin ? 'Sign in' : 'Create your account'}</h1>
-      <p className="mb-6 text-sm text-slate-500">
-        {isLogin
-          ? 'Welcome back — sign in to take a test.'
-          : 'One free account for all your CEFR practice.'}
-      </p>
+    <div className="grid min-h-screen bg-white lg:grid-cols-2">
+      {/* Brand panel */}
+      <div className="hidden flex-col bg-brand-deep p-10 text-white lg:flex">
+        <Link to="/" className="flex items-center gap-2.5">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-xl font-black">
+            C
+          </span>
+          <span className="leading-tight">
+            <span className="block text-lg font-black tracking-tight">Cefrly</span>
+            <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-white/60">
+              CEFR Exams
+            </span>
+          </span>
+        </Link>
 
-      <form onSubmit={handleSubmit} className="space-y-4" noValidate={false}>
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium">Email</span>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 sm:text-sm"
-            autoComplete="email"
-            inputMode="email"
-            placeholder="you@example.com"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium">Password</span>
-          <input
-            type="password"
-            required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 sm:text-sm"
-            autoComplete={isLogin ? 'current-password' : 'new-password'}
-            placeholder={isLogin ? 'Your password' : 'At least 6 characters'}
-          />
-        </label>
-
-        {error && (
-          <p role="alert" className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
-            {error}
+        <div className="my-auto py-14">
+          <h1 className="max-w-md text-3xl font-black leading-tight">
+            See your <span className="text-sun">Reading band</span> in 60 minutes.
+          </h1>
+          <div className="mt-10 flex items-center gap-4">
+            <div className="rounded-2xl border border-white/15 bg-white/10 px-7 py-5 text-center">
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-white/60">
+                Before
+              </p>
+              <p className="font-num text-5xl font-bold">B1</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-sun">
+                Practice
+              </p>
+              <ArrowRightIcon className="mx-auto mt-1 text-sun" width={40} height={22} />
+            </div>
+            <div className="rounded-2xl border border-sun/40 bg-white/10 px-7 py-5 text-center">
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-sun">
+                After
+              </p>
+              <p className="font-num text-5xl font-bold text-sun">C1</p>
+            </div>
+          </div>
+          <p className="mt-10 flex items-center gap-2 text-sm font-semibold text-white/70">
+            <span className="h-2 w-2 rounded-full bg-mint" aria-hidden />
+            The real exam format — 35 questions, 5 parts, instant band score
           </p>
-        )}
-        {info && (
-          <p role="status" className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-            {info}
+        </div>
+      </div>
+
+      {/* Form panel */}
+      <div className="flex flex-col px-6 py-8 sm:px-10">
+        <Link to="/" className="flex items-center gap-2.5 self-start lg:hidden">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-brand-deep text-lg font-black text-white">
+            C
+          </span>
+          <span className="text-lg font-black tracking-tight text-heading">Cefrly</span>
+        </Link>
+
+        <div className="mx-auto my-auto w-full max-w-sm py-10">
+          <h2 className="text-center text-3xl font-black text-heading sm:text-4xl">
+            {isLogin ? 'Welcome back' : 'Create an account'}
+          </h2>
+          <p className="mt-2 text-center text-sm font-semibold text-ink-soft">
+            {isLogin
+              ? 'Sign in to continue your practice.'
+              : 'One free account for all your CEFR practice.'}
           </p>
-        )}
 
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-        >
-          {busy ? 'Please wait…' : isLogin ? 'Sign in' : 'Sign up'}
-        </button>
-      </form>
+          <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate={false}>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-bold text-heading">Email</span>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={inputClass}
+                autoComplete="email"
+                inputMode="email"
+                placeholder="you@example.com"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-bold text-heading">Password</span>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={inputClass}
+                autoComplete={isLogin ? 'current-password' : 'new-password'}
+                placeholder={isLogin ? 'Your password' : 'At least 6 characters'}
+              />
+            </label>
 
-      <p className="mt-5 text-center text-sm text-slate-600">
-        {isLogin ? (
-          <>
-            Don&apos;t have an account?{' '}
-            <Link to="/signup" state={{ from }} className="font-medium text-indigo-600 hover:underline">
-              Sign up
-            </Link>
-          </>
-        ) : (
-          <>
-            Already have an account?{' '}
-            <Link to="/login" state={{ from }} className="font-medium text-indigo-600 hover:underline">
-              Sign in
-            </Link>
-          </>
-        )}
-      </p>
+            {error && (
+              <p role="alert" className="rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm font-semibold text-rose-700">
+                {error}
+              </p>
+            )}
+            {info && (
+              <p role="status" className="rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm font-semibold text-emerald-700">
+                {info}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={busy}
+              className="w-full rounded-xl bg-brand px-4 py-3 text-sm font-extrabold text-white shadow-pop transition-colors hover:bg-brand-deep disabled:opacity-50"
+            >
+              {busy ? 'Please wait…' : isLogin ? 'Sign in' : 'Create account'}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-sm font-semibold text-ink-soft">
+            {isLogin ? (
+              <>
+                Don&apos;t have an account?{' '}
+                <Link to="/signup" state={{ from }} className="font-bold text-brand hover:underline">
+                  Sign up
+                </Link>
+              </>
+            ) : (
+              <>
+                Already have an account?{' '}
+                <Link to="/login" state={{ from }} className="font-bold text-brand hover:underline">
+                  Log in
+                </Link>
+              </>
+            )}
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

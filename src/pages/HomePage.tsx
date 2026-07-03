@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { listTests } from '../lib/api'
+import { fetchMyAttempts, listTests } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { TestCard } from '../components/TestCard'
+import { ArrowRightIcon, PlayIcon } from '../components/icons'
+import { buildAttemptInfo } from './ReadingPage'
 
 export function HomePage() {
   const { session } = useAuth()
@@ -10,74 +13,122 @@ export function HomePage() {
     isLoading,
     error,
   } = useQuery({ queryKey: ['tests'], queryFn: listTests, enabled: !!session })
+  const { data: attempts } = useQuery({
+    queryKey: ['my-attempts'],
+    queryFn: fetchMyAttempts,
+    enabled: !!session,
+  })
+
+  const attemptInfo = buildAttemptInfo(attempts)
 
   return (
-    <div className="space-y-10">
-      <section className="rounded-2xl bg-indigo-700 px-8 py-12 text-white">
-        <h1 className="max-w-2xl text-3xl font-bold leading-tight sm:text-4xl">
-          Practise for your CEFR English exam — the real format, for free.
+    <div className="space-y-8">
+      <section className="relative overflow-hidden rounded-3xl bg-brand-deep px-6 py-10 text-white sm:px-10 sm:py-12">
+        {/* soft glow in the corner, like a stage light on the panel */}
+        <div
+          className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full opacity-20"
+          style={{ background: 'radial-gradient(circle, #ffb733 0%, transparent 70%)' }}
+          aria-hidden
+        />
+        <h1 className="max-w-2xl text-3xl font-black leading-tight sm:text-4xl">
+          Know your real English level — <span className="text-sun">before</span> exam day.
         </h1>
-        <p className="mt-3 max-w-xl text-indigo-100">
-          Full-length mock Reading papers (35 questions, 5 parts, 60 minutes) with instant
-          scoring, an indicative band, and explanations for every answer.
+        <p className="mt-3 max-w-xl font-semibold text-white/80">
+          Full CEFR Reading mock exams: 35 questions, 5 parts, 60 minutes. Instant band score
+          and an explanation for every answer.
         </p>
-        {!session && (
-          <Link
-            to="/login"
-            className="mt-6 inline-block rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50"
-          >
-            Sign in to start
-          </Link>
-        )}
+
+        <div className="mt-8 flex flex-wrap items-center gap-4">
+          <div className="rounded-2xl border border-white/15 bg-white/10 px-6 py-4 text-center">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-white/60">
+              Today
+            </p>
+            <p className="font-num text-4xl font-bold">B1</p>
+          </div>
+          <div className="text-center">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-sun">
+              60 minutes
+            </p>
+            <ArrowRightIcon className="mx-auto mt-1 text-sun" width={36} height={20} />
+          </div>
+          <div className="rounded-2xl border border-sun/40 bg-white/10 px-6 py-4 text-center">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-sun">
+              Your goal
+            </p>
+            <p className="font-num text-4xl font-bold text-sun">C1</p>
+          </div>
+        </div>
+
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          {session ? (
+            <Link
+              to="/reading"
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-extrabold text-brand-deep transition-colors hover:bg-sun"
+            >
+              <PlayIcon width={14} height={14} />
+              Start Reading test
+            </Link>
+          ) : (
+            <>
+              <Link
+                to="/signup"
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-extrabold text-brand-deep transition-colors hover:bg-sun"
+              >
+                Create free account
+              </Link>
+              <Link
+                to="/login"
+                className="rounded-xl border border-white/30 px-6 py-3 text-sm font-extrabold text-white hover:bg-white/10"
+              >
+                Sign in
+              </Link>
+            </>
+          )}
+        </div>
+
+        <p className="mt-8 flex items-center gap-2 text-sm font-semibold text-white/70">
+          <span className="h-2 w-2 rounded-full bg-mint" aria-hidden />
+          Built on the official CEFR reading format
+        </p>
       </section>
 
       <section>
-        <h2 className="mb-4 text-xl font-bold">Reading tests</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-extrabold text-heading">Reading tests</h2>
+          <Link
+            to="/reading"
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-brand hover:underline"
+          >
+            See all
+            <ArrowRightIcon width={16} height={16} />
+          </Link>
+        </div>
 
         {!session && (
-          <p className="rounded-lg border border-slate-200 bg-white p-6 text-slate-500">
+          <p className="rounded-2xl border border-line bg-white p-6 text-ink-soft shadow-card">
             Sign in to see the available tests.
           </p>
         )}
-        {session && isLoading && <p className="text-slate-400">Loading tests…</p>}
+        {session && isLoading && <p className="text-ink-soft">Loading tests…</p>}
         {session && error && (
-          <p className="rounded-lg bg-rose-50 p-4 text-sm text-rose-700">
+          <p className="rounded-xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">
             Could not load tests: {(error as Error).message}
           </p>
         )}
         {session && tests && tests.length === 0 && (
-          <p className="rounded-lg border border-slate-200 bg-white p-6 text-slate-500">
-            No tests published yet. Run the seed script in Supabase to add the sample test.
+          <p className="rounded-2xl border border-line bg-white p-6 text-ink-soft shadow-card">
+            No tests published yet — check back soon.
           </p>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {tests?.map((test) => (
-            <div
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {tests?.slice(0, 6).map((test, index) => (
+            <TestCard
               key={test.id}
-              className="flex flex-col rounded-xl border border-slate-200 bg-white p-5"
-            >
-              <div className="mb-2 flex flex-wrap gap-1.5">
-                {test.target_levels.map((level) => (
-                  <span
-                    key={level}
-                    className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700"
-                  >
-                    {level}
-                  </span>
-                ))}
-              </div>
-              <h3 className="font-semibold">{test.title}</h3>
-              <p className="mt-1 text-sm text-slate-500">
-                35 questions · 5 parts · {Math.round(test.duration_sec / 60)} minutes
-              </p>
-              <Link
-                to={`/test/${test.id}`}
-                className="mt-4 inline-block self-start rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-              >
-                Start test
-              </Link>
-            </div>
+              test={test}
+              index={index}
+              attemptInfo={attemptInfo.get(test.id)}
+            />
           ))}
         </div>
       </section>

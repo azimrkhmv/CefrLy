@@ -57,7 +57,7 @@ export function milliymockHandoff(token: string): Promise<{ tokenHash: string }>
 export async function fetchMyAttempts(): Promise<AttemptSummary[]> {
   const { data, error } = await supabase
     .from('attempts')
-    .select('id, raw_score, total, band, created_at, tests(title)')
+    .select('id, test_id, raw_score, total, band, created_at, tests(title)')
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
   return (data ?? []).map((row) => {
@@ -65,6 +65,7 @@ export async function fetchMyAttempts(): Promise<AttemptSummary[]> {
     const title = Array.isArray(test) ? test[0]?.title : test?.title
     return {
       id: row.id as string,
+      testId: (row.test_id as string | null) ?? null,
       testTitle: title ?? 'Reading test',
       rawScore: row.raw_score as number,
       total: row.total as number,

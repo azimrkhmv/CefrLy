@@ -4,6 +4,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { AdminRoute, SuperAdminRoute } from './components/admin/AdminRoute'
 import { AdminLayout } from './components/admin/AdminLayout'
 import { HomePage } from './pages/HomePage'
+import { ReadingPage } from './pages/ReadingPage'
 import { AuthPage } from './pages/AuthPage'
 import { TestPage } from './pages/TestPage'
 import { ResultsPage } from './pages/ResultsPage'
@@ -16,10 +17,13 @@ import { AdminUsersPage } from './pages/admin/AdminUsersPage'
 export default function App() {
   return (
     <Routes>
+      {/* Auth pages render full-screen, outside the app shell. */}
+      <Route path="/login" element={<AuthPage mode="login" />} />
+      <Route path="/signup" element={<AuthPage mode="signup" />} />
+
       <Route element={<Layout />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<AuthPage mode="login" />} />
-        <Route path="/signup" element={<AuthPage mode="signup" />} />
+        <Route path="/reading" element={<ReadingPage />} />
         <Route path="/handoff" element={<HandoffPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/test/:testId" element={<TestPage />} />

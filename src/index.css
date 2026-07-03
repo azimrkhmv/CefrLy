@@ -1,5 +1,32 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  /* Oxanium is only for big numbers: scores, timers, stats. */
+  --font-num: "Oxanium", "Nunito", ui-sans-serif, sans-serif;
+
+  --color-base: #f7f5ff; /* lavender app background */
+  --color-ink: #303030; /* body text */
+  --color-ink-soft: #6f6c8f; /* muted purple-gray text */
+  --color-heading: #2e2a5d; /* dark navy headings */
+  --color-brand: #6d28d9; /* primary purple: buttons, active nav */
+  --color-brand-deep: #3f2682; /* deep indigo: hero panels, dark buttons */
+  --color-brand-soft: #ede7fb; /* light purple fills */
+  --color-line: #e7e2f6; /* hairline borders on lavender */
+  --color-sun: #ffb733; /* yellow accent */
+  --color-sun-soft: #fff1d1; /* badge background */
+  --color-sun-ink: #a16207; /* badge text */
+  --color-mint: #28af60; /* success green */
+
+  --shadow-card: 0 2px 12px rgb(63 38 130 / 0.06);
+  --shadow-pop: 0 8px 24px rgb(63 38 130 / 0.16);
+}
+
+body {
+  background: var(--color-base);
+  color: var(--color-ink);
+}
+
 /* Passage typography (passage html comes from the sanitized test payload). */
 .passage p {
   margin-bottom: 0.875rem;
@@ -17,12 +44,12 @@
 .gap-marker {
   display: inline-block;
   border-radius: 0.25rem;
-  background: #eef2ff;
-  border: 1px solid #c7d2fe;
+  background: var(--color-brand-soft);
+  border: 1px solid #d8cdf3;
   padding: 0 0.375rem;
   font-size: 0.85em;
-  font-weight: 600;
-  color: #4338ca;
+  font-weight: 700;
+  color: var(--color-brand);
   white-space: nowrap;
 }
 
@@ -35,7 +62,7 @@
   height: 1.5rem;
   padding: 0 0.375rem;
   border-radius: 0.375rem;
-  background: #4f46e5;
+  background: var(--color-brand);
   color: #fff;
   font-size: 0.75rem;
   font-weight: 700;
