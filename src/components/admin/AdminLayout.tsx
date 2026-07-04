@@ -3,26 +3,26 @@ import { useAuth } from '../../lib/auth'
 import { supabase } from '../../lib/supabase'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-    isActive ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-200'
+  `rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
+    isActive ? 'bg-brand text-white' : 'text-ink-soft hover:text-ink'
   }`
 
 export function AdminLayout() {
   const { session, role } = useAuth()
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
+    <div className="min-h-screen bg-page text-ink">
+      <header className="border-b border-line bg-white">
         <div className="mx-auto flex min-h-14 max-w-6xl flex-wrap items-center gap-3 px-4 py-2">
-          <Link to="/admin/tests" className="text-lg font-bold tracking-tight">
-            Cefrly <span className="text-indigo-600">Admin</span>
+          <Link to="/admin/tests" className="text-lg font-extrabold tracking-tight text-heading">
+            Cefrly <span className="text-brand">Admin</span>
           </Link>
-          <nav className="flex items-center gap-1" aria-label="Admin">
+          <nav className="inline-flex items-center rounded-xl border border-line bg-white p-1" aria-label="Admin">
             <NavLink to="/admin/tests" end className={navLinkClass}>
               Tests
             </NavLink>
             <NavLink to="/admin/tests/new" className={navLinkClass}>
-              + New test
+              New test
             </NavLink>
             {role === 'super_admin' && (
               <NavLink to="/admin/admins" className={navLinkClass}>
@@ -31,13 +31,13 @@ export function AdminLayout() {
             )}
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">
-            <Link to="/" className="text-indigo-600 hover:underline">
-              ← Student site
+            <Link to="/" className="font-bold text-brand hover:underline">
+              Student site
             </Link>
-            <span className="hidden text-slate-500 md:inline">{session?.user.email}</span>
+            <span className="hidden text-ink-soft md:inline">{session?.user.email}</span>
             <button
               onClick={() => supabase.auth.signOut()}
-              className="rounded-md border border-slate-300 px-3 py-1.5 hover:bg-slate-100"
+              className="rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
             >
               Sign out
             </button>

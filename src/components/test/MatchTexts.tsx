@@ -12,8 +12,8 @@ export function MatchTexts({ part, numbering }: PartProps) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <div className="self-start rounded-lg border border-slate-200 bg-slate-50 p-4 lg:sticky lg:top-4">
-        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <div className="self-start rounded-xl bg-page p-4 lg:sticky lg:top-4">
+        <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft">
           Statements A–{lastKey}
         </h3>
         <ul className="space-y-1.5 text-sm leading-relaxed">
@@ -32,7 +32,7 @@ export function MatchTexts({ part, numbering }: PartProps) {
               <div
                 key={item.id}
                 id={`q-${item.id}`}
-                className="rounded-lg border border-slate-200 bg-white p-4"
+                className="rounded-2xl border border-line bg-white p-5 shadow-card"
               >
                 <div className="mb-3 flex items-start gap-2">
                   <span className="q-badge">{numbering[item.id]}</span>
@@ -42,10 +42,10 @@ export function MatchTexts({ part, numbering }: PartProps) {
                 <select
                   value={answers[item.id] ?? ''}
                   onChange={(e) => setAnswer(item.id, e.target.value)}
-                  className="w-full max-w-xs rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+                  className="w-full max-w-xs rounded-xl border border-line bg-white px-2 py-1.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-soft"
                   aria-label={`Question ${numbering[item.id]}: choose a statement`}
                 >
-                  <option value="">— Choose a statement —</option>
+                  <option value="">Choose a statement</option>
                   {pool.map((option) => (
                     <option key={option.key} value={option.key}>
                       {option.key}

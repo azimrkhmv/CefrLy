@@ -14,8 +14,8 @@ export function PartRenderer({ part, numbering }: PartProps) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold">Part {part.number}</h2>
-        <p className="mt-1 text-sm text-slate-600">{part.instructions}</p>
+        <h2 className="text-lg font-extrabold text-heading">Part {part.number}</h2>
+        <p className="mt-1 text-sm text-ink-soft">{part.instructions}</p>
       </div>
       {part.layout === 'cloze_from_text' && <ClozeFromText part={part} numbering={numbering} />}
       {part.layout === 'match_texts' && <MatchTexts part={part} numbering={numbering} />}

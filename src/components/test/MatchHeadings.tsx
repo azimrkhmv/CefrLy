@@ -14,8 +14,8 @@ export function MatchHeadings({ part, numbering }: PartProps) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <div className="rounded-xl bg-page p-4">
+        <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft">
           List of headings
         </h3>
         <ul className="space-y-1 text-sm">
@@ -28,7 +28,7 @@ export function MatchHeadings({ part, numbering }: PartProps) {
       </div>
 
       {part.passage?.title && (
-        <h3 className="text-base font-semibold">{part.passage.title}</h3>
+        <h3 className="text-base font-extrabold text-heading">{part.passage.title}</h3>
       )}
 
       <div className="space-y-5">
@@ -38,20 +38,20 @@ export function MatchHeadings({ part, numbering }: PartProps) {
             <div
               key={paragraph.label}
               id={item ? `q-${item.id}` : undefined}
-              className="rounded-lg border border-slate-200 bg-white p-4"
+              className="rounded-2xl border border-line bg-white p-5 shadow-card"
             >
               <div className="mb-3 flex flex-wrap items-center gap-3">
-                <span className="font-bold text-slate-700">Paragraph {paragraph.label}</span>
+                <span className="font-bold text-ink">Paragraph {paragraph.label}</span>
                 {item && (
                   <>
                     <span className="q-badge">{numbering[item.id]}</span>
                     <select
                       value={answers[item.id] ?? ''}
                       onChange={(e) => setAnswer(item.id, e.target.value)}
-                      className="rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+                      className="rounded-xl border border-line bg-white px-2 py-1.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-soft"
                       aria-label={`Heading for paragraph ${paragraph.label}`}
                     >
-                      <option value="">— Choose a heading —</option>
+                      <option value="">Choose a heading</option>
                       {pool.map((option) => (
                         <option key={option.key} value={option.key}>
                           {option.key}. {option.label}
@@ -62,7 +62,7 @@ export function MatchHeadings({ part, numbering }: PartProps) {
                   </>
                 )}
               </div>
-              <div className="passage text-sm text-slate-700">
+              <div className="passage">
                 <PassageHtml html={paragraph.html} />
               </div>
             </div>

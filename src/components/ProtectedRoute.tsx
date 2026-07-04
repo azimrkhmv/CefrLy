@@ -6,7 +6,7 @@ export function ProtectedRoute() {
   const location = useLocation()
 
   if (loading) {
-    return <p className="py-24 text-center text-slate-400">Loading…</p>
+    return <p className="py-24 text-center text-ink-soft">Loading…</p>
   }
   if (!session) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />

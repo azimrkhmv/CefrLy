@@ -24,6 +24,16 @@ import {
   PassagePartEditor,
 } from '../../components/admin/form/PartEditors'
 
+// Spec rule-8 chips — keep identical to the consts in AdminTestsPage.
+const STATUS_BADGE: Record<string, string> = {
+  published:
+    'rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800',
+  draft:
+    'rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-800',
+}
+const NEUTRAL_BADGE =
+  'rounded-full border border-line bg-white px-2.5 py-0.5 text-xs font-bold text-ink-soft'
+
 // Create (/admin/tests/new) and edit (/admin/tests/:slug) share this page —
 // edit differs only by prefill and a locked slug.
 export function TestFormPage() {
@@ -79,11 +89,11 @@ export function TestFormPage() {
   })
 
   if (isEdit && existing.isLoading) {
-    return <p className="py-24 text-center text-slate-400">Loading test…</p>
+    return <p className="py-24 text-center text-ink-soft">Loading test…</p>
   }
   if (isEdit && existing.error) {
     return (
-      <p className="py-24 text-center text-rose-600">
+      <p className="py-24 text-center text-sm text-rose-700">
         {existing.error instanceof Error ? existing.error.message : 'Could not load this test.'}
       </p>
     )
@@ -93,31 +103,27 @@ export function TestFormPage() {
     <div className="space-y-6 pb-24">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{isEdit ? `Edit: ${draft.title || editSlug}` : 'New Reading test'}</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-2xl font-extrabold text-heading">{isEdit ? `Edit: ${draft.title || editSlug}` : 'New Reading test'}</h1>
+          <p className="mt-1 text-sm text-ink-soft">
             Fixed template: 5 parts, 35 questions (6 / 8 / 6 / 9 / 6).
           </p>
         </div>
         <div className="flex items-center gap-2">
           {isEdit && (
             <>
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                  status === 'published' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                }`}
-              >
+              <span className={STATUS_BADGE[status] ?? NEUTRAL_BADGE}>
                 {status}
               </span>
               <button
                 onClick={() => statusMutation.mutate(status === 'published' ? 'draft' : 'published')}
                 disabled={statusMutation.isPending}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
+                className="rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-ink transition-colors hover:border-ink-faint disabled:opacity-50"
               >
                 {status === 'published' ? 'Unpublish' : 'Publish'}
               </button>
             </>
           )}
-          <Link to="/admin/tests" className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-50">
+          <Link to="/admin/tests" className="rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-ink transition-colors hover:border-ink-faint">
             Back to list
           </Link>
         </div>
@@ -180,37 +186,37 @@ export function TestFormPage() {
       />
 
       {/* sticky save bar */}
-      <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 border-t border-line bg-page px-4 py-3">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
           {liveErrors.length > 0 ? (
             <details className="min-w-0 flex-1">
-              <summary className="cursor-pointer text-sm font-medium text-amber-700">
+              <summary className="cursor-pointer text-sm font-bold text-amber-700">
                 {liveErrors.length} problem{liveErrors.length === 1 ? '' : 's'} remaining
               </summary>
-              <ul className="mt-2 max-h-40 list-disc overflow-y-auto pl-5 text-xs text-slate-600">
+              <ul className="mt-2 max-h-40 list-disc overflow-y-auto pl-5 text-xs text-ink-soft">
                 {liveErrors.map((e, i) => (
                   <li key={i}>{e}</li>
                 ))}
               </ul>
             </details>
           ) : (
-            <span className="flex-1 text-sm font-medium text-emerald-700">
-              ✓ All checks pass — 35/35 questions complete
+            <span className="tnum flex-1 text-sm font-semibold text-ok">
+              All checks pass — 35/35 questions complete
             </span>
           )}
-          {savedAt && <span className="text-xs text-slate-500">Saved {savedAt}</span>}
+          {savedAt && <span className="tnum text-xs text-ink-soft">Saved {savedAt}</span>}
           <button
             onClick={() => save.mutate()}
             disabled={save.isPending || !draft.slug}
-            className="rounded-md bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep disabled:opacity-50"
           >
             {save.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Save as draft'}
           </button>
         </div>
         {serverErrors.length > 0 && (
-          <div className="mx-auto mt-2 max-w-6xl rounded-md bg-rose-50 p-3">
-            <p className="text-sm font-semibold text-rose-700">The server rejected the test:</p>
-            <ul className="mt-1 max-h-40 list-disc overflow-y-auto pl-5 text-xs text-rose-700">
+          <div className="mx-auto mt-2 max-w-6xl rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-800">
+            <p className="font-bold">The server rejected the test:</p>
+            <ul className="mt-1 max-h-40 list-disc overflow-y-auto pl-5 text-xs">
               {serverErrors.map((e, i) => (
                 <li key={i}>{e}</li>
               ))}

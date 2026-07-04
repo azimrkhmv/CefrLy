@@ -13,10 +13,10 @@ export function TfngQuestion({ item, number }: { item: SanitizedTfngItem; number
   ] as const
 
   return (
-    <div id={`q-${item.id}`} className="rounded-lg border border-slate-200 bg-white p-4">
+    <div id={`q-${item.id}`} className="rounded-2xl border border-line bg-white p-5 shadow-card">
       <div className="mb-3 flex items-start gap-2">
         <span className="q-badge">{number}</span>
-        <p className="flex-1 text-sm font-medium leading-relaxed">{item.prompt}</p>
+        <p className="flex-1 text-sm font-semibold leading-relaxed">{item.prompt}</p>
         <MarkButton itemId={item.id} />
       </div>
       <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={`Question ${number}`}>
@@ -27,10 +27,10 @@ export function TfngQuestion({ item, number }: { item: SanitizedTfngItem; number
             role="radio"
             aria-checked={value === choice.value}
             onClick={() => setAnswer(item.id, choice.value)}
-            className={`rounded-md border px-4 py-1.5 text-sm font-medium transition-colors ${
+            className={`rounded-xl border px-4 py-1.5 text-sm transition-colors ${
               value === choice.value
-                ? 'border-indigo-600 bg-indigo-600 text-white'
-                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                ? 'border-brand bg-brand-soft font-bold text-brand'
+                : 'border-line bg-white font-semibold text-ink hover:bg-page'
             }`}
           >
             {choice.label}

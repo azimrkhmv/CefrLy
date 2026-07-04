@@ -8,7 +8,7 @@ export function ClozeFromText({ part, numbering }: PartProps) {
   return (
     <div>
       {part.passage?.title && (
-        <h3 className="mb-3 text-base font-semibold">{part.passage.title}</h3>
+        <h3 className="mb-3 text-base font-extrabold text-heading">{part.passage.title}</h3>
       )}
       <div className="passage max-w-3xl">
         <PassageHtml

@@ -171,16 +171,16 @@ export function Part3Editor({
           <button
             type="button"
             onClick={() => onChange({ ...value, optionPool: [...value.optionPool, { key: 'I', label: '' }] })}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50"
+            className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-bold text-ink transition-colors hover:border-ink-faint"
           >
-            + 9th heading
+            Add 9th heading
           </button>
         )}
         {canRemoveHeading && (
           <button
             type="button"
             onClick={() => onChange({ ...value, optionPool: value.optionPool.slice(0, 8) })}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50"
+            className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-bold text-ink transition-colors hover:border-ink-faint"
           >
             Remove 9th heading
           </button>
@@ -288,8 +288,8 @@ function TfngFields({ item, onChange }: { item: TfngItemDraft; onChange: (next: 
 function GapSummaryFields({ item, onChange }: { item: GapItemDraft; onChange: (next: GapItemDraft) => void }) {
   return (
     <>
-      <p className="text-xs text-slate-500">
-        Put the marker <span className="font-mono">{`{{${item.id}}}`}</span> in the summary inside the passage text.
+      <p className="text-xs text-ink-soft">
+        Put the marker <code className="font-mono">{`{{${item.id}}}`}</code> in the summary inside the passage text.
       </p>
       <GapFields item={item} onChange={onChange} />
     </>
@@ -309,7 +309,7 @@ function TypeSwitch({
     <select
       value={current}
       onChange={(e) => onSwitch(e.target.value)}
-      className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+      className="rounded-xl border border-line bg-white px-2 py-1 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-soft"
       aria-label="Question type"
     >
       {choices.map((c) => (

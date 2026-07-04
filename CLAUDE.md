@@ -91,3 +91,69 @@ type explanation = { location, quote, reasoning }  // shown only after submit
   via handoff_tokens table, 60s lifetime) + /handoff frontend route that exchanges
   the returned tokenHash via auth.verifyOtp. Requires the MILLIYMOCK_HANDOFF_SECRET
   edge function secret to be set (same value on the MilliyMock side).
+
+## Design system v3 ("friendly scholar" — keep new UI consistent with this)
+- Voice: warm, friendly ed-tech with a cat mascot (Cathoven-inspired), in
+  Cefrly's purple. Lavender-tinted neutrals, soft shadows, big radii, bold
+  Nunito. The exam player stays calmer than the rest (students concentrate).
+- Tokens in src/index.css @theme: page #f8f7fc, ink/ink-soft/ink-faint (violet
+  grays), heading, brand #3f2682 (primary buttons, active nav/tabs), brand-deep
+  (hover), accent #8b5cf6 + accent-deep (bright CTA — sidebar CTA, marked dots;
+  use sparingly), brand-soft #efeafd (fills, chips, bubbles), line, ok,
+  sun/sun-soft/sun-ink (yellow badges). Semantic panels: rose/emerald/amber
+  -50/-200/-800, rounded-xl.
+- Fonts: Nunito 400/600/700/800 (UI); Source Serif 4 ONLY inside reading
+  passages (.passage sets it). Numbers use `tnum`.
+- Buttons: primary `rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white
+  hover:bg-brand-deep`; secondary same shape `border border-line bg-white
+  text-ink hover:border-ink-faint`; accent CTA (sidebar) `bg-accent
+  hover:bg-accent-deep`; text links `font-bold text-brand hover:underline`.
+- Shapes: cards `rounded-2xl border border-line bg-white shadow-card`; controls
+  rounded-xl; chips/badges rounded-full. Tab strips: white pill container
+  (rounded-xl border-line p-1), active tab `rounded-lg bg-brand text-white
+  font-bold`. Headings font-extrabold; interactive text font-bold. Selected
+  answer states = brand-soft wash + brand border + font-bold. ink-faint is
+  decorative-only (fails WCAG AA); informational muted text uses ink-soft.
+- MASCOT (in-app): src/components/Cat.tsx — original flat violet cat, poses per
+  context: read (hero), nap (empty states via src/components/EmptyState.tsx),
+  celebrate (results B2/C1, add .cat-bob), encourage (results below B2), peek
+  (spare accent), avatar (header account button). Never use external cat art.
+  The mascot may be funny/deadpan on non-exam surfaces. Empty states use
+  <EmptyState pose title hint action>, not plain text panels. (The SVG `welcome`
+  pose exists in Cat.tsx but is unused now that login owns its own design.)
+- LOGIN / SIGNUP (src/pages/AuthPage.tsx) is a user-owned imported design from
+  the claude.ai Design tool ("Cefrly Welcome"). It deliberately uses its OWN
+  exact palette (brand #3B2C86, page #F6F4FB, link #6D4FE0, focus #8A63E8, ink
+  #2E2A47, input bg #FAF8FE, borders #ECE7F8/#EFEBF8) via Tailwind arbitrary
+  values — slightly off the app tokens ON PURPOSE; do not "normalize" it to the
+  tokens. Mascot: public/cat-sleeping.png — the full purple cat asleep on a
+  lavender cushion (pulled from the design project's uploads/, background
+  flood-filled to transparent so it seats seamlessly). It renders via the
+  design's own container (max-w-[480px], h-[clamp(230px,33vh,300px)],
+  object-contain, object-[left_bottom]) so the WHOLE cushion cat shows at the
+  bottom-left — do NOT crop the asset or use a fixed auto-height (an earlier
+  crop clipped it; that was wrong). A speech bubble reacts to context
+  (greet → peek on password focus → farewell on submit → click cat for random
+  quips), the cat floats zzz's and breathes. Password has a show/hide eye
+  toggle. Supabase auth + login/signup mode adaptation are preserved under the
+  visuals. Motion keyframes (cat-breathe, zzz-float, bubble-in) live in
+  index.css, reduced-motion gated. The design's saved assets/cat-*.png are
+  head-only crops (stale) and the grey "surprised" cushion cat has no clean
+  asset in the synced project — only the purple cushion cat is used. To
+  re-import: DesignSync MCP, project 0635101f-754f-4e23-939f-816bec3ad3fa,
+  after /design-login.
+- Results header: friendly light card — big Nunito band label + count-up score,
+  cat + speech bubble (bg-brand-soft, blurb text) reacting to the band, BandRuler
+  fill below. No dark panels anywhere.
+- <BandRuler band score animate demo tone> (src/components/BandRuler.tsx): ruled
+  CEFR scale (thresholds 10/18/28) with a fill that rises to the student's level;
+  `demo` fills to the C1 boundary (signed-out hero, auth). Brand lockup:
+  src/components/Logo.tsx.
+- Loading: shimmer skeletons (src/components/Skeleton.tsx), not "Loading…" text
+  (bare text ok for transient route guards). Motion hooks (count-up, in-view
+  reveals) in src/lib/motion.ts. Motion classes (.reveal/.page-enter/.ruler-*/
+  .cat-bob/.skeleton) live in index.css, all disabled under
+  prefers-reduced-motion; transform hovers need `motion-safe:`; the @media print
+  block forces opacity-0 rows visible.
+- DEV ONLY: /cat-preview route in App.tsx shows the mascot pose sheet — remove
+  before launch.

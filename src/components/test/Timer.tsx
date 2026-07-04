@@ -32,9 +32,7 @@ export function Timer({ expiresAt, onExpire }: { expiresAt: string; onExpire: ()
 
   return (
     <span
-      className={`rounded-md px-3 py-1.5 font-mono text-sm font-semibold tabular-nums ${
-        runningLow ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-700'
-      }`}
+      className={`tnum text-lg font-extrabold ${runningLow ? 'text-rose-600' : 'text-heading'}`}
       aria-label={`Time remaining: ${minutes} minutes ${seconds} seconds`}
     >
       {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}

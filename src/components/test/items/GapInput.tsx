@@ -12,7 +12,7 @@ export function GapInput({ itemId, number }: { itemId: string; number?: number }
         type="text"
         value={value}
         onChange={(e) => setAnswer(itemId, e.target.value)}
-        className="w-32 rounded-md border border-slate-300 bg-white px-2 py-0.5 text-sm focus:border-indigo-500 focus:outline-none"
+        className="w-32 rounded-xl border border-line bg-white px-2 py-0.5 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-soft"
         autoComplete="off"
         autoCapitalize="off"
         spellCheck={false}

@@ -6,11 +6,17 @@ import {
   adminSetStatus,
   type AdminTestRow,
 } from '../../lib/adminApi'
+import { EmptyState } from '../../components/EmptyState'
 
+// Spec rule-8 chips — keep identical to the consts in TestFormPage.
 const STATUS_BADGE: Record<string, string> = {
-  published: 'bg-emerald-100 text-emerald-800',
-  draft: 'bg-amber-100 text-amber-800',
+  published:
+    'rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800',
+  draft:
+    'rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-800',
 }
+const NEUTRAL_BADGE =
+  'rounded-full border border-line bg-white px-2.5 py-0.5 text-xs font-bold text-ink-soft'
 
 export function AdminTestsPage() {
   const queryClient = useQueryClient()
@@ -42,37 +48,47 @@ export function AdminTestsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Tests</h1>
+        <h1 className="text-2xl font-extrabold text-heading">Tests</h1>
         <Link
           to="/admin/tests/new"
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+          className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
         >
-          + New test
+          New test
         </Link>
       </div>
 
-      {isLoading && <p className="text-slate-400">Loading tests…</p>}
+      {isLoading && <p className="text-ink-soft">Loading tests…</p>}
       {error && (
-        <p className="rounded-md bg-rose-50 px-4 py-2 text-sm text-rose-700">
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-800">
           {error instanceof Error ? error.message : 'Could not load tests.'}
         </p>
       )}
       {(statusMutation.error || archiveMutation.error) && (
-        <p className="rounded-md bg-rose-50 px-4 py-2 text-sm text-rose-700">
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-800">
           {((statusMutation.error ?? archiveMutation.error) as Error).message}
         </p>
       )}
 
       {tests && tests.length === 0 && (
-        <p className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
-          No tests yet — create the first one.
-        </p>
+        <EmptyState
+          pose="nap"
+          title="No tests yet"
+          hint="Create the first Reading test — the fixed template walks you through all 35 questions."
+          action={
+            <Link
+              to="/admin/tests/new"
+              className="inline-block rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+            >
+              Create the first test
+            </Link>
+          }
+        />
       )}
 
       {tests && tests.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
           <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-line text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft">
               <tr>
                 <th className="px-4 py-3">Title</th>
                 <th className="px-4 py-3">Slug</th>
@@ -82,27 +98,25 @@ export function AdminTestsPage() {
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-line">
               {tests.map((test) => (
                 <tr key={test.id}>
-                  <td className="px-4 py-3 font-medium">{test.title}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-500">{test.slug}</td>
+                  <td className="px-4 py-3 font-bold">{test.title}</td>
+                  <td className="tnum px-4 py-3 text-xs text-ink-soft">{test.slug}</td>
                   <td className="px-4 py-3 capitalize">{test.skill}</td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[test.status] ?? 'bg-slate-100 text-slate-600'}`}
-                    >
+                    <span className={STATUS_BADGE[test.status] ?? NEUTRAL_BADGE}>
                       {test.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-500">
+                  <td className="px-4 py-3 text-ink-soft">
                     {new Date(test.created_at).toLocaleDateString(undefined, { dateStyle: 'medium' })}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
                       <Link
                         to={`/admin/tests/${test.slug}`}
-                        className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium hover:bg-slate-50"
+                        className="rounded-xl border border-line bg-white px-2.5 py-1 text-xs font-bold text-ink transition-colors hover:border-ink-faint"
                       >
                         Edit
                       </Link>
@@ -114,14 +128,14 @@ export function AdminTestsPage() {
                           })
                         }
                         disabled={statusMutation.isPending}
-                        className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+                        className="rounded-xl border border-line bg-white px-2.5 py-1 text-xs font-bold text-ink transition-colors hover:border-ink-faint disabled:opacity-50"
                       >
                         {test.status === 'published' ? 'Unpublish' : 'Publish'}
                       </button>
                       <button
                         onClick={() => handleArchive(test)}
                         disabled={archiveMutation.isPending}
-                        className="rounded-md border border-rose-200 px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                        className="rounded-xl border border-line bg-white px-2.5 py-1 text-xs font-bold text-rose-700 transition-colors hover:border-rose-300 disabled:opacity-50"
                       >
                         Archive
                       </button>

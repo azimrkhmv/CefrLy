@@ -1,7 +1,10 @@
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { fetchAttempt } from '../lib/api'
+import { fetchAttempt, fetchMyAttempts } from '../lib/api'
 import { BAND_INFO, BAND_ORDER } from '../lib/bands'
+import { BandRuler } from '../components/BandRuler'
+import { Cat } from '../components/Cat'
+import { useCountUp, useInView } from '../lib/motion'
 import type { AttemptResult, ItemResult } from '../types/attempt'
 
 export function ResultsPage() {
@@ -18,16 +21,36 @@ export function ResultsPage() {
   const result = stateResult ?? query.data
 
   if (!result) {
-    if (query.isLoading) return <p className="py-24 text-center text-slate-400">Loading results…</p>
+    if (query.isLoading) return <p className="py-24 text-center text-ink-soft">Loading results…</p>
     return (
-      <p className="py-24 text-center text-rose-600">
+      <p className="py-24 text-center text-sm text-rose-700">
         Could not load this attempt.{' '}
         {query.error instanceof Error ? query.error.message : ''}
       </p>
     )
   }
 
+  return <ResultsView result={result} />
+}
+
+function ResultsView({ result }: { result: AttemptResult }) {
   const band = BAND_INFO[result.band]
+  const shownScore = useCountUp(result.rawScore)
+
+  // "Up from X": compare this attempt's band with the best band achieved
+  // before it (any earlier reading attempt).
+  const { data: attempts } = useQuery({ queryKey: ['my-attempts'], queryFn: fetchMyAttempts })
+  const earlier = (attempts ?? []).filter(
+    (a) => a.id !== result.attemptId && a.createdAt < result.submittedAt,
+  )
+  const currentRank = BAND_ORDER.indexOf(result.band)
+  const previousBestRank =
+    earlier.length > 0 ? Math.max(...earlier.map((a) => BAND_ORDER.indexOf(a.band))) : null
+  const improvedFrom =
+    previousBestRank !== null && currentRank > previousBestRank
+      ? BAND_INFO[BAND_ORDER[previousBestRank]].label
+      : null
+
   const byPart = new Map<number, ItemResult[]>()
   for (const item of result.items) {
     const list = byPart.get(item.partNumber) ?? []
@@ -35,72 +58,113 @@ export function ResultsPage() {
     byPart.set(item.partNumber, list)
   }
 
+  const submittedOn = new Date(result.submittedAt).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+  const goodBand = result.band === 'B2' || result.band === 'C1'
+
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl border border-slate-200 bg-white p-8">
-        <p className="text-sm text-slate-500">{result.testTitle}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-4">
-          <span className={`rounded-xl px-5 py-3 text-3xl font-bold ${band.className}`}>
-            {band.label}
-          </span>
-          <div>
-            <p className="text-2xl font-bold">
-              {result.rawScore} / {result.total} correct
+      <section className="relative overflow-hidden rounded-2xl border border-line bg-white p-6 shadow-card sm:p-8">
+        <div
+          className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-brand-soft blur-3xl"
+          aria-hidden
+        />
+        <div className="relative flex flex-wrap items-start justify-between gap-8">
+          <div className="min-w-0 flex-1 basis-72">
+            <p className="reveal reveal-1 text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft">
+              Your result · {submittedOn}
             </p>
-            <p className="text-sm text-slate-500">
-              Indicative READING band only — the full 4-skill result comes from a complete mock
-              exam.
+            <p className="reveal reveal-2 mt-4 text-sm font-semibold text-ink-soft">
+              {result.testTitle}
             </p>
-            <p className="mt-1 text-sm font-medium text-slate-700">{band.blurb}</p>
+            <div className="reveal reveal-2 mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <span className="text-4xl font-extrabold text-heading sm:text-5xl">
+                {band.label}
+              </span>
+              <p className="tnum text-2xl font-extrabold text-heading">
+                {shownScore} / {result.total} correct
+              </p>
+            </div>
+            {improvedFrom && (
+              <p className="reveal reveal-4 mt-2 text-sm font-bold text-ok">
+                Up from {improvedFrom} — your best band so far.
+              </p>
+            )}
+            <p className="reveal reveal-3 mt-3 text-sm text-ink-soft">
+              Indicative reading band only — the full four-skill result comes from a complete
+              mock exam.
+            </p>
+          </div>
+
+          {/* the mascot delivers the verdict */}
+          <div className="reveal reveal-3 mx-auto flex shrink-0 flex-col items-center">
+            <div className="relative max-w-56 rounded-2xl bg-brand-soft px-4 py-3 text-sm font-bold text-brand-deep">
+              {band.blurb}
+              <span
+                className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-brand-soft"
+                aria-hidden
+              />
+            </div>
+            <Cat
+              pose={goodBand ? 'celebrate' : 'encourage'}
+              width={150}
+              height={130}
+              className={`mt-3 ${goodBand ? 'cat-bob' : ''}`}
+            />
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-4 gap-1 text-center text-xs font-medium">
-          {BAND_ORDER.map((key) => (
-            <div
-              key={key}
-              className={`rounded-md py-2 ${
-                key === result.band ? BAND_INFO[key].className : 'bg-slate-100 text-slate-400'
-              }`}
-            >
-              {BAND_INFO[key].label}
-              <span className="block font-normal">{BAND_INFO[key].range}</span>
-            </div>
-          ))}
+        <div className="relative mt-8">
+          <BandRuler band={result.band} score={result.rawScore} animate />
         </div>
       </section>
 
       <section className="space-y-6">
-        <h2 className="text-xl font-bold">Answer review</h2>
+        <h2 className="text-xl font-extrabold text-heading">Answer review</h2>
         {[...byPart.entries()]
           .sort(([a], [b]) => a - b)
-          .map(([partNumber, items]) => (
-            <div key={partNumber} className="rounded-xl border border-slate-200 bg-white p-5">
-              <h3 className="mb-3 font-semibold">
-                Part {partNumber}
-                <span className="ml-2 text-sm font-normal text-slate-500">
-                  {items.filter((i) => i.correct).length}/{items.length} correct
-                </span>
-              </h3>
-              <ol className="space-y-3">
-                {items.map((item, index) => (
-                  <ItemReview key={item.id} item={item} fallbackNumber={index + 1} />
-                ))}
-              </ol>
-            </div>
-          ))}
+          .map(([partNumber, items]) => {
+            const correctCount = items.filter((i) => i.correct).length
+            return (
+              <div
+                key={partNumber}
+                className="rounded-2xl border border-line bg-white p-5 shadow-card"
+              >
+                <h3 className="font-extrabold text-heading">
+                  Part {partNumber}
+                  <span className="tnum ml-2 text-sm font-semibold text-ink-soft">
+                    {correctCount}/{items.length} correct
+                  </span>
+                </h3>
+                <div className="mb-4 mt-2.5 h-0.5 w-full rounded-full bg-page" aria-hidden>
+                  <div
+                    className="h-0.5 rounded-full bg-brand"
+                    style={{ width: `${(correctCount / items.length) * 100}%` }}
+                  />
+                </div>
+                <ol className="space-y-3">
+                  {items.map((item, index) => (
+                    <ItemReview key={item.id} item={item} fallbackNumber={index + 1} />
+                  ))}
+                </ol>
+              </div>
+            )
+          })}
       </section>
 
       <div className="flex flex-wrap gap-3">
         <Link
           to="/"
-          className="inline-block rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+          className="inline-block rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
         >
           Take another test
         </Link>
         <Link
           to="/dashboard"
-          className="inline-block rounded-md border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          className="inline-block rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
         >
           View all my results
         </Link>
@@ -112,41 +176,46 @@ export function ResultsPage() {
 function ItemReview({ item, fallbackNumber }: { item: ItemResult; fallbackNumber: number }) {
   const numberMatch = item.id.match(/q(\d+)$/)
   const questionNumber = numberMatch ? Number(numberMatch[1]) : fallbackNumber
+  const [ref, inView] = useInView<HTMLLIElement>()
 
   return (
     <li
-      className={`rounded-lg border border-slate-200 bg-white p-4 border-l-4 ${
-        item.correct ? 'border-l-emerald-400' : 'border-l-rose-400'
-      }`}
+      ref={ref}
+      className={`rounded-xl border border-line bg-white p-4 ${inView ? 'reveal' : 'opacity-0'}`}
     >
       <div className="flex items-start gap-3">
-        <span className={`q-badge ${item.correct ? '!bg-emerald-600' : '!bg-rose-600'}`}>
-          {questionNumber}
-        </span>
+        <span className="q-badge">{questionNumber}</span>
         <div className="min-w-0 flex-1 text-sm">
-          {item.prompt && <p className="mb-2 font-medium text-slate-700">{item.prompt}</p>}
+          <p className={`mb-1 text-xs font-medium ${item.correct ? 'text-ok' : 'text-rose-700'}`}>
+            {item.correct ? 'Correct' : 'Incorrect'}
+          </p>
+          {item.prompt && <p className="mb-2 font-medium text-ink">{item.prompt}</p>}
           <p>
-            <span className="text-slate-500">Your answer: </span>
-            <span className={item.correct ? 'font-semibold text-emerald-700' : 'font-semibold text-rose-700'}>
-              {item.userAnswerLabel ?? '— no answer —'}
-            </span>
+            <span className="text-ink-soft">Your answer: </span>
+            {item.userAnswerLabel != null ? (
+              <span className={item.correct ? 'font-semibold text-ok' : 'font-semibold text-rose-700'}>
+                {item.userAnswerLabel}
+              </span>
+            ) : (
+              <span className="italic text-ink-soft">No answer</span>
+            )}
           </p>
           {!item.correct && (
             <p>
-              <span className="text-slate-500">Correct answer: </span>
-              <span className="font-semibold text-slate-800">{item.correctAnswerLabel}</span>
+              <span className="text-ink-soft">Correct answer: </span>
+              <span className="font-semibold text-ink">{item.correctAnswerLabel}</span>
             </p>
           )}
           <details className="mt-2">
-            <summary className="cursor-pointer text-indigo-600 hover:underline">
+            <summary className="cursor-pointer font-medium text-brand hover:underline">
               Explanation
             </summary>
-            <div className="mt-2 space-y-1 rounded-md bg-white p-3 text-slate-700 ring-1 ring-slate-200">
+            <div className="mt-2 space-y-1 rounded-xl bg-page p-3 text-ink">
               <p>
                 <span className="font-semibold">Where: </span>
                 {item.explanation.location}
               </p>
-              <p className="italic text-slate-600">“{item.explanation.quote}”</p>
+              <p className="italic text-ink-soft">“{item.explanation.quote}”</p>
               <p>{item.explanation.reasoning}</p>
             </div>
           </details>

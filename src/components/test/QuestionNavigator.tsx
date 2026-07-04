@@ -7,14 +7,14 @@ interface QuestionNavigatorProps {
   onJump: (itemId: string) => void
 }
 
-// Numbered 1–35 grid: filled = answered, outline = unanswered, amber dot =
+// Numbered 1–35 grid: brand wash = answered, outline = unanswered, accent dot =
 // marked for review. Clicking a number jumps to that question.
 export function QuestionNavigator({ test, numbering, onJump }: QuestionNavigatorProps) {
   const answers = useAnswersStore((s) => s.answers)
   const marked = useAnswersStore((s) => s.marked)
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
+    <div className="rounded-2xl border border-line bg-white p-5 shadow-card">
       <div className="flex flex-wrap gap-1.5">
         {test.parts.flatMap((part) =>
           part.items.map((item) => {
@@ -29,31 +29,32 @@ export function QuestionNavigator({ test, numbering, onJump }: QuestionNavigator
                 aria-label={`Go to question ${number} (Part ${part.number})${
                   answered ? ', answered' : ', not answered'
                 }${isMarked ? ', marked for review' : ''}`}
-                className={`relative flex h-8 w-8 items-center justify-center rounded-md text-xs font-semibold transition-colors ${
+                className={`tnum relative flex h-8 w-8 items-center justify-center rounded-lg border text-xs transition-colors ${
                   answered
-                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                    : 'bg-white text-slate-600 ring-1 ring-slate-300 hover:bg-slate-100'
+                    ? 'border-brand/40 bg-brand-soft font-bold text-brand hover:border-brand'
+                    : 'border-line bg-white font-semibold text-ink-soft hover:border-ink-faint'
                 }`}
               >
                 {number}
                 {isMarked && (
-                  <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-white" />
+                  <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-accent" />
                 )}
               </button>
             )
           }),
         )}
       </div>
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft">
         <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded bg-indigo-600" /> answered
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded bg-white ring-1 ring-slate-300" /> not
+          <span className="inline-block h-3.5 w-3.5 rounded-md border border-brand/40 bg-brand-soft" />{' '}
           answered
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400" /> marked for review
+          <span className="inline-block h-3.5 w-3.5 rounded-md border border-line bg-white" /> not
+          answered
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-full bg-accent" /> marked for review
         </span>
       </div>
     </div>

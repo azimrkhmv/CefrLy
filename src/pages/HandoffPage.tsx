@@ -41,11 +41,11 @@ export function HandoffPage() {
   if (error) {
     return (
       <div className="mx-auto max-w-md py-24 text-center">
-        <h1 className="text-xl font-bold">Could not sign you in</h1>
-        <p className="mt-2 text-sm text-slate-600">{error}</p>
-        <p className="mt-4 text-sm text-slate-500">
+        <h1 className="text-xl font-extrabold text-heading">Could not sign you in</h1>
+        <p className="mt-2 text-sm text-ink-soft">{error}</p>
+        <p className="mt-4 text-sm text-ink-soft">
           Go back to MilliyMock and try the link again, or{' '}
-          <Link to="/login" className="font-medium text-indigo-600 hover:underline">
+          <Link to="/login" className="font-bold text-brand hover:underline">
             sign in with email
           </Link>
           .
@@ -55,6 +55,6 @@ export function HandoffPage() {
   }
 
   return (
-    <p className="py-24 text-center text-slate-500">Signing you in from MilliyMock…</p>
+    <p className="py-24 text-center text-sm text-ink-soft">Signing you in from MilliyMock…</p>
   )
 }

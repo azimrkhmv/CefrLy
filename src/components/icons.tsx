@@ -91,6 +91,15 @@ export function PlayIcon(props: IconProps) {
   )
 }
 
+export function FlagIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M5 21V4" />
+      <path d="M5 5h13l-2.5 3.5L18 12H5" />
+    </svg>
+  )
+}
+
 export function MenuIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

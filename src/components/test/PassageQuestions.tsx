@@ -10,11 +10,11 @@ import { TfngQuestion } from './items/TfngQuestion'
 export function PassageQuestions({ part, numbering }: PartProps) {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <div className="self-start rounded-lg border border-slate-200 bg-slate-50 p-5 lg:sticky lg:top-4 lg:max-h-[75vh] lg:overflow-y-auto">
+      <div className="self-start rounded-2xl border border-line bg-white p-5 shadow-card lg:sticky lg:top-4 lg:max-h-[75vh] lg:overflow-y-auto">
         {part.passage?.title && (
-          <h3 className="mb-3 text-base font-semibold">{part.passage.title}</h3>
+          <h3 className="mb-3 text-base font-extrabold text-heading">{part.passage.title}</h3>
         )}
-        <div className="passage text-[15px]">
+        <div className="passage">
           <PassageHtml
             html={part.passage?.html ?? ''}
             renderGap={(itemId) => (
@@ -41,8 +41,8 @@ function QuestionItem({ item, number }: { item: SanitizedItem; number: number })
       return <TfngQuestion item={item} number={number} />
     case 'gap':
       return (
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <p className="mb-2 text-sm font-medium text-slate-600">
+        <div className="rounded-2xl border border-line bg-white p-5 shadow-card">
+          <p className="mb-2 text-sm font-semibold text-ink-soft">
             Complete gap {number} in the summary (one word from the text).
           </p>
           <GapInput itemId={item.id} number={number} />
