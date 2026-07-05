@@ -23,6 +23,7 @@
   --color-sun-ink: #9a6b1f; /* text on yellow badges */
 
   --shadow-card: 0 2px 10px rgb(63 38 130 / 0.05);
+  --shadow-soft: 0 6px 24px rgb(63 38 130 / 0.07);
   --shadow-pop: 0 8px 24px rgb(63 38 130 / 0.12);
   --shadow-lift: 0 8px 20px rgb(63 38 130 / 0.1);
 }

@@ -2,12 +2,22 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
+import { CozyScene } from '../components/CozyScene'
 
-// Two mascots, one picked at random on load. Personality lives in the copy.
+// Mascot alternatives — one picked at random per page load, so different
+// visitors meet a different cat. Each asset has its OWN crop/aspect, so each
+// cat carries its own `frame` (size + anchor of the mascot box); one shared
+// frame can't fit both a square cushion cat and a wide peek crop.
+//
+// To add another alternative: drop the PNG in /public and append an entry
+// with its own `key`, `frame`, and personality copy. Preview any one by name
+// with ?cat=<key> (e.g. /login?cat=surprised) — see catIndex below.
 type CatDef = {
+  key: string
   src: string
   alt: string
   sleepy: boolean
+  frame: string // Tailwind sizing/anchor for the mascot box (the poke button).
   hello: string
   helloSignup: string
   peek: string
@@ -17,9 +27,12 @@ type CatDef = {
 
 const CATS: CatDef[] = [
   {
+    key: 'sleeping',
     src: '/cat-sleeping.png',
     alt: 'A sleepy purple cat curled up on a lavender cushion',
     sleepy: true,
+    // 350×265 full-cushion cat: near-square, sits low-left with room to breathe.
+    frame: 'h-[clamp(230px,33vh,300px)] max-w-[480px]',
     hello: 'Oh, you again. Welcome back.',
     helloSignup: 'A new student? Fine, I’m up…',
     peek: 'I’m not peeking. Promise. Zzz.',
@@ -32,7 +45,72 @@ const CATS: CatDef[] = [
       'I dream in perfect English.',
     ],
   },
+  {
+    key: 'surprised',
+    src: '/cat-surprised.png',
+    alt: 'A round grey cat sitting wide-eyed on a lavender cushion',
+    sleepy: false,
+    // Full-body cushion cat (public/cat-surprised.png), composed like the
+    // sleeping one — same frame, so both alternatives sit identically.
+    frame: 'h-[clamp(230px,33vh,300px)] max-w-[480px]',
+    // Copy verbatim from the source design ("Cefrly Welcome") — a smug,
+    // well-fed cat that pretends nothing surprises it.
+    hello: 'Oh! You startled me. Welcome back.',
+    helloSignup: 'A new student? I’m all eyes.',
+    peek: 'I saw that. I see everything.',
+    bye: 'Go on. I’ll be watching. Closely.',
+    quips: [
+      'I have simply eaten the reading paper.',
+      'I am not fat. I am well-read.',
+      'Who said that? ...Oh. You.',
+      'I’m deeply invested in your progress.',
+      'Blink twice if you brought snacks.',
+    ],
+  },
 ]
+
+// Official multi-colour Google "G".
+function GoogleIcon() {
+  return (
+    <svg width={19} height={19} viewBox="0 0 48 48" aria-hidden>
+      <path
+        fill="#4285F4"
+        d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17Z"
+      />
+      <path
+        fill="#34A853"
+        d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7A21.99 21.99 0 0 0 24 46Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M11.69 28.18a13.2 13.2 0 0 1 0-8.36v-5.7H4.34a22.02 22.02 0 0 0 0 19.76l7.35-5.7Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M24 9.5c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 2.89 29.93 1 24 1 15.4 1 7.96 5.93 4.34 13.12l7.35 5.7C13.42 13.37 18.27 9.5 24 9.5Z"
+      />
+    </svg>
+  )
+}
+
+// Small shield-check for the reassurance card.
+function ShieldIcon() {
+  return (
+    <svg
+      width={22}
+      height={22}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  )
+}
 
 function EyeIcon() {
   return (
@@ -87,8 +165,18 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
   const from = (location.state as { from?: string } | null)?.from ?? '/'
   const isLogin = mode === 'login'
 
-  // Mascot state — mirrors the design's little state machine.
-  const [catIndex] = useState(() => Math.floor(Math.random() * CATS.length))
+  // Mascot state — mirrors the design's little state machine. Random per load,
+  // but ?cat=<key> (or an index) forces a specific alternative for previewing.
+  const [catIndex] = useState(() => {
+    const forced = new URLSearchParams(window.location.search).get('cat')
+    if (forced !== null) {
+      const byKey = CATS.findIndex((c) => c.key === forced)
+      if (byKey >= 0) return byKey
+      const n = Number(forced)
+      if (Number.isInteger(n) && n >= 0 && n < CATS.length) return n
+    }
+    return Math.floor(Math.random() * CATS.length)
+  })
   const [awake, setAwake] = useState(false)
   const [peeking, setPeeking] = useState(false)
   const [customText, setCustomText] = useState<string | null>(null)
@@ -156,6 +244,25 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
     }
   }
 
+  // Google OAuth via Supabase. On success the browser redirects to Google (so we
+  // don't clear `busy` — the page navigates away); only reset it on error.
+  // NOTE: requires the Google provider to be enabled in the Supabase dashboard.
+  async function handleGoogle() {
+    setError(null)
+    setInfo(null)
+    setBusy(true)
+    try {
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}${from}` },
+      })
+      if (oauthError) throw oauthError
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not start Google sign-in.')
+      setBusy(false)
+    }
+  }
+
   const inputClass =
     'w-full box-border rounded-xl border-2 border-[#ECE7F8] bg-[#FAF8FE] px-4 py-3.5 text-[15px] font-bold text-[#2E2A47] outline-none transition-[border-color,box-shadow] duration-150 placeholder:font-semibold placeholder:text-[#B0A9CE] focus:border-[#8A63E8] focus:bg-white focus:shadow-[0_0_0_4px_rgba(138,99,232,0.13)]'
 
@@ -188,6 +295,9 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
           </div>
 
           <div className="relative mt-auto w-full">
+            {/* decorative study-nook vignette filling the space right of the cat */}
+            <CozyScene className="pointer-events-none absolute -bottom-1 right-0 z-[1] h-[clamp(235px,36vh,340px)] w-auto" />
+
             {/* speech bubble */}
             <div className="relative h-[52px]">
               <div
@@ -203,7 +313,9 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
               </div>
             </div>
 
-            {/* floating zzz's, only while the sleepy cat dozes */}
+            {/* floating zzz's, only while the sleepy cat dozes (the baked-in
+                z's were erased from cat-sleeping.png; this animation is the
+                only "zzz" now) */}
             {showZzz && (
               <div
                 className="pointer-events-none absolute left-[46%] top-[34px] z-[2] font-black italic text-[#C1AEF0]"
@@ -220,7 +332,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
               type="button"
               onClick={() => say()}
               aria-label="Poke the cat"
-              className="block h-[clamp(230px,33vh,300px)] w-full max-w-[480px] cursor-pointer select-none border-0 bg-transparent p-0"
+              className={`relative z-[2] block w-full cursor-pointer select-none border-0 bg-transparent p-0 ${cat.frame}`}
             >
               <img
                 src={cat.src}
@@ -317,31 +429,62 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             {busy ? 'Please wait…' : isLogin ? 'Sign in' : 'Create account'}
           </button>
 
-          <p className="mt-5 text-center text-[15px] font-semibold text-[#8D87A8]">
-            {isLogin ? (
-              <>
-                Don&apos;t have an account?{' '}
-                <Link
-                  to="/signup"
-                  state={{ from }}
-                  className="font-extrabold text-[#6D4FE0] no-underline hover:underline"
-                >
-                  Sign up
-                </Link>
-              </>
-            ) : (
-              <>
-                Already have an account?{' '}
-                <Link
-                  to="/login"
-                  state={{ from }}
-                  className="font-extrabold text-[#6D4FE0] no-underline hover:underline"
-                >
-                  Log in
-                </Link>
-              </>
-            )}
-          </p>
+          {/* Google sign-in / registration (needs the Google provider enabled in Supabase) */}
+          <button
+            type="button"
+            onClick={handleGoogle}
+            disabled={busy}
+            className="mt-3 flex w-full items-center justify-center gap-2.5 rounded-xl border-2 border-[#ECE7F8] bg-white px-4 py-[13px] text-[15px] font-bold text-[#2E2A47] transition-colors hover:border-[#D9D0F2] hover:bg-[#FAF8FE] disabled:opacity-60"
+          >
+            <GoogleIcon />
+            Continue with Google
+          </button>
+
+          {/* mode toggle, styled as a divider */}
+          <div className="mt-6 flex items-center gap-3 text-[15px] font-semibold text-[#8D87A8]">
+            <span className="h-px flex-1 bg-[#ECE7F8]" />
+            <span className="whitespace-nowrap">
+              {isLogin ? (
+                <>
+                  No account yet?{' '}
+                  <Link
+                    to="/signup"
+                    state={{ from }}
+                    className="font-extrabold text-[#6D4FE0] no-underline hover:underline"
+                  >
+                    Sign up
+                  </Link>
+                </>
+              ) : (
+                <>
+                  Already have an account?{' '}
+                  <Link
+                    to="/login"
+                    state={{ from }}
+                    className="font-extrabold text-[#6D4FE0] no-underline hover:underline"
+                  >
+                    Log in
+                  </Link>
+                </>
+              )}
+            </span>
+            <span className="h-px flex-1 bg-[#ECE7F8]" />
+          </div>
+
+          {/* reassurance card */}
+          <div className="mt-6 flex items-center gap-3.5 rounded-2xl bg-[#F6F4FB] px-4 py-3.5">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#EEE9FB] text-[#6D4FE0]">
+              <ShieldIcon />
+            </span>
+            <span className="flex flex-col">
+              <span className="text-sm font-extrabold text-[#2E2A47]">
+                Your progress is safe with us.
+              </span>
+              <span className="text-[13px] font-semibold text-[#8D87A8]">
+                We never share your data.
+              </span>
+            </span>
+          </div>
         </form>
       </section>
     </div>

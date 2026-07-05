@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { Band } from '../types/test'
 import { BAND_INFO, BAND_ORDER, BAND_THRESHOLDS } from '../lib/bands'
 
@@ -27,12 +27,16 @@ export function BandRuler({
   demo = false,
   animate = false,
   tone = 'light',
+  topper,
 }: {
   band?: Band
   score?: number
   demo?: boolean
   animate?: boolean
   tone?: 'light' | 'dark'
+  /** Decorative node (e.g. the mascot) that rides the fill to the score. The
+   * parent must reserve headroom above the ruler so it isn't clipped. */
+  topper?: ReactNode
 }) {
   const dark = tone === 'dark'
   const palette = {
@@ -131,6 +135,19 @@ export function BandRuler({
             style={{ left: `${fillPct}%` }}
             aria-hidden
           />
+          {topper && (
+            <span
+              className="pointer-events-none absolute z-[1] motion-safe:transition-[left] motion-safe:duration-1000"
+              style={{
+                left: `clamp(28px, ${fillPct}%, calc(100% - 28px))`,
+                top: '5px',
+                transform: 'translate(-50%, -100%)',
+              }}
+              aria-hidden
+            >
+              {topper}
+            </span>
+          )}
         </>
       )}
     </div>

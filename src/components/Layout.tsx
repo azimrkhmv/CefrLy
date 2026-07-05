@@ -5,6 +5,7 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { Logo } from './Logo'
 import { Cat } from './Cat'
 import {
+  ArrowRightIcon,
   BookIcon,
   ChartIcon,
   CloseIcon,
@@ -75,7 +76,16 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="mt-auto space-y-3">
-        <div className="rounded-2xl bg-brand-soft px-4 py-3.5">
+        <div className="rounded-2xl bg-brand-soft px-4 pb-3.5 pt-3.5">
+          {/* the sleeping cushion cat crowns the card; hidden on short viewports
+              so it never scrolls under the nav */}
+          <img
+            src="/cat-cushion.png"
+            alt=""
+            aria-hidden
+            draggable={false}
+            className="pointer-events-none mx-auto -mt-11 mb-1 hidden h-[76px] w-auto select-none [@media(min-height:720px)]:block"
+          />
           <p className="text-sm font-extrabold text-brand-deep">Full mock test</p>
           <p className="mt-0.5 text-xs font-bold text-brand">
             35 questions · 5 parts · 60 minutes
@@ -84,9 +94,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <Link
           to={session ? '/reading' : '/login'}
           onClick={onNavigate}
-          className="flex w-full items-center justify-center rounded-xl bg-accent px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-accent px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
         >
           {session ? 'Start Reading test' : 'Sign in'}
+          {session && <ArrowRightIcon width={15} height={15} />}
         </Link>
       </div>
     </div>
