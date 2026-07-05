@@ -92,7 +92,14 @@ Deno.serve(async (req) => {
 
   for (const part of content.parts ?? []) {
     const section = (sectionScores[part.number] ??= { correct: 0, total: 0 })
-    for (const item of part.items ?? []) {
+    // Listening Part 5 (multi_extract_mcq) holds its items inside groups;
+    // every other layout uses part.items. Flatten so grading is uniform.
+    const items =
+      Array.isArray(part.groups) && part.groups.length > 0
+        ? // deno-lint-ignore no-explicit-any
+          part.groups.flatMap((g: any) => g.items ?? [])
+        : (part.items ?? [])
+    for (const item of items) {
       total += 1
       section.total += 1
       const raw = answerMap[item.id]
@@ -120,6 +127,7 @@ Deno.serve(async (req) => {
   const result = {
     testId: test.id,
     testTitle: test.title,
+    skill: content.skill ?? 'reading',
     rawScore,
     total,
     band,
@@ -173,7 +181,8 @@ function isCorrect(item: any, userAnswer: string | null): boolean {
   }
 }
 
-// Reading-only indicative band from raw correct count out of 35.
+// Indicative per-skill band from raw correct count out of 35 (same thresholds
+// for reading and listening).
 function bandFor(score: number): string {
   if (score >= 28) return 'C1'
   if (score >= 18) return 'B2'

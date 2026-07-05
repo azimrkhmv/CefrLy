@@ -1,4 +1,4 @@
-import type { Band, CefrLevel, Explanation, ItemType } from './test'
+import type { Band, CefrLevel, Explanation, ItemType, Skill } from './test'
 
 /** Row shape returned when listing published tests (metadata only, never content). */
 export interface TestCatalogEntry {
@@ -29,6 +29,8 @@ export interface ItemResult {
 export interface StoredAttemptResult {
   testId: string
   testTitle: string
+  /** Absent on attempts stored before Phase 3; treat missing as 'reading'. */
+  skill?: Skill
   rawScore: number
   total: number
   band: Band

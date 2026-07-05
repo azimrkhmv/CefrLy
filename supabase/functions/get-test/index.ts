@@ -1,7 +1,10 @@
 // get-test: returns a SANITIZED test to the browser plus the user's test
 // session (server-side start/expiry time).
 // Every `answer` and `explanation` field is stripped before the payload leaves
-// the server. Options, optionPool, prompts, passages and thirdOptionLabel are kept.
+// the server — and for LISTENING every per-part `transcript` too. Kept: options,
+// optionPool, prompts, passages, thirdOptionLabel, and the listening media the
+// browser needs (audio, image), audioMode / singleAudio, stem.html (with
+// {{itemId}} markers) and groups[].context.
 // An unexpired, unsubmitted session is REUSED, so refreshing the page resumes
 // the same countdown instead of restarting it.
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -92,21 +95,38 @@ Deno.serve(async (req) => {
 })
 
 // deno-lint-ignore no-explicit-any
+function stripItem(item: any) {
+  const { answer: _answer, explanation: _explanation, ...safe } = item
+  return safe
+}
+
+// deno-lint-ignore no-explicit-any
+function stripPart(part: any) {
+  // Drop the server-only transcript; sanitize items (and grouped items).
+  const { transcript: _transcript, items, groups, ...rest } = part
+  const out = { ...rest }
+  if (Array.isArray(items)) out.items = items.map(stripItem)
+  if (Array.isArray(groups)) {
+    // deno-lint-ignore no-explicit-any
+    out.groups = groups.map((g: any) => ({ ...g, items: (g.items ?? []).map(stripItem) }))
+  }
+  return out
+}
+
+// deno-lint-ignore no-explicit-any
 function sanitize(content: any, test: { id: string; title: string; duration_sec: number }) {
-  return {
+  // deno-lint-ignore no-explicit-any
+  const base: any = {
     id: test.id,
     title: test.title,
     skill: content.skill,
     targetLevels: content.targetLevels,
     durationSec: test.duration_sec ?? content.durationSec,
-    // deno-lint-ignore no-explicit-any
-    parts: (content.parts ?? []).map((part: any) => ({
-      ...part,
-      // deno-lint-ignore no-explicit-any
-      items: (part.items ?? []).map((item: any) => {
-        const { answer: _answer, explanation: _explanation, ...safe } = item
-        return safe
-      }),
-    })),
+    parts: (content.parts ?? []).map(stripPart),
   }
+  if (content.skill === 'listening') {
+    base.audioMode = content.audioMode
+    if (content.singleAudio) base.singleAudio = content.singleAudio
+  }
+  return base
 }
