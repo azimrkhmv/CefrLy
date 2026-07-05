@@ -259,12 +259,11 @@ export interface SanitizedListeningTest extends Omit<ListeningTest, 'parts'> {
 /** What the browser receives from get-test — discriminated by `skill`. */
 export type SanitizedTest = SanitizedReadingTest | SanitizedListeningTest
 
-/** Ordered items of a part, flattening multi_extract_mcq groups. Works on full
- *  and sanitized parts (reading or listening). */
-export function partItems<
-  I,
-  P extends { items?: I[] | undefined; groups?: { items: I[] }[] | undefined },
->(part: P): I[] {
+/** Ordered items of a part, flattening multi_extract_mcq groups (listening
+ *  Part 5). Works on full and sanitized parts, reading or listening. */
+export function partItems(part: SanitizedPart | SanitizedListeningPart): SanitizedItem[]
+export function partItems(part: Part | ListeningPart): Item[]
+export function partItems<I>(part: { items?: I[]; groups?: { items: I[] }[] }): I[] {
   if (part.groups && part.groups.length > 0) return part.groups.flatMap((g) => g.items)
   return part.items ?? []
 }

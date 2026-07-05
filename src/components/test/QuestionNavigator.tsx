@@ -1,14 +1,15 @@
 import { useAnswersStore } from '../../store/answers'
-import type { SanitizedReadingTest } from '../../types/test'
+import { partItems, type SanitizedTest } from '../../types/test'
 
 interface QuestionNavigatorProps {
-  test: SanitizedReadingTest
+  test: SanitizedTest
   numbering: Record<string, number>
   onJump: (itemId: string) => void
 }
 
 // Numbered 1–35 grid: brand wash = answered, outline = unanswered, accent dot =
-// marked for review. Clicking a number jumps to that question.
+// marked for review. Clicking a number jumps to that question. Works for both
+// skills — multi_extract_mcq groups (listening Part 5) are flattened.
 export function QuestionNavigator({ test, numbering, onJump }: QuestionNavigatorProps) {
   const answers = useAnswersStore((s) => s.answers)
   const marked = useAnswersStore((s) => s.marked)
@@ -17,7 +18,7 @@ export function QuestionNavigator({ test, numbering, onJump }: QuestionNavigator
     <div className="rounded-2xl border border-line bg-white p-5 shadow-card">
       <div className="flex flex-wrap gap-1.5">
         {test.parts.flatMap((part) =>
-          part.items.map((item) => {
+          partItems(part).map((item) => {
             const answered = (answers[item.id] ?? '').trim() !== ''
             const isMarked = !!marked[item.id]
             const number = numbering[item.id]

@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Band, SanitizedReadingTest } from '../types/test'
+import type { Band, SanitizedTest } from '../types/test'
 import type {
   AttemptResult,
   AttemptSummary,
@@ -35,9 +35,10 @@ export async function listTests(): Promise<TestCatalogEntry[]> {
   return (data ?? []) as TestCatalogEntry[]
 }
 
-/** Sanitized test (no answers, no explanations) via the get-test edge function. */
-export function fetchSanitizedTest(testId: string): Promise<SanitizedReadingTest> {
-  return invokeFunction<SanitizedReadingTest>('get-test', { testId })
+/** Sanitized test (no answers, explanations or transcripts) via the get-test
+ *  edge function — reading OR listening, discriminated by `skill`. */
+export function fetchSanitizedTest(testId: string): Promise<SanitizedTest> {
+  return invokeFunction<SanitizedTest>('get-test', { testId })
 }
 
 /** Grades server-side and returns the full result with explanations. */
