@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { TestCatalogEntry } from '../types/attempt'
+import { skillMeta } from '../lib/skills'
 
 export interface TestAttemptInfo {
   count: number
@@ -17,14 +18,18 @@ export function TestCard({
     attemptInfo && attemptInfo.count > 0
       ? `Best score ${attemptInfo.best}/35 · ${attemptInfo.count} attempt${attemptInfo.count > 1 ? 's' : ''}`
       : 'No attempts yet'
+  const meta = skillMeta(test.skill)
 
   return (
     <div className="flex h-full flex-col rounded-2xl border border-line bg-white p-6 shadow-card transition-all duration-200 hover:border-ink-faint hover:shadow-lift motion-safe:hover:-translate-y-0.5">
-      <p>
-        <span className="inline-block rounded-full bg-sun-soft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-sun-ink">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`inline-block rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] ${meta.chip}`}>
+          {meta.label}
+        </span>
+        <span className="inline-block rounded-full bg-brand-soft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-brand">
           Full mock test
         </span>
-      </p>
+      </div>
       <h3 className="mt-3 text-base font-extrabold leading-snug text-heading">{test.title}</h3>
       <p className="mt-1.5 text-sm font-semibold text-ink-soft">
         {test.target_levels.join(' · ')} — {Math.round(test.duration_sec / 60)} minutes

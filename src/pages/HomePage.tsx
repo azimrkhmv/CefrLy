@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchMyAttempts } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { BAND_INFO, BAND_ORDER, BAND_THRESHOLDS } from '../lib/bands'
+import { skillMeta } from '../lib/skills'
 import type { AttemptSummary } from '../types/attempt'
 import type { Band } from '../types/test'
 import { BandRuler } from '../components/BandRuler'
@@ -155,9 +156,10 @@ function LevelSnapshot({ best }: { best: AttemptSummary }) {
   const idx = BAND_ORDER.indexOf(best.band)
   const nextBand = idx < BAND_ORDER.length - 1 ? BAND_ORDER[idx + 1] : null
   const toNext = nextBand ? Math.max(0, BAND_THRESHOLDS[nextBand] - best.rawScore) : 0
+  const meta = skillMeta(best.skill)
   return (
     <section className={`${CARD_HERO} p-7 sm:p-9`}>
-      <p className={KICKER}>Your indicative reading level</p>
+      <p className={KICKER}>Your indicative {meta.label.toLowerCase()} level</p>
       <div className="mt-2 flex items-end gap-3">
         <span className="text-[40px] font-extrabold leading-none text-heading">
           {BAND_INFO[best.band].label}
@@ -181,9 +183,9 @@ function LevelSnapshot({ best }: { best: AttemptSummary }) {
             to reach {BAND_INFO[nextBand].label}.
           </>
         ) : (
-          <>You’re at the top of the reading scale — keep it sharp.</>
+          <>You’re at the top of the {meta.label.toLowerCase()} scale — keep it sharp.</>
         )}{' '}
-        <Link to="/reading" className="font-bold text-brand hover:underline">
+        <Link to={meta.to} className="font-bold text-brand hover:underline">
           Practice →
         </Link>
       </p>
@@ -192,10 +194,10 @@ function LevelSnapshot({ best }: { best: AttemptSummary }) {
 }
 
 const SKILLS = [
-  { key: 'reading', name: 'Reading', Icon: BookIcon, desc: '35 questions · 5 parts · 60 min', available: true, tile: 'bg-brand-soft text-brand' },
-  { key: 'listening', name: 'Listening', Icon: HeadphonesIcon, desc: 'Audio comprehension', available: false, tile: 'bg-sun-soft text-sun-ink' },
-  { key: 'writing', name: 'Writing', Icon: PenIcon, desc: 'Essay & email tasks', available: false, tile: 'bg-emerald-50 text-emerald-800' },
-  { key: 'speaking', name: 'Speaking', Icon: MicIcon, desc: 'Interview & talk', available: false, tile: 'bg-rose-50 text-rose-800' },
+  { key: 'reading', name: 'Reading', Icon: BookIcon, desc: '35 questions · 5 parts · 60 min', to: '/reading', tile: 'bg-brand-soft text-brand' },
+  { key: 'listening', name: 'Listening', Icon: HeadphonesIcon, desc: '35 questions · 6 parts · ~35 min', to: '/listening', tile: 'bg-sun-soft text-sun-ink' },
+  { key: 'writing', name: 'Writing', Icon: PenIcon, desc: 'Essay & email tasks', to: null, tile: 'bg-emerald-50 text-emerald-800' },
+  { key: 'speaking', name: 'Speaking', Icon: MicIcon, desc: 'Interview & talk', to: null, tile: 'bg-rose-50 text-rose-800' },
 ] as const
 
 function SkillsRoadmap() {
@@ -203,36 +205,39 @@ function SkillsRoadmap() {
     <section>
       <h2 className="mb-4 text-xl font-extrabold text-heading">Your CEFR skills</h2>
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {SKILLS.map(({ key, name, Icon, desc, available, tile }) => (
-          <div key={key} className={`${CARD} p-5 ${available ? '' : 'opacity-80'}`}>
-            <div className="flex items-center justify-between">
-              <span className={`grid h-12 w-12 place-items-center rounded-xl ${tile}`}>
-                <Icon width={22} height={22} />
-              </span>
-              {available ? (
-                <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-bold text-brand">
-                  Available
+        {SKILLS.map(({ key, name, Icon, desc, to, tile }) => {
+          const available = to !== null
+          return (
+            <div key={key} className={`${CARD} p-5 ${available ? '' : 'opacity-80'}`}>
+              <div className="flex items-center justify-between">
+                <span className={`grid h-12 w-12 place-items-center rounded-xl ${tile}`}>
+                  <Icon width={22} height={22} />
                 </span>
+                {available ? (
+                  <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-bold text-brand">
+                    Available
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-page px-2.5 py-0.5 text-[11px] font-bold lowercase text-ink-soft">
+                    soon
+                  </span>
+                )}
+              </div>
+              <p className={`mt-3 font-extrabold ${available ? 'text-heading' : 'text-ink-soft'}`}>{name}</p>
+              <p className="mt-0.5 text-sm text-ink-soft">{desc}</p>
+              {to ? (
+                <Link
+                  to={to}
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-ink transition-colors hover:border-brand hover:text-brand"
+                >
+                  Practice <ArrowRightIcon width={15} height={15} />
+                </Link>
               ) : (
-                <span className="rounded-full bg-page px-2.5 py-0.5 text-[11px] font-bold lowercase text-ink-soft">
-                  soon
-                </span>
+                <p className="mt-4 text-sm font-semibold text-ink-soft">Coming soon</p>
               )}
             </div>
-            <p className={`mt-3 font-extrabold ${available ? 'text-heading' : 'text-ink-soft'}`}>{name}</p>
-            <p className="mt-0.5 text-sm text-ink-soft">{desc}</p>
-            {available ? (
-              <Link
-                to="/reading"
-                className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-ink transition-colors hover:border-brand hover:text-brand"
-              >
-                Practice <ArrowRightIcon width={15} height={15} />
-              </Link>
-            ) : (
-              <p className="mt-4 text-sm font-semibold text-ink-soft">Coming soon</p>
-            )}
-          </div>
-        ))}
+          )
+        })}
       </div>
     </section>
   )
@@ -251,7 +256,14 @@ function RecentActivity({ attempts }: { attempts: AttemptSummary[] }) {
         {attempts.slice(0, 3).map((a) => (
           <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
             <div className="min-w-0">
-              <p className="font-bold text-heading">{a.testTitle}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-bold text-heading">{a.testTitle}</p>
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.06em] ${skillMeta(a.skill).chip}`}
+                >
+                  {skillMeta(a.skill).label}
+                </span>
+              </div>
               <p className="text-sm text-ink-soft">
                 {new Date(a.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
               </p>

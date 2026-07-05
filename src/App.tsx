@@ -5,6 +5,7 @@ import { AdminRoute, SuperAdminRoute } from './components/admin/AdminRoute'
 import { AdminLayout } from './components/admin/AdminLayout'
 import { HomePage } from './pages/HomePage'
 import { ReadingPage } from './pages/ReadingPage'
+import { ListeningPage } from './pages/ListeningPage'
 import { AuthPage } from './pages/AuthPage'
 import { TestPage } from './pages/TestPage'
 import { ResultsPage } from './pages/ResultsPage'
@@ -50,6 +51,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/reading" element={<ReadingPage />} />
+          <Route path="/listening" element={<ListeningPage />} />
           <Route path="/test/:testId" element={<TestPage />} />
           <Route path="/results/:attemptId" element={<ResultsPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />

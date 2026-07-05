@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Band, SanitizedTest } from '../types/test'
+import type { Band, SanitizedTest, Skill } from '../types/test'
 import type {
   AttemptResult,
   AttemptSummary,
@@ -54,20 +54,26 @@ export function milliymockHandoff(token: string): Promise<{ tokenHash: string }>
   return invokeFunction<{ tokenHash: string }>('milliymock-handoff', { token })
 }
 
-/** All of the signed-in user's attempts, newest first (RLS: own rows only). */
+/** All of the signed-in user's attempts, newest first (RLS: own rows only).
+ *  `skill` comes from the joined test; if the test row is gone we fall back to
+ *  the skill captured in the stored result, else 'reading' (legacy attempts). */
 export async function fetchMyAttempts(): Promise<AttemptSummary[]> {
   const { data, error } = await supabase
     .from('attempts')
-    .select('id, test_id, raw_score, total, band, created_at, tests(title)')
+    .select('id, test_id, raw_score, total, band, created_at, result, tests(title, skill)')
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
   return (data ?? []).map((row) => {
-    const test = row.tests as { title?: string } | { title?: string }[] | null
-    const title = Array.isArray(test) ? test[0]?.title : test?.title
+    const test = row.tests as { title?: string; skill?: string } | { title?: string; skill?: string }[] | null
+    const testRow = Array.isArray(test) ? test[0] : test
+    const stored = (row.result ?? {}) as Partial<StoredAttemptResult>
+    const skill: Skill =
+      testRow?.skill === 'listening' || stored.skill === 'listening' ? 'listening' : 'reading'
     return {
       id: row.id as string,
       testId: (row.test_id as string | null) ?? null,
-      testTitle: title ?? 'Reading test',
+      testTitle: testRow?.title ?? stored.testTitle ?? 'Test',
+      skill,
       rawScore: row.raw_score as number,
       total: row.total as number,
       band: row.band as Band,

@@ -47,6 +47,8 @@ export interface AttemptSummary {
   id: string
   testId: string | null
   testTitle: string
+  /** Reading or Listening. Legacy rows (pre-Phase 3) default to 'reading'. */
+  skill: Skill
   rawScore: number
   total: number
   band: Band

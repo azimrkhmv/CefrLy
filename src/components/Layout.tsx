@@ -55,7 +55,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <BookIcon width={18} height={18} />
           Reading
         </NavLink>
-        <SoonItem icon={<HeadphonesIcon width={18} height={18} />} label="Listening" />
+        <NavLink to="/listening" className={navLinkClass}>
+          <HeadphonesIcon width={18} height={18} />
+          Listening
+        </NavLink>
         <SoonItem icon={<PenIcon width={18} height={18} />} label="Writing" />
         <SoonItem icon={<MicIcon width={18} height={18} />} label="Speaking" />
         {(session || role === 'admin' || role === 'super_admin') && (
@@ -106,8 +109,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
 const PAGE_TITLES: [string, string][] = [
   ['/reading', 'Reading'],
+  ['/listening', 'Listening'],
   ['/dashboard', 'My results'],
-  ['/test/', 'Reading test'],
+  ['/test/', 'Test'],
   ['/results/', 'Results'],
   ['/handoff', 'Signing you in'],
 ]

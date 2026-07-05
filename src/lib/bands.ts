@@ -19,13 +19,13 @@ export const BAND_INFO: Record<
     label: 'C1',
     className: 'border border-line bg-white text-ink',
     range: '28–35',
-    blurb: 'Advanced reading. Your comprehension is at the top of the scale.',
+    blurb: 'Advanced comprehension — you’re at the top of the scale.',
   },
   B2: {
     label: 'B2',
     className: 'border border-line bg-white text-ink',
     range: '18–27',
-    blurb: 'Solid upper-intermediate reading. C1 is within reach.',
+    blurb: 'Solid upper-intermediate comprehension. C1 is within reach.',
   },
   B1: {
     label: 'B1',
