@@ -125,6 +125,22 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   via handoff_tokens table, 60s lifetime) + /handoff frontend route that exchanges
   the returned tokenHash via auth.verifyOtp. Requires the MILLIYMOCK_HANDOFF_SECRET
   edge function secret to be set (same value on the MilliyMock side).
+- PHASE 3 (Listening) is built & live: schema-v2 Listening (six layouts) shares the
+  Reading spine (player/timer/mark-for-review/navigator 1–35/autosave/results).
+  Storage: `audio` + `images` buckets (public read, admin-only write via
+  public.is_admin) with src/lib/storage.ts helpers; migration 0007. Fixture
+  `listening-mock-1` (audioMode per_part; six PLACEHOLDER .wav clips + map-plan-1.svg
+  in storage — swap in real speech via /admin later). Player: src/components/test/
+  AudioPlayer.tsx (previewSec gate + playLimit cap, no autoplay/seek/pause, state in
+  src/store/audio.ts so counts survive part nav). Six renderers in
+  src/components/test/listening/ dispatched by ListeningPartRenderer. get-test v4 /
+  submit-test v5 strip answers+explanations+transcripts and grade skill-agnostically
+  (groups flattened). Admin: /admin/tests/new/listening + skill-dispatching edit
+  router; dual audio upload + map image upload; server validator validate-listening.ts
+  (admin-tests v3). Catalog split /reading + /listening (shared TestCatalog); dashboard
+  + home carry per-attempt skill (src/lib/skills.ts). Verified end-to-end 2026-07-06:
+  sanitization (no answers/transcripts pre-submit), grading (gap multi-spellings +
+  grouped Part 5), history skill, public asset URLs 200. Writing/Speaking still NOT built.
 
 ## Design system v3 ("friendly scholar" — keep new UI consistent with this)
 - Voice: warm, friendly ed-tech with a cat mascot (Cathoven-inspired), in
