@@ -281,7 +281,7 @@ function itemToDraft(item: Item): GapItemDraft | MatchItemDraft | McqItemDraft |
       return {
         id: item.id,
         type: 'mcq',
-        prompt: item.prompt,
+        prompt: item.prompt ?? '',
         options: item.options.map((o) => ({ ...o })),
         answer: item.answer,
         explanation: { ...item.explanation },

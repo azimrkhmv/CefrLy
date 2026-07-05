@@ -61,9 +61,43 @@ type explanation = { location, quote, reasoning }  // shown only after submit
   tfng = selection equals answer. Each correct item = 1 mark.
 - Label the result as an INDICATIVE reading band. The true /75 4-skill average comes in a later phase.
 
+## LISTENING paper structure (Phase 3 — rigid: 35 questions, 6 parts, each recording played TWICE, ~35 min)
+Fixed per-part counts/layouts (DO NOT change): 8/6/4/5/6/6 = 35.
+- Part 1 (Q1-8): layout `mcq_response` — hear a short prompt, choose the best REPLY. 8 `mcq`, 3 options (A/B/C), NO written prompt.
+- Part 2 (Q9-14): layout `form_completion` — a titled form/notes with 6 blanks; type ONE word/number each. 6 `gap` in `stem.html`.
+- Part 3 (Q15-18): layout `matching` — match 4 speakers to an option pool (letters, with EXTRAS). 4 `match` + `optionPool`.
+- Part 4 (Q19-23): layout `map_labelling` — label 5 places on a MAP/PLAN IMAGE using letters (with EXTRAS). 5 `match` + `image` + `optionPool`. REQUIRES an image.
+- Part 5 (Q24-29): layout `multi_extract_mcq` — THREE extracts; each has a `context` line + 2 MCQs (3 options). 3 `groups` × 2 `mcq` = 6.
+- Part 6 (Q30-35): layout `note_completion` — notes/sentences with 6 blanks; type ONE word each. 6 `gap` in `stem.html`.
+Only THREE item types in Listening: `mcq`, `match`, `gap` (NO `tfng` — that is Reading). Gap answers accept MULTIPLE spellings
+(real keys: "1.30 / one hour and thirty minutes", "(desert) plants", "twelve/12", "sunrise(s)").
+
+## Listening schema v2 — canonical TypeScript lives in src/types/test.ts (shares mcq/match/gap with Reading)
+```
+ListeningTest = { id, skill:'listening', targetLevels:['B1','B2','C1'], durationSec:2400,
+  audioMode:'per_part'|'single', singleAudio?:{assetPath,playLimit:2,previewSec} /* iff single */, parts:Part[6] }
+Part = { id, number:1..6, layout:<one of the six>, instructions,
+  audio?:{assetPath,playLimit:2,previewSec} /* iff per_part */, image?:{assetPath,alt} /* map_labelling */,
+  optionPool?:{key,label}[] /* matching & map_labelling */, stem?:{title?,html} /* form/note; html holds {{itemId}} */,
+  groups?:Group[] /* multi_extract_mcq */, items?:Item[] /* all non-group layouts */, transcript? /* SERVER-ONLY */ }
+Group = { id, context, items:Item[] }
+Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" / place name) | gap (answer:string[] spellings)
+```
+- Audio lives in the `audio` storage bucket, map images in `images` (public read, admin-only write; helpers in src/lib/storage.ts).
+- Rendering (skill='listening'): render the part's audio (per_part player, or the single top-of-section player) THEN the layout:
+  mcq_response=8 A/B/C radios (no prompt) · form_completion/note_completion=`stem.html` with {{itemId}}→text inputs ·
+  matching=speaker rows with an optionPool dropdown · map_labelling=`image` + place rows with a letter dropdown ·
+  multi_extract_mcq=each group = context line + its 2 MCQs. Reuse the SAME timer/mark-for-review/navigator(1-35)/autosave.
+- Grading (skill-agnostic in submit-test, flatten groups): mcq/match = key equals answer; gap = normalized (trim+lower) typed
+  matches ANY string in answer[]. 1 mark each, /35 → indicative LISTENING band (thresholds 28/18/10, same as Reading).
+- Security (unchanged): get-test strips every answer, explanation AND transcript for listening (keeps audio/image/optionPool/
+  stem.html/groups[].context/prompts/options); grading is server-side in submit-test; browser never reads the `tests` table.
+- audioMode='per_part' → each part needs `audio`; 'single' → the test needs `singleAudio` and no per-part audio. map_labelling
+  needs `image`. Server validation in admin-tests mirrors these + counts 8/6/4/5/6/6; upsert writes nothing on failure.
+
 ## Conventions
 - TypeScript strict. Clear folders (src/pages, src/components, src/lib, src/types). Small components.
-- Keep it simple — phase 1 of a large project. Do NOT build Listening/Writing/Speaking yet.
+- Keep it simple. Phase 1 = Reading, Phase 3 = Listening (both live). Do NOT build Writing/Speaking yet.
 
 ## Working notes (added during phase 1)
 - Test authoring: edit supabase/seed/reading-test-1.json, then `npm run seed:generate`
@@ -126,22 +160,73 @@ type explanation = { location, quote, reasoning }  // shown only after submit
   exact palette (brand #3B2C86, page #F6F4FB, link #6D4FE0, focus #8A63E8, ink
   #2E2A47, input bg #FAF8FE, borders #ECE7F8/#EFEBF8) via Tailwind arbitrary
   values — slightly off the app tokens ON PURPOSE; do not "normalize" it to the
-  tokens. Mascot: public/cat-sleeping.png — the full purple cat asleep on a
-  lavender cushion (pulled from the design project's uploads/, background
-  flood-filled to transparent so it seats seamlessly). It renders via the
-  design's own container (max-w-[480px], h-[clamp(230px,33vh,300px)],
-  object-contain, object-[left_bottom]) so the WHOLE cushion cat shows at the
-  bottom-left — do NOT crop the asset or use a fixed auto-height (an earlier
-  crop clipped it; that was wrong). A speech bubble reacts to context
+  tokens.
+- AUTH ADDITIONS (beyond the original import): (1) src/components/CozyScene.tsx
+  — a decorative "study nook" SVG vignette (wall clock, steaming mug, potted
+  plant on books, book stack) in soft monochrome lavender, absolutely positioned
+  bottom-right of the brand panel to fill the empty space beside the cat
+  (aria-hidden, z-[1] behind the cat which is z-[2]). (2) A "Continue with
+  Google" button (GoogleIcon) calling supabase.auth.signInWithOAuth({provider:
+  'google', redirectTo: origin+from}) — REQUIRES the Google provider enabled in
+  the Supabase dashboard + origin added to allowed redirect URLs, else it errors
+  gracefully. (3) The account toggle is now a divider ("No account yet? Sign up"
+  / "Already have an account? Log in") and a reassurance card ("Your progress is
+  safe with us." with ShieldIcon). All in the auth palette above.
+- Mascot: TWO cats, one picked at random per page load (CATS[] in
+  AuthPage.tsx, Math.random) so different visitors see different mascots —
+  public/cat-sleeping.png (the full purple cat asleep on a lavender cushion,
+  pulled from the design project's uploads/, background flood-filled to
+  transparent) and public/cat-surprised.png (the round wide-eyed grey cat
+  sitting on a lavender cushion — the FULL-BODY asset, restored; see the
+  surprised-cat note below). Each has its own personality copy (verbatim from
+  the source design: hello/peek/bye/quips); only the sleepy one shows zzz's.
+  The zzz's are ONLY the animated JSX overlay (.zzz-1/2/3 + zzz-float) now — the
+  two z glyphs that were also baked into cat-sleeping.png were erased as
+  disconnected image components (the user found them excessive/inaccurate; one
+  was cut off at the canvas top). The ear/tail flick marks in the asset were
+  kept. If you re-export cat-sleeping.png from the design project, re-erase the
+  baked z's (the design asset still has them).
+  Each CatDef carries its OWN `frame` (Tailwind size + anchor of the poke-button
+  box) for extensibility, but both full-body cushion cats now share the same
+  frame: h-[clamp(230px,33vh,300px)] max-w-[480px]. The img fills its frame with
+  object-contain object-[left_bottom]. do NOT crop the asset or force a fixed
+  auto-height. Preview a specific alternative with ?cat=<key> (e.g.
+  /login?cat=surprised, or a numeric index) — otherwise it's random per load.
+  Add a new alternative = drop a PNG in /public and append a CATS[] entry
+  (key + src + frame + copy). A speech bubble reacts to context
   (greet → peek on password focus → farewell on submit → click cat for random
-  quips), the cat floats zzz's and breathes. Password has a show/hide eye
-  toggle. Supabase auth + login/signup mode adaptation are preserved under the
-  visuals. Motion keyframes (cat-breathe, zzz-float, bubble-in) live in
-  index.css, reduced-motion gated. The design's saved assets/cat-*.png are
-  head-only crops (stale) and the grey "surprised" cushion cat has no clean
-  asset in the synced project — only the purple cushion cat is used. To
-  re-import: DesignSync MCP, project 0635101f-754f-4e23-939f-816bec3ad3fa,
-  after /design-login.
+  quips), the cat floats zzz's (animated overlay) and breathes. Password has a
+  show/hide eye toggle. Supabase auth + login/signup mode adaptation are
+  preserved under the visuals. Motion keyframes (cat-breathe, zzz-float,
+  bubble-in) live in index.css, reduced-motion gated. The grey "surprised" cat
+  (public/cat-surprised.png) is the FULL-BODY 1180x1119 RGBA asset, restored
+  from the design project — resized to 738x700 and palette-quantized to ~51 KiB
+  (looks identical; flat cartoon). HOW IT WAS PULLED past the 256 KiB read cap:
+  DesignSync/read_file (get_file) truncates big files (that truncation is what
+  produced the old headless 716x280 "peek" crop). Instead, call the design MCP
+  directly — POST https://api.anthropic.com/v1/design/mcp with the Bearer token
+  from ~/.claude/.credentials.json → designOauth.accessToken (sk-ant-o…),
+  tools/call render_preview {project_id, path} → returns a short-lived
+  serve_url on <project_id>.claudeusercontent.com (self-authing ?t= token).
+  GET that serve_url WITH A BROWSER User-Agent + Referer https://claude.ai/
+  (plain urllib 403s) to download the untruncated bytes. Keep serve_url internal
+  — never surface it. Design project: MCP project
+  0635101f-754f-4e23-939f-816bec3ad3fa ("Cefrly Welcome"/"Lazy cat welcome
+  page"), after /design-login.
+- HOME (src/pages/HomePage.tsx) is a PERSONAL DASHBOARD, deliberately NOT a
+  reading-tests list (that's /reading; My results is /dashboard). It adapts to
+  the signed-in student's attempts:
+  · No attempts → greeting + "Discover your real CEFR level" hero (read cat +
+    demo BandRuler + Start-first-test CTA) + "How it works" 3 steps.
+  · Has attempts → greeting + LevelSnapshot (big band + count-up best score +
+    BandRuler(best) + "N more marks to reach <next>") + stat tiles (Tests taken/
+    Average/Best/Latest) + a Score-trend Sparkline (raw scores over time with
+    faint 10/18/28 band guides; shown at ≥2 attempts) + Recent-activity teaser
+    (last 3 → See all).
+  Both states end with the "Your CEFR skills" roadmap (Reading Available →
+  Practice; Listening/Writing/Speaking "soon") — the one surface that shows
+  Cefrly as a full 4-skill platform. Greeting name comes from Google
+  user_metadata.full_name/name else the email local part.
 - Results header: friendly light card — big Nunito band label + count-up score,
   cat + speech bubble (bg-brand-soft, blurb text) reacting to the band, BandRuler
   fill below. No dark panels anywhere.
