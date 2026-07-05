@@ -12,6 +12,8 @@ import { DashboardPage } from './pages/DashboardPage'
 import { HandoffPage } from './pages/HandoffPage'
 import { AdminTestsPage } from './pages/admin/AdminTestsPage'
 import { TestFormPage } from './pages/admin/TestFormPage'
+import { ListeningTestFormPage } from './pages/admin/ListeningTestFormPage'
+import { TestFormRouter } from './pages/admin/TestFormRouter'
 import { AdminUsersPage } from './pages/admin/AdminUsersPage'
 import { Cat } from './components/Cat'
 
@@ -37,11 +39,17 @@ export default function App() {
       <Route path="/signup" element={<AuthPage mode="signup" />} />
       <Route path="/cat-preview" element={<CatPreview />} />
 
+      {/* Handoff is public: it exchanges a MilliyMock token before a session exists. */}
       <Route element={<Layout />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/reading" element={<ReadingPage />} />
         <Route path="/handoff" element={<HandoffPage />} />
-        <Route element={<ProtectedRoute />}>
+      </Route>
+
+      {/* Everything else requires an account. Signed-out visitors are sent to /login
+          before the app shell renders, so the first thing a new user sees is auth. */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<Layout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/reading" element={<ReadingPage />} />
           <Route path="/test/:testId" element={<TestPage />} />
           <Route path="/results/:attemptId" element={<ResultsPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
@@ -53,7 +61,8 @@ export default function App() {
           <Route path="/admin" element={<Navigate to="/admin/tests" replace />} />
           <Route path="/admin/tests" element={<AdminTestsPage />} />
           <Route path="/admin/tests/new" element={<TestFormPage />} />
-          <Route path="/admin/tests/:slug" element={<TestFormPage />} />
+          <Route path="/admin/tests/new/listening" element={<ListeningTestFormPage />} />
+          <Route path="/admin/tests/:slug" element={<TestFormRouter />} />
           <Route element={<SuperAdminRoute />}>
             <Route path="/admin/admins" element={<AdminUsersPage />} />
           </Route>

@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { CefrLevel, ReadingTest } from '../types/test'
+import type { AnyTest, CefrLevel } from '../types/test'
 
 // Client for the admin-tests edge function. The browser NEVER touches the
 // tests/test_content tables for admin work — every read and write goes
@@ -55,13 +55,13 @@ export async function adminListTests(): Promise<AdminTestRow[]> {
   return tests
 }
 
-export function adminGetTest(slug: string): Promise<{ test: AdminTestMeta; content: ReadingTest }> {
+export function adminGetTest(slug: string): Promise<{ test: AdminTestMeta; content: AnyTest }> {
   return invokeAdmin({ action: 'get', slug })
 }
 
 export function adminUpsertTest(
   slug: string,
-  content: ReadingTest,
+  content: AnyTest,
   status: 'draft' | 'published',
 ): Promise<{ ok: true; slug: string; id: string }> {
   return invokeAdmin({ action: 'upsert', slug, content, status })

@@ -49,12 +49,19 @@ export function AdminTestsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-extrabold text-heading">Tests</h1>
-        <Link
-          to="/admin/tests/new"
-          className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
-        >
-          New test
-        </Link>
+        <details className="group relative">
+          <summary className="cursor-pointer list-none rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep">
+            New test ▾
+          </summary>
+          <div className="absolute right-0 z-10 mt-2 w-52 overflow-hidden rounded-xl border border-line bg-white py-1 shadow-card">
+            <Link to="/admin/tests/new" className="block px-4 py-2 text-sm font-bold text-ink hover:bg-page">
+              Reading test
+            </Link>
+            <Link to="/admin/tests/new/listening" className="block px-4 py-2 text-sm font-bold text-ink hover:bg-page">
+              Listening test
+            </Link>
+          </div>
+        </details>
       </div>
 
       {isLoading && <p className="text-ink-soft">Loading tests…</p>}
@@ -73,14 +80,22 @@ export function AdminTestsPage() {
         <EmptyState
           pose="nap"
           title="No tests yet"
-          hint="Create the first Reading test — the fixed template walks you through all 35 questions."
+          hint="Create your first test — the fixed template walks you through all 35 questions, for Reading or Listening."
           action={
-            <Link
-              to="/admin/tests/new"
-              className="inline-block rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
-            >
-              Create the first test
-            </Link>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Link
+                to="/admin/tests/new"
+                className="inline-block rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+              >
+                New Reading test
+              </Link>
+              <Link
+                to="/admin/tests/new/listening"
+                className="inline-block rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+              >
+                New Listening test
+              </Link>
+            </div>
           }
         />
       )}

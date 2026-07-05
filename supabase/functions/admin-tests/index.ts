@@ -5,6 +5,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders, json } from './cors.ts'
 import { validateReadingTest } from './validate.ts'
+import { validateListeningTest } from './validate-listening.ts'
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
@@ -88,7 +89,9 @@ Deno.serve(async (req) => {
         return json({ ok: false, errors: ["status must be 'draft' or 'published'."] }, 400)
       }
 
-      const errors = validateReadingTest(content)
+      const skill = content?.skill === 'listening' ? 'listening' : 'reading'
+      const errors =
+        skill === 'listening' ? validateListeningTest(content) : validateReadingTest(content)
       if (errors.length > 0) return json({ ok: false, errors }, 400)
 
       const { data: existing, error: findError } = await admin
@@ -101,7 +104,7 @@ Deno.serve(async (req) => {
       const meta = {
         slug,
         title: content.title,
-        skill: 'reading',
+        skill,
         target_levels: content.targetLevels,
         duration_sec: content.durationSec,
         status,

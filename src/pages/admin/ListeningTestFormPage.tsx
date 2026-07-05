@@ -9,23 +9,24 @@ import {
   type TestStatus,
 } from '../../lib/adminApi'
 import {
-  contentToDraft,
-  draftToContent,
-  emptyDraft,
-  slugify,
-  type TestDraft,
-} from '../../lib/testDraft'
-import type { ReadingTest } from '../../types/test'
-import { validateReadingTestContent } from '../../lib/testValidation'
+  contentToListeningDraft,
+  emptyListeningDraft,
+  listeningDraftToContent,
+  type ListeningDraft,
+} from '../../lib/listeningDraft'
+import { slugify } from '../../lib/testDraft'
+import { validateListeningTestContent } from '../../lib/listeningValidation'
+import type { ListeningTest } from '../../types/test'
 import { SectionCard, TextField } from '../../components/admin/form/fields'
 import {
-  Part1Editor,
-  Part2Editor,
-  Part3Editor,
-  PassagePartEditor,
-} from '../../components/admin/form/PartEditors'
+  AudioUploadField,
+  LPart1Editor,
+  LPart3Editor,
+  LPart4Editor,
+  LPart5Editor,
+  LStemPartEditor,
+} from '../../components/admin/form/ListeningPartEditors'
 
-// Spec rule-8 chips — keep identical to the consts in AdminTestsPage.
 const STATUS_BADGE: Record<string, string> = {
   published:
     'rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800',
@@ -35,15 +36,15 @@ const STATUS_BADGE: Record<string, string> = {
 const NEUTRAL_BADGE =
   'rounded-full border border-line bg-white px-2.5 py-0.5 text-xs font-bold text-ink-soft'
 
-// Create (/admin/tests/new) and edit (/admin/tests/:slug) share this page —
-// edit differs only by prefill and a locked slug.
-export function TestFormPage() {
+// Create (/admin/tests/new/listening) and edit share this page — the router
+// sends listening tests here; edit differs only by prefill and a locked slug.
+export function ListeningTestFormPage() {
   const { slug: editSlug } = useParams<{ slug: string }>()
   const isEdit = !!editSlug
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
-  const [draft, setDraft] = useState<TestDraft>(emptyDraft)
+  const [draft, setDraft] = useState<ListeningDraft>(emptyListeningDraft)
   const [slugTouched, setSlugTouched] = useState(false)
   const [status, setStatus] = useState<TestStatus>('draft')
   const [serverErrors, setServerErrors] = useState<string[]>([])
@@ -57,15 +58,13 @@ export function TestFormPage() {
 
   useEffect(() => {
     if (existing.data) {
-      // This page only handles reading; the router sends listening tests to the
-      // listening form, so the content is a ReadingTest here.
-      setDraft(contentToDraft(existing.data.content as ReadingTest, existing.data.test.slug))
+      setDraft(contentToListeningDraft(existing.data.content as ListeningTest, existing.data.test.slug))
       setStatus(existing.data.test.status)
     }
   }, [existing.data])
 
-  const content = useMemo(() => draftToContent(draft), [draft])
-  const liveErrors = useMemo(() => validateReadingTestContent(content), [content])
+  const content = useMemo(() => listeningDraftToContent(draft), [draft])
+  const liveErrors = useMemo(() => validateListeningTestContent(content), [content])
 
   const save = useMutation({
     mutationFn: () =>
@@ -102,21 +101,23 @@ export function TestFormPage() {
     )
   }
 
+  const setAudioMode = (audioMode: 'per_part' | 'single') => setDraft((d) => ({ ...d, audioMode }))
+
   return (
     <div className="space-y-6 pb-24">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-heading">{isEdit ? `Edit: ${draft.title || editSlug}` : 'New Reading test'}</h1>
+          <h1 className="text-2xl font-extrabold text-heading">
+            {isEdit ? `Edit: ${draft.title || editSlug}` : 'New Listening test'}
+          </h1>
           <p className="mt-1 text-sm text-ink-soft">
-            Fixed template: 5 parts, 35 questions (6 / 8 / 6 / 9 / 6).
+            Fixed template: 6 parts, 35 questions (8 / 6 / 4 / 5 / 6 / 6).
           </p>
         </div>
         <div className="flex items-center gap-2">
           {isEdit && (
             <>
-              <span className={STATUS_BADGE[status] ?? NEUTRAL_BADGE}>
-                {status}
-              </span>
+              <span className={STATUS_BADGE[status] ?? NEUTRAL_BADGE}>{status}</span>
               <button
                 onClick={() => statusMutation.mutate(status === 'published' ? 'draft' : 'published')}
                 disabled={statusMutation.isPending}
@@ -140,7 +141,7 @@ export function TestFormPage() {
             onChange={(title) =>
               setDraft((d) => ({ ...d, title, slug: isEdit || slugTouched ? d.slug : slugify(title) }))
             }
-            placeholder="CEFR Reading Mock Test 2"
+            placeholder="CEFR Listening Mock Test 2"
           />
           <TextField
             label="Slug (URL name)"
@@ -151,41 +152,73 @@ export function TestFormPage() {
               setSlugTouched(true)
               setDraft((d) => ({ ...d, slug: slugify(slug) }))
             }}
-            hint={isEdit ? 'The slug cannot change after creation.' : 'Lowercase letters, digits, hyphens.'}
+            hint={isEdit ? 'The slug cannot change after creation.' : 'Set this before uploading audio/images.'}
           />
         </div>
         <TextField
           label="Duration (seconds)"
           value={String(draft.durationSec)}
           onChange={(v) => setDraft((d) => ({ ...d, durationSec: Number(v.replace(/\D/g, '')) || 0 }))}
-          hint="3600 = 60 minutes"
+          hint="2400 = 40 minutes"
         />
       </SectionCard>
 
-      <Part1Editor value={draft.part1} onChange={(part1) => setDraft((d) => ({ ...d, part1 }))} startNumber={1} />
-      <Part2Editor value={draft.part2} onChange={(part2) => setDraft((d) => ({ ...d, part2 }))} startNumber={7} />
-      <Part3Editor value={draft.part3} onChange={(part3) => setDraft((d) => ({ ...d, part3 }))} startNumber={15} />
-      <PassagePartEditor
-        title="Part 4 — Passage with questions (21–29)"
-        subtitle="9 questions: any mix of multiple choice and True/False/Not Given."
-        value={draft.part4}
-        onChange={(part4) => setDraft((d) => ({ ...d, part4 }))}
-        startNumber={21}
-        typeChoices={[
-          { value: 'mcq', label: 'Multiple choice' },
-          { value: 'tfng', label: 'True/False/NG' },
-        ]}
+      <SectionCard title="Audio" subtitle="Choose how the recordings are supplied. Each recording plays twice by default.">
+        <div className="inline-flex rounded-xl border border-line bg-white p-1">
+          {(
+            [
+              ['per_part', 'One file per part'],
+              ['single', 'One combined file'],
+            ] as const
+          ).map(([mode, label]) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setAudioMode(mode)}
+              className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
+                draft.audioMode === mode ? 'bg-brand text-white' : 'text-ink-soft hover:text-ink'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {draft.audioMode === 'per_part' ? (
+          <p className="text-xs text-ink-soft">Upload one recording inside each part below (six in total).</p>
+        ) : (
+          <AudioUploadField
+            value={draft.singleAudio}
+            onChange={(singleAudio) => setDraft((d) => ({ ...d, singleAudio }))}
+            slug={draft.slug}
+            pathKey="section"
+            label="Section recording (whole test)"
+          />
+        )}
+      </SectionCard>
+
+      <LPart1Editor value={draft.part1} onChange={(part1) => setDraft((d) => ({ ...d, part1 }))} slug={draft.slug} audioMode={draft.audioMode} />
+      <LStemPartEditor
+        title="Part 2 — Form completion (9–14)"
+        subtitle="6 gaps; one word or number each."
+        value={draft.part2}
+        onChange={(part2) => setDraft((d) => ({ ...d, part2 }))}
+        slug={draft.slug}
+        audioMode={draft.audioMode}
+        startNumber={9}
+        pathKey="part2"
       />
-      <PassagePartEditor
-        title="Part 5 — Academic passage (30–35)"
-        subtitle="6 questions: summary gaps + multiple choice."
-        value={draft.part5}
-        onChange={(part5) => setDraft((d) => ({ ...d, part5 }))}
+      <LPart3Editor value={draft.part3} onChange={(part3) => setDraft((d) => ({ ...d, part3 }))} slug={draft.slug} audioMode={draft.audioMode} />
+      <LPart4Editor value={draft.part4} onChange={(part4) => setDraft((d) => ({ ...d, part4 }))} slug={draft.slug} audioMode={draft.audioMode} />
+      <LPart5Editor value={draft.part5} onChange={(part5) => setDraft((d) => ({ ...d, part5 }))} slug={draft.slug} audioMode={draft.audioMode} />
+      <LStemPartEditor
+        title="Part 6 — Note completion (30–35)"
+        subtitle="6 gaps; one word each."
+        value={draft.part6}
+        onChange={(part6) => setDraft((d) => ({ ...d, part6 }))}
+        slug={draft.slug}
+        audioMode={draft.audioMode}
         startNumber={30}
-        typeChoices={[
-          { value: 'gap', label: 'Summary gap' },
-          { value: 'mcq', label: 'Multiple choice' },
-        ]}
+        pathKey="part6"
       />
 
       {/* sticky save bar */}
