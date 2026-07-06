@@ -452,8 +452,6 @@ export function TestPage() {
             </nav>
           </div>
 
-          <QuestionNavigator test={test} numbering={numbering} onJump={jumpToQuestion} />
-
           <section className="rounded-2xl border border-line bg-white p-6 shadow-card">
             {isListening ? (
               <ListeningPartRenderer
@@ -466,6 +464,10 @@ export function TestPage() {
               <PartRenderer part={part as SanitizedPart} numbering={numbering} />
             )}
           </section>
+
+          {/* Question map lives at the bottom, next to the part controls —
+              review/jump is an end-of-part action, not a header one. */}
+          <QuestionNavigator test={test} numbering={numbering} onJump={jumpToQuestion} />
 
           <div className="flex justify-between">
             <button
