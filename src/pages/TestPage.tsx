@@ -244,10 +244,10 @@ export function TestPage() {
     return (
       <ExamScreen>
         <header className="shrink-0 border-b border-line bg-white">
-          <div className="mx-auto flex max-w-4xl items-center px-4 py-3 sm:px-8">
+          <div className="flex items-center px-4 py-3 sm:px-6">
             <Link
               to={catalogPath}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-bold text-ink-soft transition-colors hover:bg-page hover:text-ink"
+              className="flex items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-bold text-ink transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
             >
               <CloseIcon width={18} height={18} />
               <span>Back to tests</span>
