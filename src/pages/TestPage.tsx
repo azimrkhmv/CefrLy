@@ -413,12 +413,16 @@ export function TestPage() {
             </p>
           )}
 
+          {/* One solid recording for the whole section — pinned while the
+              student scrolls and navigates parts, like a real exam player. */}
           {isListening && test.audioMode === 'single' && test.singleAudio && (
-            <ListeningAudio
-              audio={test.singleAudio}
-              label="Section recording"
-              practice={isPractice}
-            />
+            <div className="sticky top-0 z-20 -mx-4 bg-page px-4 pb-1 pt-2 sm:-mx-8 sm:px-8">
+              <ListeningAudio
+                audio={test.singleAudio}
+                label="Section recording"
+                practice={isPractice}
+              />
+            </div>
           )}
 
           <div className="max-w-full overflow-x-auto">

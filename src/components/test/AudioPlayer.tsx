@@ -2,6 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import type { AudioAsset } from '../../types/test'
 import { audioUrl } from '../../lib/storage'
 import { useAudioStore } from '../../store/audio'
+import { VolumeControl } from './VolumeControl'
+
+function fmt(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) return '0:00'
+  const m = Math.floor(sec / 60)
+  const s = Math.floor(sec % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
+}
 
 // One audio control governing a single recording. Placement decides the mode:
 //   per_part  -> one <AudioPlayer> inside each part
@@ -20,11 +28,21 @@ export function AudioPlayer({ audio, label }: { audio: AudioAsset; label: string
   const usePlay = useAudioStore((s) => s.usePlay)
   const markPreviewed = useAudioStore((s) => s.markPreviewed)
 
+  const volume = useAudioStore((s) => s.volume)
+  const setVolume = useAudioStore((s) => s.setVolume)
+
   const audioRef = useRef<HTMLAudioElement>(null)
   const [previewLeft, setPreviewLeft] = useState(previewedGlobal ? 0 : audio.previewSec)
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState(0) // 0..1
+  const [current, setCurrent] = useState(0)
+  const [duration, setDuration] = useState(0)
   const [failed, setFailed] = useState(false)
+
+  // Keep the element at the shared volume (store + slider below).
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume
+  }, [volume])
 
   const playsLeft = Math.max(0, audio.playLimit - playsUsed)
   const inPreview = !previewedGlobal && previewLeft > 0
@@ -109,6 +127,13 @@ export function AudioPlayer({ audio, label }: { audio: AudioAsset; label: string
             {status}
           </p>
         </div>
+
+        {duration > 0 && (
+          <span className="tnum text-xs text-ink-soft">
+            {fmt(current)} / {fmt(duration)}
+          </span>
+        )}
+        <VolumeControl value={volume} onChange={setVolume} />
       </div>
 
       {/* Read-only progress (no seeking). */}
@@ -139,10 +164,16 @@ export function AudioPlayer({ audio, label }: { audio: AudioAsset; label: string
         onEnded={() => {
           setIsPlaying(false)
           setProgress(0)
+          setCurrent(0)
+        }}
+        onLoadedMetadata={(e) => {
+          setDuration(e.currentTarget.duration || 0)
+          e.currentTarget.volume = volume
         }}
         onTimeUpdate={(e) => {
           const el = e.currentTarget
           if (el.duration > 0) setProgress(el.currentTime / el.duration)
+          setCurrent(el.currentTime)
         }}
         onError={() => setFailed(true)}
       />

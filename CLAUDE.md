@@ -146,18 +146,26 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   public.is_admin) with src/lib/storage.ts helpers; migration 0007. Fixture
   `listening-mock-1` (placeholder .wav clips) is ARCHIVED; the live catalog has TWO
   REAL tests, `listening-mock-2` + `listening-mock-3` (ingested 2026-07-06 from the
-  owner's Multilevelzonemock Day 157/156 papers: per_part MP3s + map PNGs in storage
-  under <slug>/, previewSec 0; content lives ONLY in the DB — source papers/audio
-  stay in the gitignored `listening sample/` folder, never in git). Their Part 1 has
-  playLimit 2 (single-pass file, ~72s) but Parts 2–6 have playLimit 1 — the "played
-  twice" repeat is BAKED INTO those recordings (durations ≈ the paper's 35-min total).
+  owner's Multilevelzonemock Day 157/156 papers; content lives ONLY in the DB —
+  source papers/audio stay in the gitignored `listening sample/` folder, never in
+  git). Both are audioMode 'single': ONE SOLID recording `<slug>/full.mp3`
+  (playLimit 1, previewSec 0) built with ffmpeg (imageio-ffmpeg) as Part 1 TWICE
+  (its repeat wasn't baked in; parts were mixed 48k/44.1k so re-encode, 44.1k
+  128k CBR) + Parts 2–6 (their "played twice" repeats ARE baked in — durations ≈
+  the paper's 35-min total). The unused per-part MP3s + map PNGs also sit in
+  storage under <slug>/.
   Explanation cards cite the official answer keys (no transcripts available). Player: src/components/test/
   AudioPlayer.tsx (previewSec gate + playLimit cap, no seek/pause, state in
   src/store/audio.ts so counts survive part nav). LISTENING AUTOPLAY: recordings
   auto-start, no click needed — simulation fires the FIRST play the moment the
   recording unlocks (once-per-mount effect in AudioPlayer; falls back to the manual
   button if the browser blocks autoplay, e.g. right after a refresh); practice
-  auto-starts only on the FIRST open of each part (flagged via useAudioStore plays). Six renderers in
+  auto-starts only on the FIRST open of each part (flagged via useAudioStore plays).
+  In single mode the player is wrapped sticky (top of the scroll area, above the
+  part tabs, in TestPage) so it never unmounts on part navigation — the recording
+  rolls straight through all six parts. VOLUME: shared slider (VolumeControl.tsx)
+  on both players; the 0..1 value lives in useAudioStore + localStorage
+  ('cefrly-volume') so it persists across parts/attempts; store reset() keeps it. Six renderers in
   src/components/test/listening/ dispatched by ListeningPartRenderer. get-test v4 /
   submit-test v5 strip answers+explanations+transcripts and grade skill-agnostically
   (groups flattened). Admin: /admin/tests/new/listening + skill-dispatching edit

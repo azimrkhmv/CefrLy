@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { AudioAsset } from '../../types/test'
 import { audioUrl } from '../../lib/storage'
 import { useAudioStore } from '../../store/audio'
+import { VolumeControl } from './VolumeControl'
 
 // The PRACTICE-mode listening player: a normal media control. Unlike the
 // simulation player (AudioPlayer.tsx) there is NO preview gate and NO play cap —
@@ -25,6 +26,14 @@ export function PracticeAudioPlayer({ audio, label }: { audio: AudioAsset; label
   const [current, setCurrent] = useState(0)
   const [duration, setDuration] = useState(0)
   const [failed, setFailed] = useState(false)
+
+  const volume = useAudioStore((s) => s.volume)
+  const setVolume = useAudioStore((s) => s.setVolume)
+
+  // Keep the element at the shared volume (store + slider below).
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume
+  }, [volume])
 
   // Pause playback if this player unmounts (e.g. navigating to another part).
   useEffect(() => {
@@ -124,6 +133,8 @@ export function PracticeAudioPlayer({ audio, label }: { audio: AudioAsset; label
           className="accent-brand h-1.5 flex-1 cursor-pointer"
           disabled={failed || duration === 0}
         />
+
+        <VolumeControl value={volume} onChange={setVolume} />
       </div>
 
       {failed && (
@@ -137,7 +148,10 @@ export function PracticeAudioPlayer({ audio, label }: { audio: AudioAsset; label
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onEnded={() => setIsPlaying(false)}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
+        onLoadedMetadata={(e) => {
+          setDuration(e.currentTarget.duration || 0)
+          e.currentTarget.volume = volume
+        }}
         onTimeUpdate={(e) => setCurrent(e.currentTarget.currentTime)}
         onError={() => setFailed(true)}
       />
