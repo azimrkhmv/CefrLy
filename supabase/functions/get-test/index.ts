@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
 
   const { data: test, error: testError } = await admin
     .from('tests')
-    .select('id, title, duration_sec, status')
+    .select('id, title, skill, duration_sec, status')
     .eq('id', testId)
     .maybeSingle()
   if (testError) return json({ error: testError.message }, 500)
@@ -57,26 +57,29 @@ Deno.serve(async (req) => {
     .single()
   if (contentError || !contentRow) return json({ error: 'Test content missing' }, 500)
 
-  // Reuse the newest active session, or start a fresh one.
-  const { data: existing, error: sessionError } = await admin
-    .from('test_sessions')
-    .select('id, started_at, expires_at')
-    .eq('user_id', user.id)
-    .eq('test_id', testId)
-    .is('submitted_at', null)
-    .gt('expires_at', new Date().toISOString())
-    .order('started_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  if (sessionError) return json({ error: sessionError.message }, 500)
-
-  let session = existing
+  // Reuse the newest OPEN session (created by the mode picker's start-session,
+  // or resumed on refresh). A paused practice session still counts as open.
+  // If none exists, fall back to a default simulation session — this keeps
+  // direct navigation working. Listening is audio-paced: no timer is ever
+  // shown, so its sessions get a LONG housekeeping window instead of the
+  // test's nominal duration (a short hidden expiry would surprise-reject the
+  // student at submit time).
+  const LISTENING_WINDOW_SEC = 6 * 3600
+  let session = await findActiveSession(admin, user.id, testId)
   if (!session) {
-    const expiresAt = new Date(Date.now() + test.duration_sec * 1000).toISOString()
+    const windowSec =
+      test.skill === 'listening' ? LISTENING_WINDOW_SEC : (test.duration_sec as number)
+    const expiresAt = new Date(Date.now() + windowSec * 1000).toISOString()
     const { data: created, error: createError } = await admin
       .from('test_sessions')
-      .insert({ user_id: user.id, test_id: testId, expires_at: expiresAt })
-      .select('id, started_at, expires_at')
+      .insert({
+        user_id: user.id,
+        test_id: testId,
+        mode: 'simulation',
+        duration_sec: windowSec,
+        expires_at: expiresAt,
+      })
+      .select('id, started_at, expires_at, mode, duration_sec, paused_at')
       .single()
     if (createError || !created) {
       return json({ error: createError?.message ?? 'Could not start test session' }, 500)
@@ -86,13 +89,43 @@ Deno.serve(async (req) => {
 
   return json({
     ...sanitize(contentRow.content, test),
-    session: {
-      id: session.id,
-      startedAt: session.started_at,
-      expiresAt: session.expires_at,
-    },
+    session: serializeSession(session),
   })
 })
+
+// The newest open (unsubmitted, not-yet-expired) session, or null. A PAUSED
+// practice session never counts as expired while it is frozen.
+// deno-lint-ignore no-explicit-any
+async function findActiveSession(admin: any, userId: string, testId: string) {
+  const { data } = await admin
+    .from('test_sessions')
+    .select('id, started_at, expires_at, submitted_at, mode, duration_sec, paused_at')
+    .eq('user_id', userId)
+    .eq('test_id', testId)
+    .is('submitted_at', null)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (!data) return null
+  const now = Date.now()
+  const effectiveDeadline = data.paused_at
+    ? new Date(data.expires_at).getTime() + (now - new Date(data.paused_at).getTime())
+    : new Date(data.expires_at).getTime()
+  return now > effectiveDeadline ? null : data
+}
+
+// deno-lint-ignore no-explicit-any
+function serializeSession(s: any) {
+  return {
+    id: s.id,
+    startedAt: s.started_at,
+    expiresAt: s.expires_at,
+    mode: s.mode ?? 'simulation',
+    durationSec: s.duration_sec ?? null,
+    pausedAt: s.paused_at ?? null,
+    serverNow: new Date().toISOString(),
+  }
+}
 
 // deno-lint-ignore no-explicit-any
 function stripItem(item: any) {

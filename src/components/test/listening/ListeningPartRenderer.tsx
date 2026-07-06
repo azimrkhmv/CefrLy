@@ -1,5 +1,5 @@
 import type { SanitizedListeningPart } from '../../../types/test'
-import { AudioPlayer } from '../AudioPlayer'
+import { ListeningAudio } from '../ListeningAudio'
 import { McqResponse } from './McqResponse'
 import { StemCompletion } from './StemCompletion'
 import { ListeningMatch } from './ListeningMatch'
@@ -8,15 +8,18 @@ import { MultiExtractMcq } from './MultiExtractMcq'
 
 // Renders one Listening part: its per-part audio player (in per_part mode) then
 // the correct layout renderer. In single mode the one player lives at the
-// section top (TestPage), so no per-part player is shown here.
+// section top (TestPage), so no per-part player is shown here. `practice`
+// selects a controllable player (practice) vs the locked exam player (simulation).
 export function ListeningPartRenderer({
   part,
   numbering,
   audioMode,
+  practice,
 }: {
   part: SanitizedListeningPart
   numbering: Record<string, number>
   audioMode: 'per_part' | 'single'
+  practice: boolean
 }) {
   return (
     <div className="space-y-5">
@@ -26,7 +29,11 @@ export function ListeningPartRenderer({
       </div>
 
       {audioMode === 'per_part' && part.audio && (
-        <AudioPlayer audio={part.audio} label={`Part ${part.number} recording`} />
+        <ListeningAudio
+          audio={part.audio}
+          label={`Part ${part.number} recording`}
+          practice={practice}
+        />
       )}
 
       {part.layout === 'mcq_response' && <McqResponse part={part} numbering={numbering} />}

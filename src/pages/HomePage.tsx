@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchMyAttempts } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -28,13 +28,27 @@ const CARD = 'rounded-2xl bg-white shadow-soft ring-1 ring-line/50'
 const CARD_HERO = 'rounded-2xl bg-white shadow-lift ring-1 ring-line/50'
 const KICKER = 'text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft'
 
-// One sitting cat; its speech bubble does the band reactivity.
+// The ruler cat changes with the student's band: unimpressed below B1, then
+// happier (and rounder) at every level up to the blissful C1 chonk. All four
+// are processed like cat-sit.png (transparent bg, floor shadow kept, 520px
+// tall). `w` is the rendered width at the shared 52px height — BandRuler
+// clamps the cat by half of it so it never hangs off the scale's ends.
+const RULER_CAT: Record<Band, { src: string; w: number }> = {
+  below_B1: { src: '/cat-band-below-b1.png', w: 40 },
+  B1: { src: '/cat-band-b1.png', w: 41 },
+  B2: { src: '/cat-band-b2.png', w: 45 },
+  C1: { src: '/cat-band-c1.png', w: 53 },
+}
+
 const RULER_QUIP: Record<Band, string> = {
   below_B1: 'Everyone starts here.',
   B1: 'Climbing nicely.',
   B2: 'Look at you go.',
   C1: 'Top of the scale.',
 }
+
+// Mid-band scores used by the ?band= preview when no &score= is given.
+const PREVIEW_SCORE: Record<Band, number> = { below_B1: 5, B1: 14, B2: 23, C1: 32 }
 
 function greetingName(email?: string, meta?: Record<string, unknown>): string {
   const raw =
@@ -47,26 +61,28 @@ function greetingName(email?: string, meta?: Record<string, unknown>): string {
 }
 
 // The mascot that rides the CEFR ruler to the student's score. Decorative — the
-// score + "N marks" sentence below stay the accessible source of truth.
-function RulerCat({ quip }: { quip: string }) {
+// score + "N marks" sentence below stay the accessible source of truth. Its
+// quip bubble is passed separately (BandRuler topperBubble) so the wide bubble
+// never drags the cat off-position at the scale's extremes.
+function RulerCat({ band }: { band?: Band }) {
+  const cat = band ? RULER_CAT[band] : { src: '/cat-sit.png', w: 42 }
   return (
-    <span className="flex flex-col items-center">
-      <span
-        className="bubble-pop mb-1 whitespace-nowrap rounded-2xl bg-brand-soft px-3 py-1 text-xs font-bold text-brand-deep"
-        aria-hidden
-      >
-        {quip}
-      </span>
-      <img
-        src="/cat-sit.png"
-        alt=""
-        aria-hidden
-        draggable={false}
-        width={52}
-        height={65}
-        className="block h-[52px] w-auto select-none"
-      />
-      <span className="-mt-1 h-1.5 w-9 rounded-full bg-brand/10 blur-[2px]" aria-hidden />
+    <img
+      src={cat.src}
+      alt=""
+      aria-hidden
+      draggable={false}
+      width={cat.w}
+      height={52}
+      className="block h-[52px] w-auto select-none"
+    />
+  )
+}
+
+function RulerQuip({ quip }: { quip: string }) {
+  return (
+    <span className="bubble-pop block whitespace-nowrap rounded-2xl bg-brand-soft px-3 py-1 text-xs font-bold text-brand-deep">
+      {quip}
     </span>
   )
 }
@@ -171,7 +187,14 @@ function LevelSnapshot({ best }: { best: AttemptSummary }) {
       <p className="mt-2 max-w-md text-sm text-ink-soft">{BAND_INFO[best.band].blurb}</p>
 
       <div className="mt-6 pt-20 sm:pt-24">
-        <BandRuler band={best.band} score={best.rawScore} animate topper={<RulerCat quip={RULER_QUIP[best.band]} />} />
+        <BandRuler
+          band={best.band}
+          score={best.rawScore}
+          animate
+          topper={<RulerCat band={best.band} />}
+          topperHalfWidth={Math.ceil(RULER_CAT[best.band].w / 2)}
+          topperBubble={<RulerQuip quip={RULER_QUIP[best.band]} />}
+        />
       </div>
 
       <p className="mt-6 text-sm text-ink-soft">
@@ -329,7 +352,12 @@ function NewUserHome() {
           />
         </div>
         <div className="mt-8 max-w-xl pt-20 sm:pt-24">
-          <BandRuler demo animate topper={<RulerCat quip="This seat’s waiting for you." />} />
+          <BandRuler
+            demo
+            animate
+            topper={<RulerCat />}
+            topperBubble={<RulerQuip quip="This seat’s waiting for you." />}
+          />
         </div>
       </section>
 
@@ -378,6 +406,24 @@ export function HomePage() {
   const hasAttempts = !!attempts && attempts.length > 0
 
   const best = hasAttempts ? attempts!.reduce((a, b) => (b.rawScore > a.rawScore ? b : a)) : null
+
+  // PREVIEW: /?band=C1 (optionally &score=NN) shows the level snapshot as if
+  // that band were earned — for eyeballing the band-specific ruler cats
+  // without faking attempt history. Same spirit as /login?cat=. Only the
+  // snapshot is overridden; stats/sparkline/activity stay real.
+  const [params] = useSearchParams()
+  const rawBand = params.get('band')
+  const previewBand = rawBand
+    ? BAND_ORDER.find((b) => b.toLowerCase() === rawBand.toLowerCase())
+    : undefined
+  const snapshot =
+    best && previewBand
+      ? {
+          ...best,
+          band: previewBand,
+          rawScore: Math.min(MAX, Math.max(0, Number(params.get('score')) || PREVIEW_SCORE[previewBand])),
+        }
+      : best
   const latest = hasAttempts ? attempts![0] : null
   const avg = hasAttempts
     ? Math.round(attempts!.reduce((sum, a) => sum + a.rawScore, 0) / attempts!.length)
@@ -426,7 +472,7 @@ export function HomePage() {
 
       {hasAttempts && (
         <>
-          <LevelSnapshot best={best!} />
+          <LevelSnapshot best={snapshot!} />
 
           <section className={chron.length >= 2 ? 'grid gap-5 lg:grid-cols-[1fr_1.3fr]' : ''}>
             <div className="grid grid-cols-2 gap-5">

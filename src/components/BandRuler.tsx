@@ -28,6 +28,8 @@ export function BandRuler({
   animate = false,
   tone = 'light',
   topper,
+  topperHalfWidth = 21,
+  topperBubble,
 }: {
   band?: Band
   score?: number
@@ -37,6 +39,14 @@ export function BandRuler({
   /** Decorative node (e.g. the mascot) that rides the fill to the score. The
    * parent must reserve headroom above the ruler so it isn't clipped. */
   topper?: ReactNode
+  /** Half the topper's rendered width in px; the fill position is clamped by
+   * this so the mascot never hangs off the scale's ends. Band-specific cats
+   * have different widths, so the parent passes the right half. */
+  topperHalfWidth?: number
+  /** Optional speech bubble that follows the topper but clamps further inside
+   * the ruler, so a wide bubble never drags the mascot off-position or spills
+   * out of the card at the extremes. */
+  topperBubble?: ReactNode
 }) {
   const dark = tone === 'dark'
   const palette = {
@@ -130,22 +140,44 @@ export function BandRuler({
             style={{ width: `${fillPct}%` }}
             aria-hidden
           />
-          <span
-            className={`ruler-marker absolute top-0 h-3 w-0.5 -translate-x-1/2 ${palette.fill}`}
-            style={{ left: `${fillPct}%` }}
-            aria-hidden
-          />
+          {/* the vertical tick marks the exact position; when the mascot rides
+              the fill it IS the position indicator, so drop the tick to avoid a
+              disconnected stray line (esp. at low scores where the cat clamps). */}
+          {!topper && (
+            <span
+              className={`ruler-marker absolute top-0 h-3 w-0.5 -translate-x-1/2 ${palette.fill}`}
+              style={{ left: `${fillPct}%` }}
+              aria-hidden
+            />
+          )}
           {topper && (
+            // Clamped by half the mascot's width, so at score 0 its paw edge
+            // sits exactly at the start of the scale.
             <span
               className="pointer-events-none absolute z-[1] motion-safe:transition-[left] motion-safe:duration-1000"
               style={{
-                left: `clamp(28px, ${fillPct}%, calc(100% - 28px))`,
-                top: '5px',
+                left: `clamp(${topperHalfWidth}px, ${fillPct}%, calc(100% - ${topperHalfWidth}px))`,
+                top: '7px',
                 transform: 'translate(-50%, -100%)',
               }}
               aria-hidden
             >
               {topper}
+            </span>
+          )}
+          {topperBubble && (
+            // The bubble follows the mascot but clamps further in, so it stays
+            // fully inside the card even when the mascot is at an extreme.
+            <span
+              className="pointer-events-none absolute z-[1] motion-safe:transition-[left] motion-safe:duration-1000"
+              style={{
+                left: `clamp(96px, ${fillPct}%, calc(100% - 96px))`,
+                top: '-49px',
+                transform: 'translate(-50%, -100%)',
+              }}
+              aria-hidden
+            >
+              {topperBubble}
             </span>
           )}
         </>

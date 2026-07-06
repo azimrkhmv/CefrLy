@@ -239,11 +239,31 @@ export interface SanitizedListeningPart
   groups?: SanitizedGroup[]
 }
 
-/** Server-side attempt timing, created/reused by the get-test edge function. */
+/** How a session runs: the real exam, or self-paced practice. */
+export type TestMode = 'simulation' | 'practice'
+
+/** Server-side attempt timing, created/reused by the edge functions.
+ *  `serverNow` is the server's clock at response time — the Timer measures the
+ *  offset from the device clock so a wrong local clock can't skew the count.
+ *  `pausedAt` is set only while a practice timer is frozen. */
 export interface TestSession {
   id: string
   startedAt: string
   expiresAt: string
+  serverNow: string
+  mode: TestMode
+  durationSec: number | null
+  pausedAt: string | null
+}
+
+/** Read-only peek returned by the session-status edge function: test metadata
+ *  plus the user's open session (or null when they haven't started yet). */
+export interface SessionStatus {
+  skill: Skill
+  title: string
+  durationSec: number
+  serverNow: string
+  session: TestSession | null
 }
 
 export interface SanitizedReadingTest extends Omit<ReadingTest, 'parts'> {

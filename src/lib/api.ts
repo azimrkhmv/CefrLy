@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Band, SanitizedTest, Skill } from '../types/test'
+import type { Band, SanitizedTest, SessionStatus, Skill, TestMode, TestSession } from '../types/test'
 import type {
   AttemptResult,
   AttemptSummary,
@@ -39,6 +39,30 @@ export async function listTests(): Promise<TestCatalogEntry[]> {
  *  edge function — reading OR listening, discriminated by `skill`. */
 export function fetchSanitizedTest(testId: string): Promise<SanitizedTest> {
   return invokeFunction<SanitizedTest>('get-test', { testId })
+}
+
+/** READ-ONLY peek: test metadata + the user's open session (no session is
+ *  created). The reading exam uses this to decide picker vs. resume. */
+export function fetchSessionStatus(testId: string): Promise<SessionStatus> {
+  return invokeFunction<SessionStatus>('session-status', { testId })
+}
+
+/** Begin a session in the chosen mode (or resume the one already open).
+ *  `durationSec` is only needed for practice; simulation ignores it. */
+export function startSession(
+  testId: string,
+  mode: TestMode,
+  durationSec?: number,
+): Promise<{ session: TestSession }> {
+  return invokeFunction<{ session: TestSession }>('start-session', { testId, mode, durationSec })
+}
+
+/** Pause or resume a practice session's timer (server-authoritative). */
+export function controlSession(
+  sessionId: string,
+  action: 'pause' | 'resume',
+): Promise<{ session: TestSession }> {
+  return invokeFunction<{ session: TestSession }>('session-control', { sessionId, action })
 }
 
 /** Grades server-side and returns the full result with explanations. */

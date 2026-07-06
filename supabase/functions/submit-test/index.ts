@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
   const GRACE_MS = 120_000
   const { data: session, error: sessionError } = await admin
     .from('test_sessions')
-    .select('id, expires_at')
+    .select('id, expires_at, paused_at')
     .eq('user_id', user.id)
     .eq('test_id', testId)
     .is('submitted_at', null)
@@ -73,7 +73,13 @@ Deno.serve(async (req) => {
   if (!session) {
     return json({ error: 'No active test session. Open the test before submitting.' }, 409)
   }
-  if (Date.now() > new Date(session.expires_at).getTime() + GRACE_MS) {
+  // A paused (practice) session is frozen, so its wall-clock deadline is pushed
+  // out by however long it has been paused so far. Simulation sessions are
+  // never paused, so this is just expires_at for them.
+  const effectiveDeadline = session.paused_at
+    ? new Date(session.expires_at).getTime() + (Date.now() - new Date(session.paused_at).getTime())
+    : new Date(session.expires_at).getTime()
+  if (Date.now() > effectiveDeadline + GRACE_MS) {
     await admin
       .from('test_sessions')
       .update({ submitted_at: new Date().toISOString() })

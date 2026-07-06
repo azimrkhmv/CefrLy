@@ -3,11 +3,10 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { Logo } from './Logo'
-import { Cat } from './Cat'
 import {
-  ArrowRightIcon,
   BookIcon,
   ChartIcon,
+  ChevronDownIcon,
   CloseIcon,
   HeadphonesIcon,
   HomeIcon,
@@ -16,7 +15,11 @@ import {
   MicIcon,
   PenIcon,
   ShieldIcon,
+  UsersIcon,
 } from './icons'
+
+// TODO: point this at the real community invite (Telegram/Discord/etc.).
+const COMMUNITY_URL = 'https://t.me/cefrly'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${
@@ -79,29 +82,31 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="mt-auto space-y-3">
-        <div className="rounded-2xl bg-brand-soft px-4 pb-3.5 pt-3.5">
-          {/* the sleeping cushion cat crowns the card; hidden on short viewports
-              so it never scrolls under the nav */}
+        {/* Reference layout: text on top, sleeping cat INSIDE the card below it,
+            cushion resting on the card's bottom edge. */}
+        <div className="overflow-hidden rounded-2xl bg-brand-soft px-4 pb-0 pt-3.5">
+          <p className="text-sm font-extrabold text-brand-deep">Full mock test</p>
+          <p className="mt-0.5 text-xs font-bold text-brand">
+            35 questions · 5 parts · 60 minutes
+          </p>
           <img
             src="/cat-cushion.png"
             alt=""
             aria-hidden
             draggable={false}
-            className="pointer-events-none mx-auto -mt-11 mb-1 hidden h-[76px] w-auto select-none [@media(min-height:720px)]:block"
+            className="pointer-events-none mx-auto -mb-1 mt-1.5 h-24 w-auto select-none"
           />
-          <p className="text-sm font-extrabold text-brand-deep">Full mock test</p>
-          <p className="mt-0.5 text-xs font-bold text-brand">
-            35 questions · 5 parts · 60 minutes
-          </p>
         </div>
-        <Link
-          to={session ? '/reading' : '/login'}
+        <a
+          href={COMMUNITY_URL}
+          target="_blank"
+          rel="noopener noreferrer"
           onClick={onNavigate}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-accent px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
         >
-          {session ? 'Start Reading test' : 'Sign in'}
-          {session && <ArrowRightIcon width={15} height={15} />}
-        </Link>
+          <UsersIcon width={17} height={17} />
+          Join CEFR Community
+        </a>
       </div>
     </div>
   )
@@ -124,6 +129,18 @@ export function Layout() {
 
   const pageTitle =
     PAGE_TITLES.find(([prefix]) => location.pathname.startsWith(prefix))?.[1] ?? 'Home'
+  const p = location.pathname
+  const PageIcon = p.startsWith('/reading')
+    ? BookIcon
+    : p.startsWith('/listening')
+      ? HeadphonesIcon
+      : p.startsWith('/dashboard')
+        ? ChartIcon
+        : p.startsWith('/test/')
+          ? BookIcon
+          : p.startsWith('/results/')
+            ? ChartIcon
+            : HomeIcon
 
   return (
     <div className="min-h-screen bg-page text-ink">
@@ -170,7 +187,8 @@ export function Layout() {
             >
               <MenuIcon />
             </button>
-            <span className="rounded-xl bg-white px-5 py-2 text-sm font-bold text-heading shadow-card">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-heading shadow-card">
+              <PageIcon width={15} height={15} className="text-brand" />
               {pageTitle}
             </span>
             <div className="ml-auto flex items-center">
@@ -178,11 +196,17 @@ export function Layout() {
                 <div className="relative">
                   <button
                     onClick={() => setMenuOpen((v) => !v)}
-                    className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white shadow-card transition-transform hover:scale-105"
+                    className="flex items-center gap-1 rounded-full bg-white py-1 pl-1 pr-2 shadow-card transition-transform hover:scale-[1.03]"
                     aria-label="Account menu"
                     aria-expanded={menuOpen}
                   >
-                    <Cat pose="avatar" width={40} height={40} />
+                    <img
+                      src="/cat-face.png"
+                      alt=""
+                      aria-hidden
+                      className="h-9 w-9 object-contain"
+                    />
+                    <ChevronDownIcon width={14} height={14} className="text-ink-soft" />
                   </button>
                   {menuOpen && (
                     <>
