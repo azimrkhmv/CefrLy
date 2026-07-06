@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
 
   const { data: test, error: testError } = await admin
     .from('tests')
-    .select('id, title, skill, duration_sec, status')
+    .select('id, title, skill, duration_sec, status, scope, part_number')
     .eq('id', testId)
     .maybeSingle()
   if (testError) return json({ error: testError.message }, 500)
@@ -59,36 +59,20 @@ Deno.serve(async (req) => {
 
   // Reuse the newest OPEN session (created by the mode picker's start-session,
   // or resumed on refresh). A paused practice session still counts as open.
-  // If none exists, fall back to a default simulation session — this keeps
-  // direct navigation working. Listening is audio-paced: no timer is ever
-  // shown, so its sessions get a LONG housekeeping window instead of the
-  // test's nominal duration (a short hidden expiry would surprise-reject the
-  // student at submit time).
-  const LISTENING_WINDOW_SEC = 6 * 3600
-  let session = await findActiveSession(admin, user.id, testId)
+  // NO auto-create fallback: sessions start ONLY via start-session (the mode
+  // picker). The old fallback silently minted a fresh simulation session on
+  // any stray get-test call — it resurrected attempts the student had just
+  // cancelled via Exit (leaving = the attempt is cancelled, user decision
+  // 2026-07-06). With no open session the client shows the picker.
+  const session = await findActiveSession(admin, user.id, testId)
   if (!session) {
-    const windowSec =
-      test.skill === 'listening' ? LISTENING_WINDOW_SEC : (test.duration_sec as number)
-    const expiresAt = new Date(Date.now() + windowSec * 1000).toISOString()
-    const { data: created, error: createError } = await admin
-      .from('test_sessions')
-      .insert({
-        user_id: user.id,
-        test_id: testId,
-        mode: 'simulation',
-        duration_sec: windowSec,
-        expires_at: expiresAt,
-      })
-      .select('id, started_at, expires_at, mode, duration_sec, paused_at')
-      .single()
-    if (createError || !created) {
-      return json({ error: createError?.message ?? 'Could not start test session' }, 500)
-    }
-    session = created
+    return json({ error: 'No active test session — choose a mode to start.' }, 409)
   }
 
   return json({
     ...sanitize(contentRow.content, test),
+    scope: test.scope ?? 'full',
+    partNumber: test.part_number ?? null,
     session: serializeSession(session),
   })
 })

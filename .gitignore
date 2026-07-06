@@ -18,6 +18,7 @@ dist/
 # claude session history / tooling artifacts
 .remember/
 .playwright-mcp/
+.claude/
 
 # real exam source material (papers + audio) — lives in Supabase, never in git
 listening sample/

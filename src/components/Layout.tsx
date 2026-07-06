@@ -9,8 +9,10 @@ import {
   ChevronDownIcon,
   CloseIcon,
   GearIcon,
+  DollarIcon,
   HeadphonesIcon,
   HomeIcon,
+  LifebuoyIcon,
   LogoutIcon,
   MenuIcon,
   MicIcon,
@@ -21,7 +23,7 @@ import {
 } from './icons'
 
 // TODO: point this at the real community invite (Telegram/Discord/etc.).
-const COMMUNITY_URL = 'https://t.me/cefrly'
+export const COMMUNITY_URL = 'https://t.me/cefrly'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${
@@ -46,7 +48,7 @@ function SoonItem({ icon, label }: { icon: ReactNode; label: string }) {
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { session, role } = useAuth()
   return (
-    <div className="flex h-full flex-col gap-7 p-4">
+    <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">
       <div className="pt-3">
         <Logo className="px-2" />
       </div>
@@ -88,7 +90,13 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         )}
       </nav>
 
-      <div className="mt-auto space-y-3">
+      <div className="mt-auto space-y-2.5 pt-2">
+        <nav className="flex flex-col" aria-label="More" onClick={onNavigate}>
+          <NavLink to="/pricing" className={navLinkClass}>
+            <DollarIcon width={18} height={18} />
+            Pricing
+          </NavLink>
+        </nav>
         {/* Reference layout: text on top, sleeping cat INSIDE the card below it,
             cushion resting on the card's bottom edge. */}
         <div className="overflow-hidden rounded-2xl bg-brand-soft px-4 pb-0 pt-3.5">
@@ -101,7 +109,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             alt=""
             aria-hidden
             draggable={false}
-            className="pointer-events-none mx-auto -mb-1 mt-1.5 h-24 w-auto select-none"
+            className="pointer-events-none mx-auto -mb-1 mt-1.5 h-24 w-auto translate-x-3 select-none"
           />
         </div>
         <a
@@ -109,7 +117,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={onNavigate}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
         >
           <UsersIcon width={17} height={17} />
           Join CEFR Community
@@ -124,6 +132,8 @@ const PAGE_TITLES: [string, string][] = [
   ['/listening', 'Listening'],
   ['/dashboard', 'My results'],
   ['/settings', 'Settings'],
+  ['/pricing', 'Pricing'],
+  ['/support', 'Support'],
   ['/test/', 'Test'],
   ['/results/', 'Results'],
   ['/handoff', 'Signing you in'],
@@ -146,11 +156,15 @@ export function Layout() {
         ? ChartIcon
         : p.startsWith('/settings')
           ? GearIcon
-          : p.startsWith('/test/')
-          ? BookIcon
-          : p.startsWith('/results/')
-            ? ChartIcon
-            : HomeIcon
+          : p.startsWith('/pricing')
+            ? DollarIcon
+            : p.startsWith('/support')
+              ? LifebuoyIcon
+              : p.startsWith('/test/')
+                ? BookIcon
+                : p.startsWith('/results/')
+                  ? ChartIcon
+                  : HomeIcon
 
   return (
     <div className="min-h-screen bg-page text-ink">
@@ -243,6 +257,14 @@ export function Layout() {
                         >
                           <GearIcon width={16} height={16} />
                           Settings
+                        </Link>
+                        <Link
+                          to="/support"
+                          onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-ink hover:bg-page"
+                        >
+                          <LifebuoyIcon width={16} height={16} />
+                          Support
                         </Link>
                         <button
                           onClick={() => supabase.auth.signOut()}

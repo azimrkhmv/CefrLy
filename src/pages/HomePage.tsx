@@ -30,6 +30,10 @@ const CARD = 'rounded-2xl bg-white shadow-soft ring-1 ring-line/50'
 const CARD_HERO = 'rounded-2xl bg-white shadow-lift ring-1 ring-line/50'
 const KICKER = 'text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft'
 
+/** A full-mock attempt — the only kind that carries a CEFR band. Part drills
+ *  (scope 'part', band null) never reach the level/stat surfaces. */
+type BandedAttempt = AttemptSummary & { band: Band }
+
 // Mid-band scores used by the ?band= preview when no &score= is given.
 const PREVIEW_SCORE: Record<Band, number> = { below_B1: 5, B1: 14, B2: 23, C1: 32 }
 
@@ -76,10 +80,12 @@ function StatTile({
       </span>
       <div className="min-w-0">
         <p className="text-sm font-semibold text-ink-soft">{label}</p>
-        <p className="mt-0.5 flex items-center gap-2">
+        {/* the band pill must never wrap INTERNALLY ("Below / B1"); when the
+            tile is too narrow the whole pill moves below the number instead */}
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="tnum text-2xl font-extrabold text-heading">{value}</span>
           {sub && (
-            <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-bold text-brand">
+            <span className="whitespace-nowrap rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-bold text-brand">
               {sub}
             </span>
           )}
@@ -143,7 +149,7 @@ function LevelSnapshot({
   selfLevel,
   targetBand,
 }: {
-  best: AttemptSummary
+  best: BandedAttempt
   selfLevel?: SelfLevel | null
   targetBand?: TargetBand | null
 }) {
@@ -152,7 +158,9 @@ function LevelSnapshot({
   // a profile predating the wizard).
   const selfBand = selfLevel && selfLevel !== 'unknown' ? selfLevel : null
   const band = selfBand ?? best.band
-  const rulerScore = selfBand ? PREVIEW_SCORE[selfBand] : best.rawScore
+  // Self-assessed: no real marks, so seat the cat exactly on the band's own
+  // mark (its threshold) — right above the band label, never mid-band.
+  const rulerScore = selfBand ? BAND_THRESHOLDS[selfBand] : best.rawScore
   const score = useCountUp(best.rawScore)
   const idx = BAND_ORDER.indexOf(band)
   const nextBand = idx < BAND_ORDER.length - 1 ? BAND_ORDER[idx + 1] : null
@@ -208,7 +216,6 @@ function LevelSnapshot({
           topper={<BandCat band={band} />}
           topperHalfWidth={Math.ceil(BAND_CAT[band].w / 2)}
           topperBubble={<QuipBubble>{BAND_QUIP[band]}</QuipBubble>}
-          goal={targetBand ? { score: BAND_THRESHOLDS[targetBand], label: `Goal: ${targetBand}` } : undefined}
         />
       </div>
 
@@ -365,6 +372,11 @@ function RecentActivity({ attempts }: { attempts: AttemptSummary[] }) {
                 >
                   {skillMeta(a.skill).label}
                 </span>
+                {a.scope === 'part' && (
+                  <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.06em] text-brand">
+                    Part {a.partNumber}
+                  </span>
+                )}
               </div>
               <p className="text-sm text-ink-soft">
                 {new Date(a.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
@@ -374,9 +386,12 @@ function RecentActivity({ attempts }: { attempts: AttemptSummary[] }) {
               <span className="tnum text-lg font-extrabold text-heading">
                 {a.rawScore}/{a.total}
               </span>
-              <span className={`rounded-full px-2.5 py-1 text-sm font-bold ${BAND_INFO[a.band].className}`}>
-                {BAND_INFO[a.band].label}
-              </span>
+              {/* part drills carry no CEFR band */}
+              {a.band && (
+                <span className={`rounded-full px-2.5 py-1 text-sm font-bold ${BAND_INFO[a.band].className}`}>
+                  {BAND_INFO[a.band].label}
+                </span>
+              )}
               <Link
                 to={`/results/${a.id}`}
                 className="inline-flex items-center rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-ink transition-colors hover:border-brand hover:text-brand"
@@ -492,9 +507,18 @@ export function HomePage() {
     session?.user.email,
     session?.user.user_metadata as Record<string, unknown> | undefined,
   )
-  const hasAttempts = !!attempts && attempts.length > 0
+  // The CEFR surfaces (level snapshot, stat tiles, sparkline) speak in
+  // full-mock terms — a part drill has no band and its small score can't sit
+  // on the /35 axis. Recent activity still lists every attempt.
+  const fullAttempts = (attempts ?? []).filter(
+    (a): a is BandedAttempt => a.scope !== 'part' && a.band !== null,
+  )
+  const hasAttempts = fullAttempts.length > 0
+  const hasAnyAttempts = !!attempts && attempts.length > 0
 
-  const best = hasAttempts ? attempts!.reduce((a, b) => (b.rawScore > a.rawScore ? b : a)) : null
+  const best = hasAttempts
+    ? fullAttempts.reduce((a, b) => (b.rawScore > a.rawScore ? b : a))
+    : null
 
   // PREVIEW: /?band=C1 (optionally &score=NN) shows the level snapshot as if
   // that band were earned — for eyeballing the band-specific ruler cats
@@ -513,11 +537,11 @@ export function HomePage() {
           rawScore: Math.min(MAX, Math.max(0, Number(params.get('score')) || PREVIEW_SCORE[previewBand])),
         }
       : best
-  const latest = hasAttempts ? attempts![0] : null
+  const latest = hasAttempts ? fullAttempts[0] : null
   const avg = hasAttempts
-    ? Math.round(attempts!.reduce((sum, a) => sum + a.rawScore, 0) / attempts!.length)
+    ? Math.round(fullAttempts.reduce((sum, a) => sum + a.rawScore, 0) / fullAttempts.length)
     : 0
-  const chron = hasAttempts ? [...attempts!].reverse().map((a) => a.rawScore) : []
+  const chron = hasAttempts ? [...fullAttempts].reverse().map((a) => a.rawScore) : []
 
   return (
     <div className="space-y-10">
@@ -586,7 +610,7 @@ export function HomePage() {
 
           <section className={chron.length >= 2 ? 'grid gap-5 lg:grid-cols-[1fr_1.3fr]' : ''}>
             <div className="grid grid-cols-2 gap-5">
-              <StatTile Icon={ClipboardIcon} label="Tests taken" value={String(attempts!.length)} />
+              <StatTile Icon={ClipboardIcon} label="Mocks taken" value={String(fullAttempts.length)} />
               <StatTile Icon={TrendUpIcon} label="Average" value={`${avg}/${MAX}`} />
               <StatTile
                 Icon={StarIcon}
@@ -618,7 +642,7 @@ export function HomePage() {
 
       <SkillsRoadmap weakAreas={profile?.weakAreas} />
 
-      {hasAttempts && <RecentActivity attempts={attempts!} />}
+      {hasAnyAttempts && <RecentActivity attempts={attempts!} />}
     </div>
   )
 }

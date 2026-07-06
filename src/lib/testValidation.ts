@@ -21,7 +21,10 @@ const ALLOWED_TYPES_PER_PART: string[][] = [
 ]
 const GAP_MARKER_RE = /\{\{\s*([\w-]+)\s*\}\}/g
 
-export function validateReadingTestContent(content: any): string[] {
+// Pass `partNumber` (1–5) to validate a SINGLE-PART test (mirrors the server):
+// content.parts must then hold exactly that one canonical part; the
+// 35-question total check is skipped.
+export function validateReadingTestContent(content: any, partNumber?: number): string[] {
   const errors: string[] = []
   const err = (msg: string) => errors.push(msg)
 
@@ -39,8 +42,13 @@ export function validateReadingTestContent(content: any): string[] {
     err('targetLevels must be a non-empty array.')
   }
 
-  if (!Array.isArray(content.parts) || content.parts.length !== 5) {
-    err(`Test must have exactly 5 parts (got ${content.parts?.length ?? 0}).`)
+  const expectedParts = partNumber ? 1 : 5
+  if (!Array.isArray(content.parts) || content.parts.length !== expectedParts) {
+    err(
+      partNumber
+        ? `A part test must contain exactly its 1 part (got ${content.parts?.length ?? 0}).`
+        : `Test must have exactly 5 parts (got ${content.parts?.length ?? 0}).`,
+    )
     return errors
   }
 
@@ -48,12 +56,12 @@ export function validateReadingTestContent(content: any): string[] {
   let totalItems = 0
 
   content.parts.forEach((part: any, index: number) => {
-    const partNo = index + 1
+    const partNo = partNumber ?? index + 1
     const label = `Part ${partNo}`
 
     if (part.number !== partNo) err(`${label}: number must be ${partNo} (got ${part.number}).`)
-    if (part.layout !== EXPECTED_LAYOUTS[index]) {
-      err(`${label}: layout must be '${EXPECTED_LAYOUTS[index]}' (got '${part.layout}').`)
+    if (part.layout !== EXPECTED_LAYOUTS[partNo - 1]) {
+      err(`${label}: layout must be '${EXPECTED_LAYOUTS[partNo - 1]}' (got '${part.layout}').`)
     }
     if (typeof part.instructions !== 'string' || !part.instructions.trim()) {
       err(`${label}: instructions are required.`)
@@ -61,8 +69,8 @@ export function validateReadingTestContent(content: any): string[] {
 
     const items = Array.isArray(part.items) ? part.items : []
     totalItems += items.length
-    if (items.length !== EXPECTED_ITEM_COUNTS[index]) {
-      err(`${label}: must have exactly ${EXPECTED_ITEM_COUNTS[index]} questions (got ${items.length}).`)
+    if (items.length !== EXPECTED_ITEM_COUNTS[partNo - 1]) {
+      err(`${label}: must have exactly ${EXPECTED_ITEM_COUNTS[partNo - 1]} questions (got ${items.length}).`)
     }
 
     if (partNo === 1 || partNo === 4 || partNo === 5) {
@@ -129,9 +137,9 @@ export function validateReadingTestContent(content: any): string[] {
       if (seenItemIds.has(item.id)) err(`${qLabel}: duplicate question id '${item.id}'.`)
       seenItemIds.add(item.id)
 
-      if (!ALLOWED_TYPES_PER_PART[index].includes(item.type)) {
+      if (!ALLOWED_TYPES_PER_PART[partNo - 1].includes(item.type)) {
         err(
-          `${qLabel}: type '${item.type}' is not allowed in ${label} (allowed: ${ALLOWED_TYPES_PER_PART[index].join(', ')}).`,
+          `${qLabel}: type '${item.type}' is not allowed in ${label} (allowed: ${ALLOWED_TYPES_PER_PART[partNo - 1].join(', ')}).`,
         )
       }
 
@@ -200,7 +208,10 @@ export function validateReadingTestContent(content: any): string[] {
     })
   })
 
-  if (totalItems !== 35) err(`Test must have exactly 35 questions in total (got ${totalItems}).`)
+  // A part test's size is fully pinned by its per-part count above.
+  if (!partNumber && totalItems !== 35) {
+    err(`Test must have exactly 35 questions in total (got ${totalItems}).`)
+  }
 
   return errors
 }

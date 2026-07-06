@@ -11,6 +11,8 @@ import { TestPage } from './pages/TestPage'
 import { ResultsPage } from './pages/ResultsPage'
 import { ReviewPage } from './pages/ReviewPage'
 import { SamplesPage } from './pages/SamplesPage'
+import { PricingPage } from './pages/PricingPage'
+import { SupportPage } from './pages/SupportPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { HandoffPage } from './pages/HandoffPage'
 import { WelcomePage } from './pages/WelcomePage'
@@ -18,6 +20,7 @@ import { SettingsPage } from './pages/SettingsPage'
 import { AdminTestsPage } from './pages/admin/AdminTestsPage'
 import { TestFormPage } from './pages/admin/TestFormPage'
 import { ListeningTestFormPage } from './pages/admin/ListeningTestFormPage'
+import { PartTestFormPage } from './pages/admin/PartTestFormPage'
 import { TestFormRouter } from './pages/admin/TestFormRouter'
 import { AdminUsersPage } from './pages/admin/AdminUsersPage'
 import { Cat } from './components/Cat'
@@ -60,6 +63,8 @@ export default function App() {
           <Route path="/reading" element={<ReadingPage />} />
           <Route path="/listening" element={<ListeningPage />} />
           <Route path="/samples" element={<SamplesPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/support" element={<SupportPage />} />
           <Route path="/test/:testId" element={<TestPage />} />
           <Route path="/results/:attemptId" element={<ResultsPage />} />
           <Route path="/review/:attemptId" element={<ReviewPage />} />
@@ -74,6 +79,7 @@ export default function App() {
           <Route path="/admin/tests" element={<AdminTestsPage />} />
           <Route path="/admin/tests/new" element={<TestFormPage />} />
           <Route path="/admin/tests/new/listening" element={<ListeningTestFormPage />} />
+          <Route path="/admin/tests/new/part" element={<PartTestFormPage />} />
           <Route path="/admin/tests/:slug" element={<TestFormRouter />} />
           <Route element={<SuperAdminRoute />}>
             <Route path="/admin/admins" element={<AdminUsersPage />} />

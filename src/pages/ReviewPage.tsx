@@ -130,7 +130,9 @@ function ReviewScreen({ review }: { review: AttemptReview }) {
             </div>
           </div>
           <span className="tnum shrink-0 rounded-full bg-brand-soft px-3 py-1.5 text-xs font-bold text-brand">
-            {review.rawScore}/{review.total} · {BAND_INFO[review.band].label}
+            {review.rawScore}/{review.total}
+            {/* part drills carry no CEFR band */}
+            {review.band ? ` · ${BAND_INFO[review.band].label}` : ''}
           </span>
         </div>
       </header>

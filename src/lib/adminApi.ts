@@ -13,6 +13,9 @@ export interface AdminTestRow {
   skill: string
   title: string
   status: TestStatus
+  /** 'part' = single-part drill; missing on rows read before migration 0010. */
+  scope?: 'full' | 'part'
+  part_number?: number | null
   created_at: string
 }
 

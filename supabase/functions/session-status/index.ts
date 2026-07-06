@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
 
   const { data: test, error: testError } = await admin
     .from('tests')
-    .select('id, title, skill, duration_sec, status')
+    .select('id, title, skill, duration_sec, status, scope, part_number')
     .eq('id', testId)
     .maybeSingle()
   if (testError) return json({ error: testError.message }, 500)
@@ -55,6 +55,10 @@ Deno.serve(async (req) => {
     skill: test.skill,
     title: test.title,
     durationSec: test.duration_sec,
+    // 'part' = a single-part drill: the client skips the mode picker and
+    // auto-starts practice with the test's own duration.
+    scope: test.scope ?? 'full',
+    partNumber: test.part_number ?? null,
     serverNow: new Date().toISOString(),
     session: session ? serializeSession(session) : null,
   })

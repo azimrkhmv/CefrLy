@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { fetchMyAttempts, listTests } from '../lib/api'
@@ -38,32 +39,46 @@ export function TestCatalog({ skill }: { skill: Skill }) {
     enabled: !!session,
   })
 
-  const tests = allTests?.filter((t) => t.skill === skill)
+  // 'mock' = the full papers; a number = single-part drills for that part.
+  const [tab, setTab] = useState<'mock' | number>('mock')
+  const skillTests = allTests?.filter((t) => t.skill === skill)
+  const tests = skillTests?.filter((t) =>
+    tab === 'mock' ? (t.scope ?? 'full') === 'full' : t.scope === 'part' && t.part_number === tab,
+  )
   const attemptInfo = buildAttemptInfo(attempts)
-  const parts = Array.from({ length: meta.parts }, (_, i) => `Part ${i + 1}`)
+  const partTabs = Array.from({ length: meta.parts }, (_, i) => i + 1)
+  const tabLabel = tab === 'mock' ? 'mock test' : `Part ${tab} drill`
 
   return (
     <div className="rounded-2xl border border-line bg-white p-6 shadow-card sm:p-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div className="max-w-full overflow-x-auto">
           <div className="inline-flex whitespace-nowrap rounded-xl border border-line bg-white p-1">
-            <span className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white">
+            <button
+              onClick={() => setTab('mock')}
+              className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
+                tab === 'mock' ? 'bg-brand text-white' : 'text-ink-soft hover:text-ink'
+              }`}
+            >
               Mock test
-            </span>
-            {parts.map((part) => (
-              <span
+            </button>
+            {partTabs.map((part) => (
+              <button
                 key={part}
-                title="Practice by part is coming soon"
-                className="cursor-not-allowed rounded-lg px-4 py-2 text-sm font-bold text-ink-faint"
+                onClick={() => setTab(part)}
+                className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
+                  tab === part ? 'bg-brand text-white' : 'text-ink-soft hover:text-ink'
+                }`}
               >
-                {part}
-              </span>
+                Part {part}
+              </button>
             ))}
           </div>
         </div>
         {tests && (
           <span className="text-sm text-ink-soft">
-            {tests.length} {meta.label.toLowerCase()} test{tests.length === 1 ? '' : 's'} available
+            {tests.length} {meta.label.toLowerCase()} {tabLabel}
+            {tests.length === 1 ? '' : 's'} available
           </span>
         )}
       </div>
@@ -93,8 +108,16 @@ export function TestCatalog({ skill }: { skill: Skill }) {
       {session && tests && tests.length === 0 && (
         <EmptyState
           pose="nap"
-          title={`No ${meta.label.toLowerCase()} tests published yet`}
-          hint="Check back soon — new mock tests are on the way."
+          title={
+            tab === 'mock'
+              ? `No ${meta.label.toLowerCase()} tests published yet`
+              : `No Part ${tab} drills yet`
+          }
+          hint={
+            tab === 'mock'
+              ? 'Check back soon — new mock tests are on the way.'
+              : 'Single-part practice for this part is coming — check back soon.'
+          }
         />
       )}
 

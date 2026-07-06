@@ -124,6 +124,20 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   another device restores the session/timer but not typed answers; listening
   simulation playLimit is client-side only (exit/refresh restores plays; audio
   URLs are public) — real enforcement needs signed URLs + server play counts.
+- EXIT = CANCEL (user decision 2026-07-06, supersedes save-on-exit): the Exit
+  button's dialog now reads "This attempt will be cancelled and your answers
+  will be discarded" (confirm: "Leave & cancel"). Confirming calls
+  session-control action 'cancel' (v2 — closes the session server-side WITHOUT
+  grading, any mode/skill, idempotent), clears the local draft + stores, and
+  navigates out. get-test v7 no longer AUTO-CREATES a fallback simulation
+  session when none is open — it 409s ("choose a mode to start"); sessions are
+  born ONLY in start-session. That fallback was resurrecting just-cancelled
+  attempts via a stray refetch (client also guards: abandon sets started=false
+  BEFORE removeQueries, since removing an actively-observed query refetches
+  it). Refresh/tab-close mid-test still leaves the session open → Resume
+  banner (crash recovery, answers restored from the draft); only the explicit
+  Exit cancels. Verified e2e 2026-07-06: type → Exit → Leave & cancel →
+  catalog; re-open → fresh picker, 0 drafts, 0 open sessions in DB.
 - Local env goes in .env.local (gitignored). Never commit keys.
 - PHASE 2 (admin dashboard) is built: profiles.role (student/admin/super_admin;
   role changes only via admin-users edge function — column grant blocks direct
@@ -198,7 +212,16 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   (groups flattened). Admin: /admin/tests/new/listening + skill-dispatching edit
   router; dual audio upload + map image upload; server validator validate-listening.ts
   (admin-tests v3). Catalog split /reading + /listening (shared TestCatalog); dashboard
-  + home carry per-attempt skill (src/lib/skills.ts). Verified end-to-end 2026-07-06:
+  + home carry per-attempt skill (src/lib/skills.ts). MY RESULTS (/dashboard,
+  reworked 2026-07-06 to the user's reference design): an ALWAYS-visible section
+  tab strip (Reading · Listening + greyed Writing/Speaking "soon" chips — NO
+  "All" tab, user cut it 2026-07-06; default tab = Reading,
+  standard pill strip) and attempts as a CARD GRID (sm:2/xl:3 cols) — each card
+  has a skill-colored top bar (reading bg-brand, listening bg-sun), icon tile,
+  title+datetime, skill/band chips + score, and a bottom-bordered "Review →"
+  footer (lesson-card pattern). Stat tiles (tests taken / best) follow the
+  active tab; per-tab EmptyState (bored cat) with a "Go to <skill>" CTA. NOT
+  single-row lists — the user explicitly rejected those. Verified end-to-end 2026-07-06:
   sanitization (no answers/transcripts pre-submit), grading (gap multi-spellings +
   grouped Part 5), history skill, public asset URLs 200. Writing/Speaking still NOT built.
 
@@ -358,6 +381,62 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   block forces opacity-0 rows visible.
 - DEV ONLY: /cat-preview route in App.tsx shows the mascot pose sheet — remove
   before launch.
+- SIDEBAR EXTRAS (2026-07-06): ONE Pricing nav link (DollarIcon — the user
+  asked for a $ sign, replacing the tag icon) sits at the sidebar bottom above
+  the "Full mock test" card (cat back at the ORIGINAL h-24 after size
+  back-and-forth — don't shrink it again). Support lives in the header
+  ACCOUNT DROPDOWN (LifebuoyIcon, under Settings), NOT the sidebar — the user
+  cut it from there. Sidebar is compact (gap-4) + overflow-y-auto so the
+  bottom card/CTA never clip on short laptops (they did once). /pricing
+  (PricingPage) honestly says early access is FREE — no invented price tiers
+  until real billing exists. /support (SupportPage) = Telegram community CTA
+  (COMMUNITY_URL, exported from Layout.tsx) + a 4-item FAQ grounded in real
+  app behavior. Icons DollarIcon/LifebuoyIcon/CheckIcon added.
+
+## Single-part tests ("practice by part" — built 2026-07-06)
+- A test is now scope 'full' (the rigid mock) or 'part' (EXACTLY ONE canonical
+  part, same per-part layout/count rules). Migration 0010: tests.scope +
+  tests.part_number (CHECK-paired); attempts.band DROPPED NOT NULL — part
+  attempts store band NULL (bands are /35-only; a /6 drill score means nothing
+  on the 28/18/10 thresholds). The scope marker ALSO lives inside content JSON
+  (scope + partNumber) so it travels with the test.
+- SERVER (all deployed): admin-tests v4 — validators take an optional
+  partNumber (1–5 reading / 1–6 listening): parts.length must be 1, per-part
+  rules keyed by partNo instead of array index, 35-total check skipped;
+  listening part tests must be audioMode 'per_part'. get-test v8 +
+  session-status v2 return scope/partNumber. start-session v4: part tests
+  always run with the author-set duration (the 20–90 min practice rule never
+  applies). submit-test v7: band=null + scope/partNumber in result for part
+  attempts. review-attempt v2 preserves band null (no 'below_B1' default).
+  Client validator mirrors updated in lockstep (testValidation.ts /
+  listeningValidation.ts).
+- STUDENT FLOW: the catalog Part 1..N tabs are REAL now (TestCatalog filters
+  scope/part_number; TestCard shows "Part N practice"; per-tab empty state).
+  Part drills SKIP the mode picker — TestPage auto-starts (or auto-resumes)
+  practice via an effect; header shows "Part N practice · M questions";
+  single-part papers hide the part-tab nav and prev/next. Results: score-only
+  header (accuracy % + N/M correct), no band, no ruler, drill-specific copy;
+  Exit-cancel and the confirm dialogs work unchanged.
+- STATS ISOLATION: part attempts NEVER pollute CEFR surfaces — HomePage
+  filters to full+banded attempts (BandedAttempt type guard) for the level
+  snapshot/stat tiles/sparkline ("Mocks taken"); Dashboard "Best full mock"
+  tile ignores drills; band pills render only when band != null; drills get a
+  "PART N" chip (dashboard cards, recent activity).
+- ADMIN: "New test ▾ → Part test (single part)" → /admin/tests/new/part
+  (PartTestFormPage): skill+part pickers (locked in edit), REUSES the existing
+  per-part editors + validators; builds content by generating the FULL draft
+  content and keeping only the chosen part (+scope/partNumber); edit-mode
+  prefill plants the stored part back into an empty full draft so the standard
+  converters run. TestFormRouter branches on content.scope==='part' FIRST (the
+  full-form prefills destructure 5/6 parts and would break). Listening part
+  drills force audioMode per_part (part carries its own recording).
+- Fixture: `reading-part-1-drill` (published; Part 1 extracted from Reading
+  Mock 1 via SQL, 10 min). Verified e2e 2026-07-06: Part 1 tab → card → auto-
+  start practice (10:00 timer, no picker) → submit → 1/6, band NULL in DB,
+  score-only results → dashboard PART chip + best-tile isolation; admin form
+  renders with live validation and skill/part switching.
+- NOTE: `npx tsc --noEmit` checks NOTHING here (solution-style root tsconfig
+  with files:[]) — always use `npx tsc -p tsconfig.app.json --noEmit`.
 
 ## Onboarding (asked ONCE per account — built 2026-07-06)
 - profiles carries the wizard answers (migration 0009: onboarded_at, first_exam
@@ -388,11 +467,14 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   weak areas/time) are editable at /settings (SettingsPage; Save enables on
   dirty, "Saved ✓" on success); attribution is shown read-only there
   (write-once by convention, not constraint).
-- Dashboard personalization: BandRuler `goal` prop plants a "Goal" marker at
-  the target band's threshold — a white rounded pill (flag icon + GOAL in
-  accent-deep, ring-accent/40, shadow-card) with a short accent stem down to
-  the rule, clamped 28px inside the scale ends (z-0, behind the cat; the lone
-  13px outline flag it replaced read as noise — user call 2026-07-06); LevelSnapshot swaps the
+- Dashboard personalization: the on-ruler "Goal" marker is GONE (user call
+  2026-07-06, "I don't need that goal" — BandRuler no longer has a `goal`
+  prop; don't reintroduce it). The target band now personalizes only the
+  copy/chips below. Self-assessed levels (no real marks) seat the ruler cat
+  at the band's THRESHOLD so it stands directly above the band label — the
+  old PREVIEW_SCORE mid-band seat drifted the C1 cat toward the scale's end
+  (same user call); PREVIEW_SCORE remains only for the ?band= URL preview.
+  LevelSnapshot swaps the
   "N more marks" line to "…to reach your goal (B2)" / "Goal reached — aim
   higher?" (falls back to next-band copy without a goal); exam-countdown chip
   (sun-soft, ClockIcon, links to /settings; "Exam in ~N weeks/months", past →

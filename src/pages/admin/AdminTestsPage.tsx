@@ -60,6 +60,9 @@ export function AdminTestsPage() {
             <Link to="/admin/tests/new/listening" className="block px-4 py-2 text-sm font-bold text-ink hover:bg-page">
               Listening test
             </Link>
+            <Link to="/admin/tests/new/part" className="block px-4 py-2 text-sm font-bold text-ink hover:bg-page">
+              Part test (single part)
+            </Link>
           </div>
         </details>
       </div>
@@ -118,7 +121,14 @@ export function AdminTestsPage() {
                 <tr key={test.id}>
                   <td className="px-4 py-3 font-bold">{test.title}</td>
                   <td className="tnum px-4 py-3 text-xs text-ink-soft">{test.slug}</td>
-                  <td className="px-4 py-3 capitalize">{test.skill}</td>
+                  <td className="px-4 py-3 capitalize">
+                    {test.skill}
+                    {test.scope === 'part' && (
+                      <span className="ml-1.5 rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-bold normal-case text-brand">
+                        Part {test.part_number}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={STATUS_BADGE[test.status] ?? NEUTRAL_BADGE}>
                       {test.status}

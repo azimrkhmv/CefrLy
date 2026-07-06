@@ -21,7 +21,10 @@ function itemsOf(part: any): any[] {
   return part?.items ?? []
 }
 
-export function validateListeningTestContent(content: any): string[] {
+// Pass `partNumber` (1–6) to validate a SINGLE-PART test (mirrors the server):
+// content.parts must then hold exactly that one canonical part; the
+// 35-question total check is skipped and audioMode must be 'per_part'.
+export function validateListeningTestContent(content: any, partNumber?: number): string[] {
   const errors: string[] = []
   const err = (m: string) => errors.push(m)
 
@@ -37,6 +40,9 @@ export function validateListeningTestContent(content: any): string[] {
   if (content.audioMode !== 'per_part' && content.audioMode !== 'single') {
     err("audioMode must be 'per_part' or 'single'.")
   }
+  if (partNumber && content.audioMode === 'single') {
+    err("A part test must use audioMode 'per_part' — the part carries its own recording.")
+  }
 
   const checkAudio = (a: any, where: string) => {
     if (!a || typeof a.assetPath !== 'string' || !a.assetPath.trim()) {
@@ -48,8 +54,13 @@ export function validateListeningTestContent(content: any): string[] {
   }
   if (content.audioMode === 'single') checkAudio(content.singleAudio, 'Section audio')
 
-  if (!Array.isArray(content.parts) || content.parts.length !== 6) {
-    err(`Test must have exactly 6 parts (got ${content.parts?.length ?? 0}).`)
+  const expectedParts = partNumber ? 1 : 6
+  if (!Array.isArray(content.parts) || content.parts.length !== expectedParts) {
+    err(
+      partNumber
+        ? `A part test must contain exactly its 1 part (got ${content.parts?.length ?? 0}).`
+        : `Test must have exactly 6 parts (got ${content.parts?.length ?? 0}).`,
+    )
     return errors
   }
 
@@ -57,12 +68,12 @@ export function validateListeningTestContent(content: any): string[] {
   let totalItems = 0
 
   content.parts.forEach((part: any, index: number) => {
-    const partNo = index + 1
+    const partNo = partNumber ?? index + 1
     const label = `Part ${partNo}`
 
     if (part.number !== partNo) err(`${label}: number must be ${partNo} (got ${part.number}).`)
-    if (part.layout !== EXPECTED_LAYOUTS[index]) {
-      err(`${label}: layout must be '${EXPECTED_LAYOUTS[index]}' (got '${part.layout}').`)
+    if (part.layout !== EXPECTED_LAYOUTS[partNo - 1]) {
+      err(`${label}: layout must be '${EXPECTED_LAYOUTS[partNo - 1]}' (got '${part.layout}').`)
     }
     if (typeof part.instructions !== 'string' || !part.instructions.trim()) {
       err(`${label}: instructions are required.`)
@@ -71,8 +82,8 @@ export function validateListeningTestContent(content: any): string[] {
 
     const items = itemsOf(part)
     totalItems += items.length
-    if (items.length !== EXPECTED_COUNTS[index]) {
-      err(`${label}: must have exactly ${EXPECTED_COUNTS[index]} questions (got ${items.length}).`)
+    if (items.length !== EXPECTED_COUNTS[partNo - 1]) {
+      err(`${label}: must have exactly ${EXPECTED_COUNTS[partNo - 1]} questions (got ${items.length}).`)
     }
 
     if (part.layout === 'form_completion' || part.layout === 'note_completion') {
@@ -186,7 +197,10 @@ export function validateListeningTestContent(content: any): string[] {
     })
   })
 
-  if (totalItems !== 35) err(`Test must have exactly 35 questions in total (got ${totalItems}).`)
+  // A part test's size is fully pinned by its per-part count above.
+  if (!partNumber && totalItems !== 35) {
+    err(`Test must have exactly 35 questions in total (got ${totalItems}).`)
+  }
 
   return errors
 }

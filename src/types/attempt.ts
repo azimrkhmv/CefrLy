@@ -1,4 +1,13 @@
-import type { AudioAsset, Band, CefrLevel, Explanation, ItemType, ListeningPart, Skill } from './test'
+import type {
+  AudioAsset,
+  Band,
+  CefrLevel,
+  Explanation,
+  ItemType,
+  ListeningPart,
+  Skill,
+  TestScope,
+} from './test'
 
 /** Row shape returned when listing published tests (metadata only, never content). */
 export interface TestCatalogEntry {
@@ -7,6 +16,9 @@ export interface TestCatalogEntry {
   skill: string
   target_levels: CefrLevel[]
   duration_sec: number
+  /** Missing on rows read before migration 0010 → treat as 'full'. */
+  scope?: TestScope
+  part_number?: number | null
 }
 
 /** Per-item grading result, built server-side by the submit-test edge function. */
@@ -31,9 +43,13 @@ export interface StoredAttemptResult {
   testTitle: string
   /** Absent on attempts stored before Phase 3; treat missing as 'reading'. */
   skill?: Skill
+  /** Absent before part tests; treat missing as 'full'. */
+  scope?: TestScope
+  partNumber?: number | null
   rawScore: number
   total: number
-  band: Band
+  /** null for part-test attempts — CEFR bands only exist for the full /35 paper. */
+  band: Band | null
   submittedAt: string
   items: ItemResult[]
 }
@@ -53,7 +69,7 @@ export interface AttemptReview {
   submittedAt: string | null
   rawScore: number
   total: number
-  band: Band
+  band: Band | null
   audioMode: 'per_part' | 'single' | null
   singleAudio: AudioAsset | null
   /** Full parts including per-item answers and server-side transcripts. */
@@ -68,8 +84,12 @@ export interface AttemptSummary {
   testTitle: string
   /** Reading or Listening. Legacy rows (pre-Phase 3) default to 'reading'. */
   skill: Skill
+  /** 'part' = a single-part drill; its score is out of that part's count and
+   *  it carries no band. Legacy rows default to 'full'. */
+  scope: TestScope
+  partNumber: number | null
   rawScore: number
   total: number
-  band: Band
+  band: Band | null
   createdAt: string
 }

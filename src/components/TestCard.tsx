@@ -14,9 +14,10 @@ export function TestCard({
   test: TestCatalogEntry
   attemptInfo?: TestAttemptInfo
 }) {
+  const isPart = test.scope === 'part'
   const attemptsLabel =
     attemptInfo && attemptInfo.count > 0
-      ? `Best score ${attemptInfo.best}/35 · ${attemptInfo.count} attempt${attemptInfo.count > 1 ? 's' : ''}`
+      ? `Best score ${attemptInfo.best}${isPart ? '' : '/35'} · ${attemptInfo.count} attempt${attemptInfo.count > 1 ? 's' : ''}`
       : 'No attempts yet'
   const meta = skillMeta(test.skill)
 
@@ -27,7 +28,7 @@ export function TestCard({
           {meta.label}
         </span>
         <span className="inline-block rounded-full bg-brand-soft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-brand">
-          Full mock test
+          {isPart ? `Part ${test.part_number} practice` : 'Full mock test'}
         </span>
       </div>
       <h3 className="mt-3 text-base font-extrabold leading-snug text-heading">{test.title}</h3>

@@ -196,3 +196,33 @@ export function UsersIcon(props: IconProps) {
     </svg>
   )
 }
+
+export function DollarIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 2.5v19" />
+      <path d="M16.5 5.5H10a3.25 3.25 0 0 0 0 6.5h4a3.25 3.25 0 0 1 0 6.5H7.5" />
+    </svg>
+  )
+}
+
+export function LifebuoyIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="3.8" />
+      <path d="m5.7 5.7 3.6 3.6" />
+      <path d="m14.7 14.7 3.6 3.6" />
+      <path d="m18.3 5.7-3.6 3.6" />
+      <path d="m9.3 14.7-3.6 3.6" />
+    </svg>
+  )
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="m4.5 12.5 5 5L19.5 7" />
+    </svg>
+  )
+}

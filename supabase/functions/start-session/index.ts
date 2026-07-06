@@ -11,6 +11,7 @@
 //   frees them). The session still gets a LONG housekeeping expiry so open
 //   rows can't live forever, but no timer is shown and any client-sent
 //   duration is ignored.
+// PART tests (scope='part'): always the author-set duration — no picker.
 //
 // Durations are decided SERVER-SIDE — the browser cannot request an arbitrary
 // length. Answer keys are never touched here.
@@ -60,7 +61,7 @@ Deno.serve(async (req) => {
 
   const { data: test, error: testError } = await admin
     .from('tests')
-    .select('id, skill, duration_sec, status')
+    .select('id, skill, duration_sec, status, scope')
     .eq('id', testId)
     .maybeSingle()
   if (testError) return json({ error: testError.message }, 500)
@@ -84,6 +85,10 @@ Deno.serve(async (req) => {
     // only — the UI shows no timer, so a short expiry would be a surprise 409
     // at submit time.
     durationSec = LISTENING_WINDOW_SEC
+  } else if (test.scope === 'part') {
+    // Single-part reading drills always run with the author-set duration —
+    // there is no mode picker, so the 20–90 min practice rule never applies.
+    durationSec = test.duration_sec as number
   } else if (mode === 'practice') {
     const requested = body.durationSec
     if (typeof requested !== 'number' || !Number.isFinite(requested)) {

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
+  cancelSession,
   controlSession,
   fetchSanitizedTest,
   fetchSessionStatus,
@@ -85,7 +86,10 @@ export function TestPage() {
   // that session. Both Reading and Listening use the picker; Practice unlocks
   // audio controls (ListeningAudio).
   const hasOpenSession = !!status?.session
-  const showPicker = !!status && !started
+  // Single-part drills have no mode choice: they auto-start (or auto-resume)
+  // in practice with the author-set duration, so the picker never shows.
+  const isPartTest = status?.scope === 'part'
+  const showPicker = !!status && !started && !isPartTest
   const readyToLoad = !!status && started
   const catalogPath = status?.skill === 'listening' ? '/listening' : '/reading'
 
@@ -115,6 +119,20 @@ export function TestPage() {
       queryClient.invalidateQueries({ queryKey: ['session-status', testId] })
     },
   })
+
+  // Part drills skip the picker: resume the open session if there is one,
+  // otherwise start a fresh practice session (the server pins the duration to
+  // the test's own; the client-sent value is ignored for part tests).
+  useEffect(() => {
+    if (!isPartTest || started || !status) return
+    if (status.session) {
+      setStarted(true)
+    } else if (!start.isPending && !start.isError) {
+      start.mutate({ mode: 'practice', durationSec: status.durationSec })
+    }
+    // `start` is stable per mount (useMutation); depending on status/started is enough.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPartTest, started, status])
 
   // Pause / resume the practice timer (server-authoritative). The response
   // carries the fresh session (shifted deadline, cleared/set pausedAt) which we
@@ -218,6 +236,33 @@ export function TestPage() {
   // Which in-app confirmation (ConfirmDialog) is open — replaces the native
   // window.confirm popups with the startled-cat alert.
   const [confirmAction, setConfirmAction] = useState<'exit' | 'submit' | null>(null)
+
+  // Leaving the exam CANCELS the attempt (user decision 2026-07-06): the
+  // session is closed server-side without grading and the local draft is
+  // discarded — nothing is saved, nothing to resume. Local cleanup happens
+  // even if the server call fails (the stranded session then dies at
+  // restart/expiry). Order: reset() first so the saver's reaction is the {}
+  // write, THEN remove the key — leaving no orphan draft behind.
+  const abandon = useMutation({
+    mutationFn: () => cancelSession(sessionId!),
+    onSettled: () => {
+      // Disable the get-test query BEFORE removing it from the cache — with an
+      // active observer, removal triggers an instant refetch, and get-test used
+      // to auto-create a fresh session on that refetch, resurrecting the very
+      // attempt we just cancelled.
+      setStarted(false)
+      reset()
+      useAudioStore.getState().reset()
+      try {
+        if (sessionId) localStorage.removeItem(draftKey(sessionId))
+      } catch {
+        /* storage unavailable */
+      }
+      queryClient.removeQueries({ queryKey: ['test', testId] })
+      queryClient.invalidateQueries({ queryKey: ['session-status', testId] })
+      navigate(catalogPath)
+    },
+  })
 
   function jumpToQuestion(itemId: string) {
     if (!test) return
@@ -337,6 +382,26 @@ export function TestPage() {
     )
   }
 
+  // A part drill that failed to auto-start needs a way out (no picker exists).
+  if (isPartTest && start.isError) {
+    return (
+      <ExamScreen center>
+        <div className="space-y-4">
+          <p className="text-sm text-rose-700">
+            Could not start the practice.{' '}
+            {start.error instanceof Error ? start.error.message : ''}
+          </p>
+          <Link
+            to={catalogPath}
+            className="inline-block rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+          >
+            Back to tests
+          </Link>
+        </div>
+      </ExamScreen>
+    )
+  }
+
   if (testLoading || !test)
     return (
       <ExamScreen center>
@@ -385,11 +450,7 @@ export function TestPage() {
                 e.preventDefault()
                 setConfirmAction('exit')
               }}
-              title={
-                isListening
-                  ? 'Leave the test — your answers are saved.'
-                  : 'Leave the test — your answers are saved and the timer keeps running.'
-              }
+              title="Leave the test — this attempt will be cancelled."
               className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-bold text-ink transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
             >
               <CloseIcon width={18} height={18} />
@@ -399,9 +460,13 @@ export function TestPage() {
               <h1 className="truncate text-base font-extrabold text-heading">{test.title}</h1>
               <p className="hidden text-xs text-ink-soft sm:block">
                 {/* Listening is audio-paced — never advertise minutes. */}
-                {isListening
-                  ? `${skillLabel} · ${totalItems} questions · ${test.parts.length} parts`
-                  : `${skillLabel} · ${totalItems} questions · ${Math.round(test.durationSec / 60)} minutes`}
+                {test.scope === 'part'
+                  ? isListening
+                    ? `${skillLabel} · Part ${test.partNumber} practice · ${totalItems} questions`
+                    : `${skillLabel} · Part ${test.partNumber} practice · ${totalItems} questions · ${Math.round(test.durationSec / 60)} minutes`
+                  : isListening
+                    ? `${skillLabel} · ${totalItems} questions · ${test.parts.length} parts`
+                    : `${skillLabel} · ${totalItems} questions · ${Math.round(test.durationSec / 60)} minutes`}
               </p>
             </div>
           </div>
@@ -485,24 +550,27 @@ export function TestPage() {
             </div>
           )}
 
-          <div className="max-w-full overflow-x-auto">
-            <nav
-              className="inline-flex whitespace-nowrap rounded-xl border border-line bg-white p-1"
-              aria-label="Test parts"
-            >
-              {test.parts.map((p, index) => (
-                <button
-                  key={p.id}
-                  onClick={() => setPartIndex(index)}
-                  className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
-                    index === partIndex ? 'bg-brand text-white' : 'text-ink-soft hover:text-ink'
-                  }`}
-                >
-                  Part {p.number}
-                </button>
-              ))}
-            </nav>
-          </div>
+          {/* A single-part drill has nothing to navigate between. */}
+          {test.parts.length > 1 && (
+            <div className="max-w-full overflow-x-auto">
+              <nav
+                className="inline-flex whitespace-nowrap rounded-xl border border-line bg-white p-1"
+                aria-label="Test parts"
+              >
+                {test.parts.map((p, index) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setPartIndex(index)}
+                    className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
+                      index === partIndex ? 'bg-brand text-white' : 'text-ink-soft hover:text-ink'
+                    }`}
+                  >
+                    Part {p.number}
+                  </button>
+                ))}
+              </nav>
+            </div>
+          )}
 
           <section className="rounded-2xl border border-line bg-white p-6 shadow-card">
             {isListening ? (
@@ -521,22 +589,24 @@ export function TestPage() {
               review/jump is an end-of-part action, not a header one. */}
           <QuestionNavigator test={test} numbering={numbering} onJump={jumpToQuestion} />
 
-          <div className="flex justify-between">
-            <button
-              onClick={() => setPartIndex((i) => Math.max(0, i - 1))}
-              disabled={partIndex === 0}
-              className="rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint disabled:opacity-50"
-            >
-              Previous part
-            </button>
-            <button
-              onClick={() => setPartIndex((i) => Math.min(test.parts.length - 1, i + 1))}
-              disabled={partIndex === test.parts.length - 1}
-              className="rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint disabled:opacity-50"
-            >
-              Next part
-            </button>
-          </div>
+          {test.parts.length > 1 && (
+            <div className="flex justify-between">
+              <button
+                onClick={() => setPartIndex((i) => Math.max(0, i - 1))}
+                disabled={partIndex === 0}
+                className="rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint disabled:opacity-50"
+              >
+                Previous part
+              </button>
+              <button
+                onClick={() => setPartIndex((i) => Math.min(test.parts.length - 1, i + 1))}
+                disabled={partIndex === test.parts.length - 1}
+                className="rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint disabled:opacity-50"
+              >
+                Next part
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -547,18 +617,16 @@ export function TestPage() {
         message={
           confirmAction === 'submit'
             ? `You’ve answered ${answeredCount} of ${totalItems} questions — unanswered ones count as incorrect.`
-            : isListening
-              ? 'Your answers are saved. You can resume this attempt later.'
-              : 'Your answers are saved, but the timer keeps running.'
+            : 'This attempt will be cancelled and your answers will be discarded.'
         }
-        confirmLabel={confirmAction === 'submit' ? 'Submit anyway' : 'Leave test'}
+        confirmLabel={confirmAction === 'submit' ? 'Submit anyway' : 'Leave & cancel'}
         cancelLabel={confirmAction === 'submit' ? 'Keep working' : 'Stay'}
         tone={confirmAction === 'submit' ? 'brand' : 'rose'}
         onConfirm={() => {
           const action = confirmAction
           setConfirmAction(null)
           if (action === 'submit') submission.mutate()
-          else navigate(backTo)
+          else abandon.mutate()
         }}
         onCancel={() => setConfirmAction(null)}
       />

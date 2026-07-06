@@ -14,6 +14,9 @@
 export type CefrLevel = 'B1' | 'B2' | 'C1'
 export type Band = 'C1' | 'B2' | 'B1' | 'below_B1'
 export type Skill = 'reading' | 'listening'
+/** 'full' = the whole rigid mock paper; 'part' = exactly ONE canonical part of
+ *  it (same layout/count rules), powering practice-by-part. */
+export type TestScope = 'full' | 'part'
 
 export type ReadingPartLayout =
   | 'cloze_from_text'
@@ -162,6 +165,9 @@ export interface ReadingTest {
   title: string
   targetLevels: CefrLevel[]
   durationSec: number
+  /** 'part' marks a single-part drill; parts then holds exactly that one part. */
+  scope?: TestScope
+  partNumber?: number | null
   parts: Part[]
 }
 
@@ -196,6 +202,9 @@ export interface ListeningTest {
   title: string
   targetLevels: CefrLevel[]
   durationSec: number
+  /** 'part' marks a single-part drill; parts then holds exactly that one part. */
+  scope?: TestScope
+  partNumber?: number | null
   /** How audio is supplied: one file per part, or one file for the whole section. */
   audioMode: 'per_part' | 'single'
   /** REQUIRED iff audioMode === 'single'. */
@@ -262,6 +271,9 @@ export interface SessionStatus {
   skill: Skill
   title: string
   durationSec: number
+  /** Older function payloads omit these; treat missing as a full mock. */
+  scope?: TestScope
+  partNumber?: number | null
   serverNow: string
   session: TestSession | null
 }
@@ -269,11 +281,15 @@ export interface SessionStatus {
 export interface SanitizedReadingTest extends Omit<ReadingTest, 'parts'> {
   parts: SanitizedPart[]
   session: TestSession
+  scope?: TestScope
+  partNumber?: number | null
 }
 
 export interface SanitizedListeningTest extends Omit<ListeningTest, 'parts'> {
   parts: SanitizedListeningPart[]
   session: TestSession
+  scope?: TestScope
+  partNumber?: number | null
 }
 
 /** What the browser receives from get-test — discriminated by `skill`. */

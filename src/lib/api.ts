@@ -41,7 +41,7 @@ async function invokeFunction<T>(name: string, body: Record<string, unknown>): P
 export async function listTests(): Promise<TestCatalogEntry[]> {
   const { data, error } = await supabase
     .from('tests')
-    .select('id, title, skill, target_levels, duration_sec')
+    .select('id, title, skill, target_levels, duration_sec, scope, part_number')
     .order('created_at', { ascending: true })
   if (error) throw new Error(error.message)
   return (data ?? []) as TestCatalogEntry[]
@@ -77,6 +77,12 @@ export function controlSession(
   return invokeFunction<{ session: TestSession }>('session-control', { sessionId, action })
 }
 
+/** Abandon an open session: closes it server-side WITHOUT grading — the
+ *  attempt is cancelled, nothing is stored, and there is nothing to resume. */
+export function cancelSession(sessionId: string): Promise<{ ok: true }> {
+  return invokeFunction<{ ok: true }>('session-control', { sessionId, action: 'cancel' })
+}
+
 /** Grades server-side and returns the full result with explanations. */
 export function submitTest(
   testId: string,
@@ -102,23 +108,33 @@ export function milliymockHandoff(token: string): Promise<{ tokenHash: string }>
 export async function fetchMyAttempts(): Promise<AttemptSummary[]> {
   const { data, error } = await supabase
     .from('attempts')
-    .select('id, test_id, raw_score, total, band, created_at, result, tests(title, skill)')
+    .select(
+      'id, test_id, raw_score, total, band, created_at, result, tests(title, skill, scope, part_number)',
+    )
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
   return (data ?? []).map((row) => {
-    const test = row.tests as { title?: string; skill?: string } | { title?: string; skill?: string }[] | null
+    const test = row.tests as
+      | { title?: string; skill?: string; scope?: string; part_number?: number | null }
+      | { title?: string; skill?: string; scope?: string; part_number?: number | null }[]
+      | null
     const testRow = Array.isArray(test) ? test[0] : test
     const stored = (row.result ?? {}) as Partial<StoredAttemptResult>
     const skill: Skill =
       testRow?.skill === 'listening' || stored.skill === 'listening' ? 'listening' : 'reading'
+    // Part drills score out of their own count and carry no CEFR band; the
+    // joined test row is the source, the stored result the fallback.
+    const scope = testRow?.scope === 'part' || stored.scope === 'part' ? 'part' : 'full'
     return {
       id: row.id as string,
       testId: (row.test_id as string | null) ?? null,
       testTitle: testRow?.title ?? stored.testTitle ?? 'Test',
       skill,
+      scope,
+      partNumber: testRow?.part_number ?? stored.partNumber ?? null,
       rawScore: row.raw_score as number,
       total: row.total as number,
-      band: row.band as Band,
+      band: (row.band as Band | null) ?? null,
       createdAt: row.created_at as string,
     }
   })

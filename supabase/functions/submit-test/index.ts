@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
 
   const { data: test, error: testError } = await admin
     .from('tests')
-    .select('id, title, status')
+    .select('id, title, status, scope, part_number')
     .eq('id', testId)
     .maybeSingle()
   if (testError) return json({ error: testError.message }, 500)
@@ -129,11 +129,17 @@ Deno.serve(async (req) => {
     }
   }
 
-  const band = bandFor(rawScore)
+  // CEFR bands exist only for the full /35 paper — a single-part drill's raw
+  // score means nothing on the 28/18/10 thresholds, so part attempts store
+  // band = null and the UI shows score-only results.
+  const scope = test.scope === 'part' ? 'part' : 'full'
+  const band = scope === 'part' ? null : bandFor(rawScore)
   const result = {
     testId: test.id,
     testTitle: test.title,
     skill: content.skill ?? 'reading',
+    scope,
+    partNumber: test.part_number ?? null,
     rawScore,
     total,
     band,

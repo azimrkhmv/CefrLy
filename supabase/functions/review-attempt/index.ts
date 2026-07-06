@@ -71,7 +71,9 @@ Deno.serve(async (req) => {
     submittedAt: result?.submittedAt ?? null,
     rawScore: result?.rawScore ?? 0,
     total: result?.total ?? 35,
-    band: result?.band ?? 'below_B1',
+    // Part-drill attempts legitimately have band null — preserve it (a
+    // 'below_B1' default would silently mislabel them).
+    band: result?.band ?? null,
     audioMode: content.audioMode ?? null,
     singleAudio: content.singleAudio ?? null,
     parts: content.parts,

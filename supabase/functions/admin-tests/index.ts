@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     case 'list': {
       const { data, error } = await admin
         .from('tests')
-        .select('id, slug, skill, title, status, created_at')
+        .select('id, slug, skill, title, status, scope, part_number, created_at')
         .neq('status', 'archived')
         .order('created_at', { ascending: false })
       if (error) return json({ error: error.message }, 500)
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       }
       const { data: test, error } = await admin
         .from('tests')
-        .select('id, slug, skill, title, status, target_levels, duration_sec, created_at')
+        .select('id, slug, skill, title, status, target_levels, duration_sec, scope, part_number, created_at')
         .eq('slug', slug)
         .maybeSingle()
       if (error) return json({ error: error.message }, 500)
@@ -90,8 +90,25 @@ Deno.serve(async (req) => {
       }
 
       const skill = content?.skill === 'listening' ? 'listening' : 'reading'
+      // Single-part tests are flagged INSIDE content (scope: 'part' + partNumber)
+      // so the marker travels with the test JSON; the tests row mirrors it.
+      const scope = content?.scope === 'part' ? 'part' : 'full'
+      const maxPart = skill === 'listening' ? 6 : 5
+      let partNumber: number | undefined
+      if (scope === 'part') {
+        const pn = content?.partNumber
+        if (typeof pn !== 'number' || !Number.isInteger(pn) || pn < 1 || pn > maxPart) {
+          return json(
+            { ok: false, errors: [`A part test needs partNumber 1–${maxPart} for ${skill}.`] },
+            400,
+          )
+        }
+        partNumber = pn
+      }
       const errors =
-        skill === 'listening' ? validateListeningTest(content) : validateReadingTest(content)
+        skill === 'listening'
+          ? validateListeningTest(content, partNumber)
+          : validateReadingTest(content, partNumber)
       if (errors.length > 0) return json({ ok: false, errors }, 400)
 
       const { data: existing, error: findError } = await admin
@@ -108,6 +125,8 @@ Deno.serve(async (req) => {
         target_levels: content.targetLevels,
         duration_sec: content.durationSec,
         status,
+        scope,
+        part_number: partNumber ?? null,
       }
 
       let testId: string

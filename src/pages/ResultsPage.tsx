@@ -5,6 +5,7 @@ import { BAND_INFO, BAND_ORDER } from '../lib/bands'
 import { BandRuler } from '../components/BandRuler'
 import { useCountUp, useInView } from '../lib/motion'
 import type { AttemptResult, ItemResult } from '../types/attempt'
+import type { Band } from '../types/test'
 
 export function ResultsPage() {
   const { attemptId } = useParams<{ attemptId: string }>()
@@ -33,20 +34,23 @@ export function ResultsPage() {
 }
 
 function ResultsView({ result }: { result: AttemptResult }) {
-  const band = BAND_INFO[result.band]
+  // Part drills carry no CEFR band (a /6 score means nothing on the /35
+  // thresholds) — they get a score-only header, no band label and no ruler.
+  const band = result.band ? BAND_INFO[result.band] : null
+  const isPart = result.scope === 'part' || result.band === null
+  const accuracy = result.total > 0 ? Math.round((result.rawScore / result.total) * 100) : 0
   const shownScore = useCountUp(result.rawScore)
 
   // "Up from X": compare this attempt's band with the best band achieved
-  // before it (any earlier reading attempt).
+  // before it (any earlier banded attempt; part drills don't take part).
   const { data: attempts } = useQuery({ queryKey: ['my-attempts'], queryFn: fetchMyAttempts })
-  const earlier = (attempts ?? []).filter(
-    (a) => a.id !== result.attemptId && a.createdAt < result.submittedAt,
-  )
-  const currentRank = BAND_ORDER.indexOf(result.band)
-  const previousBestRank =
-    earlier.length > 0 ? Math.max(...earlier.map((a) => BAND_ORDER.indexOf(a.band))) : null
+  const earlierBands = (attempts ?? [])
+    .filter((a) => a.id !== result.attemptId && a.createdAt < result.submittedAt && a.band !== null)
+    .map((a) => BAND_ORDER.indexOf(a.band as Band))
+  const currentRank = result.band ? BAND_ORDER.indexOf(result.band) : -1
+  const previousBestRank = earlierBands.length > 0 ? Math.max(...earlierBands) : null
   const improvedFrom =
-    previousBestRank !== null && currentRank > previousBestRank
+    result.band && previousBestRank !== null && currentRank > previousBestRank
       ? BAND_INFO[BAND_ORDER[previousBestRank]].label
       : null
 
@@ -62,7 +66,7 @@ function ResultsView({ result }: { result: AttemptResult }) {
     month: 'long',
     year: 'numeric',
   })
-  const goodBand = result.band === 'B2' || result.band === 'C1'
+  const goodBand = result.band === 'B2' || result.band === 'C1' || (isPart && accuracy >= 70)
 
   return (
     <div className="space-y-8">
@@ -81,7 +85,7 @@ function ResultsView({ result }: { result: AttemptResult }) {
             </p>
             <div className="reveal reveal-2 mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
               <span className="text-4xl font-extrabold text-heading sm:text-5xl">
-                {band.label}
+                {band ? band.label : `${accuracy}%`}
               </span>
               <p className="tnum text-2xl font-extrabold text-heading">
                 {shownScore} / {result.total} correct
@@ -93,8 +97,9 @@ function ResultsView({ result }: { result: AttemptResult }) {
               </p>
             )}
             <p className="reveal reveal-3 mt-3 text-sm text-ink-soft">
-              Indicative reading band only — the full four-skill result comes from a complete
-              mock exam.
+              {isPart
+                ? `Part ${result.partNumber ?? ''} practice — single-part scores don't carry a CEFR band; take a full mock for one.`
+                : 'Indicative reading band only — the full four-skill result comes from a complete mock exam.'}
             </p>
             {result.skill === 'listening' && (
               <Link
@@ -109,7 +114,11 @@ function ResultsView({ result }: { result: AttemptResult }) {
           {/* the mascot delivers the verdict */}
           <div className="reveal reveal-3 mx-auto flex shrink-0 flex-col items-center">
             <div className="relative max-w-56 rounded-2xl bg-brand-soft px-4 py-3 text-sm font-bold text-brand-deep">
-              {band.blurb}
+              {band
+                ? band.blurb
+                : accuracy >= 70
+                  ? 'Sharp work on this part — keep the streak going.'
+                  : 'Every drill counts. Check the review below and go again.'}
               <span
                 className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-brand-soft"
                 aria-hidden
@@ -129,9 +138,12 @@ function ResultsView({ result }: { result: AttemptResult }) {
           </div>
         </div>
 
-        <div className="relative mt-8">
-          <BandRuler band={result.band} score={result.rawScore} animate />
-        </div>
+        {/* the CEFR ruler only makes sense on the /35 scale of a full paper */}
+        {result.band && (
+          <div className="relative mt-8">
+            <BandRuler band={result.band} score={result.rawScore} animate />
+          </div>
+        )}
       </section>
 
       {/* Listening attempts skip this flat list — the audio review page

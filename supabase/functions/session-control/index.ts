@@ -1,10 +1,13 @@
 // session-control: pause / resume a PRACTICE session's timer (server-side, so
-// the deadline the browser sees stays authoritative).
+// the deadline the browser sees stays authoritative), plus cancel.
 //   pause  → freeze: record paused_at. Remaining time = expires_at - paused_at
 //            stays constant while frozen.
 //   resume → shift expires_at forward by however long it was paused, then clear
 //            paused_at, so the student gets back exactly the time they had.
-// Simulation sessions cannot be paused. Both actions are idempotent.
+//   cancel → abandon the attempt: close the session (submitted_at) WITHOUT
+//            grading or writing an attempts row. Any mode, any skill — leaving
+//            the exam cancels the attempt entirely (no resume).
+// Simulation sessions cannot be paused. All actions are idempotent.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders, json } from './cors.ts'
 
@@ -22,8 +25,8 @@ Deno.serve(async (req) => {
   if (typeof sessionId !== 'string' || sessionId.length === 0) {
     return json({ error: 'sessionId is required' }, 400)
   }
-  if (action !== 'pause' && action !== 'resume') {
-    return json({ error: 'action must be "pause" or "resume"' }, 400)
+  if (action !== 'pause' && action !== 'resume' && action !== 'cancel') {
+    return json({ error: 'action must be "pause", "resume" or "cancel"' }, 400)
   }
 
   const authHeader = req.headers.get('Authorization')
@@ -52,6 +55,19 @@ Deno.serve(async (req) => {
     .eq('user_id', user.id)
     .maybeSingle()
   if (sessionError) return json({ error: sessionError.message }, 500)
+
+  // Cancel: any mode, idempotent — a missing or already-closed session means
+  // there is nothing left to abandon, so that's a success too.
+  if (action === 'cancel') {
+    if (!session || session.submitted_at) return json({ ok: true })
+    const { error } = await admin
+      .from('test_sessions')
+      .update({ submitted_at: new Date().toISOString() })
+      .eq('id', session.id)
+    if (error) return json({ error: error.message }, 500)
+    return json({ ok: true })
+  }
+
   if (!session || session.submitted_at) {
     return json({ error: 'Session not found or already submitted' }, 409)
   }
