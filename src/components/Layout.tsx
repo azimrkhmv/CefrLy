@@ -16,6 +16,7 @@ import {
   MicIcon,
   PenIcon,
   ShieldIcon,
+  StarIcon,
   UsersIcon,
 } from './icons'
 
@@ -65,6 +66,11 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </NavLink>
         <SoonItem icon={<PenIcon width={18} height={18} />} label="Writing" />
         <SoonItem icon={<MicIcon width={18} height={18} />} label="Speaking" />
+        {/* Model Writing/Speaking answers — fills the gap until those papers ship. */}
+        <NavLink to="/samples" className={navLinkClass}>
+          <StarIcon width={18} height={18} />
+          Samples
+        </NavLink>
         {(session || role === 'admin' || role === 'super_admin') && (
           <div className="my-3 border-t border-line" aria-hidden />
         )}

@@ -10,6 +10,7 @@ import { AuthPage } from './pages/AuthPage'
 import { TestPage } from './pages/TestPage'
 import { ResultsPage } from './pages/ResultsPage'
 import { ReviewPage } from './pages/ReviewPage'
+import { SamplesPage } from './pages/SamplesPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { HandoffPage } from './pages/HandoffPage'
 import { WelcomePage } from './pages/WelcomePage'
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/reading" element={<ReadingPage />} />
           <Route path="/listening" element={<ListeningPage />} />
+          <Route path="/samples" element={<SamplesPage />} />
           <Route path="/test/:testId" element={<TestPage />} />
           <Route path="/results/:attemptId" element={<ResultsPage />} />
           <Route path="/review/:attemptId" element={<ReviewPage />} />
