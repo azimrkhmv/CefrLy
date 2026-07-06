@@ -7,10 +7,12 @@ import { useAudioStore } from '../../store/audio'
 //   per_part  -> one <AudioPlayer> inside each part
 //   single    -> one <AudioPlayer> at the top of the whole section
 // Exam rules enforced here: a previewSec countdown gates the FIRST play (audio
-// locked, questions visible); playback is capped at playLimit (2 in real
-// papers); there is no autoplay and no seek/pause (a recording plays right
-// through, exactly like a real exam). Play/preview state lives in useAudioStore
-// so it survives part navigation.
+// locked, questions visible); playback is capped at playLimit; there is no
+// seek/pause (a recording plays right through, exactly like a real exam). The
+// FIRST play starts automatically as soon as the recording unlocks — in the
+// real hall the tape rolls on its own. If the browser blocks the autoplay (no
+// user gesture yet, e.g. straight after a refresh) the player stays manual.
+// Play/preview state lives in useAudioStore so it survives part navigation.
 export function AudioPlayer({ audio, label }: { audio: AudioAsset; label: string }) {
   const url = audioUrl(audio.assetPath)
   const playsUsed = useAudioStore((s) => s.plays[audio.assetPath] ?? 0)
@@ -50,6 +52,23 @@ export function AudioPlayer({ audio, label }: { audio: AudioAsset; label: string
     // Intentionally mount-only: the preview is a one-time reading window.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Auto-start the first play once the recording is unlocked (immediately when
+  // previewSec is 0, else when the countdown ends). Only ever attempted for a
+  // never-played recording, and only once per mount — returning to a part or a
+  // blocked autoplay falls back to the manual play button.
+  const autoplayTried = useRef(false)
+  useEffect(() => {
+    if (autoplayTried.current || inPreview || failed || isPlaying) return
+    if (playsUsed > 0 || playsLeft <= 0) return
+    const el = audioRef.current
+    if (!el) return
+    autoplayTried.current = true
+    el.currentTime = 0
+    void el.play().catch(() => {
+      /* autoplay blocked — the student presses play instead */
+    })
+  }, [inPreview, failed, isPlaying, playsUsed, playsLeft])
 
   function handlePlay() {
     const el = audioRef.current

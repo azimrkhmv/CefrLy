@@ -19,6 +19,9 @@ dist/
 .remember/
 .playwright-mcp/
 
+# real exam source material (papers + audio) — lives in Supabase, never in git
+listening sample/
+
 # logs
 *.log
 

@@ -125,14 +125,39 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   via handoff_tokens table, 60s lifetime) + /handoff frontend route that exchanges
   the returned tokenHash via auth.verifyOtp. Requires the MILLIYMOCK_HANDOFF_SECRET
   edge function secret to be set (same value on the MilliyMock side).
-- PHASE 3 (Listening) is built & live: schema-v2 Listening (six layouts) shares the
+- TEST MODES (Practice vs Simulation) are live for BOTH skills. Every attempt
+  starts at the full-screen "Choose a mode" picker (ModePicker; TestPage calls
+  session-status first — a read-only peek that never starts a clock). An open
+  attempt shows a Resume banner; picking a mode instead REALLY restarts:
+  start-session closes any open session for that test before creating the new
+  one. Sessions carry mode/duration_sec/paused_at (migration 0008).
+  · READING is clock-based: Simulation = fixed test duration, no pause;
+    Practice = student-chosen 20–90 min in 10-min steps (validated server-side)
+    with a pausable timer (session-control pause/resume shifts expires_at).
+  · LISTENING is audio-based: NO time-limit choice and NO countdown/pause UI in
+    EITHER mode — the recordings set the pace. Simulation keeps the locked
+    AudioPlayer (previewSec gate, playLimit 2, no pause/seek); Practice swaps in
+    PracticeAudioPlayer (play/pause, ±10s, scrub, unlimited) via ListeningAudio
+    (dispatches on session.mode). Server-side, listening sessions get a hidden
+    6h housekeeping expiry (start-session + get-test fallback) so no invisible
+    clock can 409 a submit; never surface it in the UI.
   Reading spine (player/timer/mark-for-review/navigator 1–35/autosave/results).
   Storage: `audio` + `images` buckets (public read, admin-only write via
   public.is_admin) with src/lib/storage.ts helpers; migration 0007. Fixture
-  `listening-mock-1` (audioMode per_part; six PLACEHOLDER .wav clips + map-plan-1.svg
-  in storage — swap in real speech via /admin later). Player: src/components/test/
-  AudioPlayer.tsx (previewSec gate + playLimit cap, no autoplay/seek/pause, state in
-  src/store/audio.ts so counts survive part nav). Six renderers in
+  `listening-mock-1` (placeholder .wav clips) is ARCHIVED; the live catalog has TWO
+  REAL tests, `listening-mock-2` + `listening-mock-3` (ingested 2026-07-06 from the
+  owner's Multilevelzonemock Day 157/156 papers: per_part MP3s + map PNGs in storage
+  under <slug>/, previewSec 0; content lives ONLY in the DB — source papers/audio
+  stay in the gitignored `listening sample/` folder, never in git). Their Part 1 has
+  playLimit 2 (single-pass file, ~72s) but Parts 2–6 have playLimit 1 — the "played
+  twice" repeat is BAKED INTO those recordings (durations ≈ the paper's 35-min total).
+  Explanation cards cite the official answer keys (no transcripts available). Player: src/components/test/
+  AudioPlayer.tsx (previewSec gate + playLimit cap, no seek/pause, state in
+  src/store/audio.ts so counts survive part nav). LISTENING AUTOPLAY: recordings
+  auto-start, no click needed — simulation fires the FIRST play the moment the
+  recording unlocks (once-per-mount effect in AudioPlayer; falls back to the manual
+  button if the browser blocks autoplay, e.g. right after a refresh); practice
+  auto-starts only on the FIRST open of each part (flagged via useAudioStore plays). Six renderers in
   src/components/test/listening/ dispatched by ListeningPartRenderer. get-test v4 /
   submit-test v5 strip answers+explanations+transcripts and grade skill-agnostically
   (groups flattened). Admin: /admin/tests/new/listening + skill-dispatching edit
@@ -239,6 +264,19 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
     Average/Best/Latest) + a Score-trend Sparkline (raw scores over time with
     faint 10/18/28 band guides; shown at ≥2 attempts) + Recent-activity teaser
     (last 3 → See all).
+  The ruler cat is band-reactive via RULER_CAT (Record<Band,{src,w}> in
+  HomePage.tsx): four user-supplied grey cats that get happier AND rounder per
+  band — /cat-band-below-b1.png (unimpressed) → b1 (smiling) → b2 (beaming,
+  chubby) → c1 (blissful chonk). Processed 2026-07-06 like cat-sit.png
+  (white bg flood-filled transparent, lavender floor shadow kept, 520px tall,
+  palette-quantized; script pattern in scratchpad process_band_cats.py). `w` is
+  the rendered width at the shared 52px height (40/41/45/53); it feeds
+  BandRuler's topperHalfWidth prop (default 21) which clamps the fill position
+  so wider cats never hang off the scale's ends. The signed-out demo ruler
+  keeps the base /cat-sit.png (no band earned). Preview any band's snapshot
+  (cat + quip + fill) with /?band=C1 (case-insensitive; optional &score=NN,
+  defaults to a mid-band score) — same spirit as /login?cat=; only the
+  LevelSnapshot is overridden, stats/sparkline/activity stay real.
   Both states end with the "Your CEFR skills" roadmap (Reading Available →
   Practice; Listening/Writing/Speaking "soon") — the one surface that shows
   Cefrly as a full 4-skill platform. Greeting name comes from Google
