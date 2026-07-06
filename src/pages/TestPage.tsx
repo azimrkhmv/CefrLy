@@ -328,7 +328,7 @@ export function TestPage() {
       {/* Slim exam top bar — replaces the app shell. Fixed height so the paper
           below scrolls independently and the timer/submit stay in reach. */}
       <header className="shrink-0 border-b border-line bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-8">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-2 sm:gap-4">
             <Link
               to={backTo}
@@ -345,7 +345,7 @@ export function TestPage() {
                   ? 'Leave the test — your answers are saved.'
                   : 'Leave the test — your answers are saved and the timer keeps running.'
               }
-              className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-bold text-ink-soft transition-colors hover:bg-page hover:text-ink"
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-bold text-ink transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
             >
               <CloseIcon width={18} height={18} />
               <span className="hidden sm:inline">Exit</span>
