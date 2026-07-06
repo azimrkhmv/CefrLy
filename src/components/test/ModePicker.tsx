@@ -55,8 +55,11 @@ export function ModePicker({
   const simulationBullets = [
     `Full test — ${totalParts} parts, ${totalQuestions} questions`,
     ...(listening
-      ? ['Recordings start on their own, just like the exam hall', 'No pausing or rewinding — the audio sets the pace']
-      : [`${simMinutes} minutes · no pause`]),
+      ? [
+          'Recordings start on their own, just like the exam hall',
+          'No pausing or rewinding — submitting unlocks when the audio ends',
+        ]
+      : [`${simMinutes} minutes · no pause · submits itself when time is up`]),
   ]
 
   return (

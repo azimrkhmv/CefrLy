@@ -57,6 +57,9 @@ export function TestPage() {
   const answeredCount = useAnswersStore(
     (s) => Object.values(s.answers).filter((v) => v.trim() !== '').length,
   )
+  // Which recordings have played out — listening simulation's "clock" (see
+  // submitLocked below).
+  const audioDone = useAudioStore((s) => s.done)
 
   // Step 1 — a read-only peek: does the student already have an open session,
   // and what skill is this? This never starts a clock, so the "Choose a mode"
@@ -229,8 +232,26 @@ export function TestPage() {
     }, 60)
   }
 
+  // SIMULATION is exam-real about when submission opens: reading stays locked
+  // until the clock runs out (the timer then auto-submits); listening unlocks
+  // the moment every recording has played out — the audio IS the clock.
+  // Practice can submit any time.
+  const requiredAudio: string[] =
+    test && test.skill === 'listening'
+      ? test.audioMode === 'single'
+        ? test.singleAudio
+          ? [test.singleAudio.assetPath]
+          : []
+        : test.parts.flatMap((p) => (p.audio ? [p.audio.assetPath] : []))
+      : []
+  const submitLocked =
+    !!test &&
+    test.session.mode === 'simulation' &&
+    (test.skill === 'listening' ? requiredAudio.some((path) => !audioDone[path]) : true)
+
   function handleSubmit(auto = false) {
     if (submission.isPending) return
+    if (!auto && submitLocked) return
     if (!auto && answeredCount < totalItems) {
       setConfirmAction('submit')
       return
@@ -421,8 +442,15 @@ export function TestPage() {
             )}
             <button
               onClick={() => handleSubmit()}
-              disabled={submission.isPending}
-              className="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-deep disabled:opacity-50"
+              disabled={submission.isPending || submitLocked}
+              title={
+                submitLocked
+                  ? isListening
+                    ? 'Submitting unlocks when the recording has finished.'
+                    : 'Simulation submits itself when time is up.'
+                  : undefined
+              }
+              className="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-deep disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submission.isPending ? 'Submitting…' : 'Submit test'}
             </button>

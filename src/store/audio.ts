@@ -9,11 +9,16 @@ interface AudioState {
   plays: Record<string, number>
   /** assetPath -> the pre-listening preview countdown has finished. */
   previewed: Record<string, boolean>
+  /** assetPath -> the recording has PLAYED OUT at least once (or failed to
+   *  load — a broken file must never deadlock submission). Simulation gates
+   *  the Submit button on this: the audio is listening's "clock". */
+  done: Record<string, boolean>
   /** Playback volume 0..1, shared by every listening player and remembered
    *  across attempts (localStorage). reset() leaves it alone on purpose. */
   volume: number
   usePlay: (assetPath: string) => void
   markPreviewed: (assetPath: string) => void
+  markDone: (assetPath: string) => void
   setVolume: (volume: number) => void
   reset: () => void
 }
@@ -30,14 +35,17 @@ function savedVolume(): number {
 export const useAudioStore = create<AudioState>((set) => ({
   plays: {},
   previewed: {},
+  done: {},
   volume: savedVolume(),
   usePlay: (assetPath) =>
     set((state) => ({ plays: { ...state.plays, [assetPath]: (state.plays[assetPath] ?? 0) + 1 } })),
   markPreviewed: (assetPath) =>
     set((state) => ({ previewed: { ...state.previewed, [assetPath]: true } })),
+  markDone: (assetPath) =>
+    set((state) => ({ done: { ...state.done, [assetPath]: true } })),
   setVolume: (volume) => {
     localStorage.setItem(VOLUME_KEY, String(volume))
     set({ volume })
   },
-  reset: () => set({ plays: {}, previewed: {} }),
+  reset: () => set({ plays: {}, previewed: {}, done: {} }),
 }))

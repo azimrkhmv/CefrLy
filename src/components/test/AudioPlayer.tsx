@@ -27,6 +27,7 @@ export function AudioPlayer({ audio, label }: { audio: AudioAsset; label: string
   const previewedGlobal = useAudioStore((s) => s.previewed[audio.assetPath] ?? false)
   const usePlay = useAudioStore((s) => s.usePlay)
   const markPreviewed = useAudioStore((s) => s.markPreviewed)
+  const markDone = useAudioStore((s) => s.markDone)
 
   const volume = useAudioStore((s) => s.volume)
   const setVolume = useAudioStore((s) => s.setVolume)
@@ -165,6 +166,7 @@ export function AudioPlayer({ audio, label }: { audio: AudioAsset; label: string
           setIsPlaying(false)
           setProgress(0)
           setCurrent(0)
+          markDone(audio.assetPath) // the recording has run its course — listening's "time is up"
         }}
         onLoadedMetadata={(e) => {
           setDuration(e.currentTarget.duration || 0)
@@ -175,7 +177,10 @@ export function AudioPlayer({ audio, label }: { audio: AudioAsset; label: string
           if (el.duration > 0) setProgress(el.currentTime / el.duration)
           setCurrent(el.currentTime)
         }}
-        onError={() => setFailed(true)}
+        onError={() => {
+          setFailed(true)
+          markDone(audio.assetPath) // a broken recording must never deadlock submission
+        }}
       />
     </div>
   )
