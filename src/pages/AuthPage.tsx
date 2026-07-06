@@ -18,6 +18,9 @@ type CatDef = {
   alt: string
   sleepy: boolean
   frame: string // Tailwind sizing/anchor for the mascot box (the poke button).
+  /** Tailwind position of the floating-zzz overlay, so the z's rise from THIS
+   *  cat's head (defaults to the curled sleeper's spot). */
+  zzzPos?: string
   hello: string
   helloSignup: string
   peek: string
@@ -29,10 +32,15 @@ const CATS: CatDef[] = [
   {
     key: 'sleeping',
     src: '/cat-sleeping.png',
-    alt: 'A sleepy purple cat curled up on a lavender cushion',
+    alt: 'A sleepy grey cat curled up on a lavender cushion',
     sleepy: true,
-    // 350×265 full-cushion cat: near-square, sits low-left with room to breathe.
-    frame: 'h-[clamp(230px,33vh,300px)] max-w-[480px]',
+    // 1065×700 full-cushion cat (grey, matching the band-cat art); baked z's
+    // erased — the animated overlay owns the zzz's. Sits low-left with room to
+    // breathe. Frame is SHORTER than the other cats': this art is a wide, low
+    // composition, so at the shared 300px it rendered visibly bigger — 245px
+    // brings its cushion mass in line (user call 2026-07-06).
+    frame: 'h-[clamp(190px,27vh,245px)] max-w-[480px]',
+    zzzPos: 'left-[42%] top-[56px]',
     hello: 'Oh, you again. Welcome back.',
     helloSignup: 'A new student? Fine, I’m up…',
     peek: 'I’m not peeking. Promise. Zzz.',
@@ -65,6 +73,28 @@ const CATS: CatDef[] = [
       'Who said that? ...Oh. You.',
       'I’m deeply invested in your progress.',
       'Blink twice if you brought snacks.',
+    ],
+  },
+  {
+    key: 'flop',
+    src: '/cat-flop.png',
+    alt: 'A chubby grey cat asleep on its back on a lavender cushion',
+    sleepy: true,
+    // 917×700 belly-up flop sleeper on its cushion (grey, matching the band-cat
+    // art); its baked z's were erased — the animated overlay owns the zzz's.
+    frame: 'h-[clamp(230px,33vh,300px)] max-w-[480px]',
+    // Head sits top-right of the sprawl, further left than the curled cat's spot.
+    zzzPos: 'left-[36%] top-[38px]',
+    hello: 'Welcome back. Excuse the pose.',
+    helloSignup: 'A new student? I’d wave, but gravity.',
+    peek: 'Relax — my eyes are closed.',
+    bye: 'Go study. I’ll hold the floor down.',
+    quips: [
+      'This is advanced resting.',
+      'I’m not lazy. I’m buffering.',
+      'The floor needed a hug.',
+      'Horizontal is a study position.',
+      'Belly rubs unlock C1. Probably.',
     ],
   },
 ]
@@ -318,7 +348,9 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
                 only "zzz" now) */}
             {showZzz && (
               <div
-                className="pointer-events-none absolute left-[46%] top-[34px] z-[2] font-black italic text-[#C1AEF0]"
+                className={`pointer-events-none absolute z-[2] font-black italic text-[#C1AEF0] ${
+                  cat.zzzPos ?? 'left-[46%] top-[34px]'
+                }`}
                 aria-hidden
               >
                 <span className="zzz-1 absolute left-0 top-[66px] text-[26px]">z</span>

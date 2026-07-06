@@ -19,7 +19,16 @@ function fmt(sec: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-export function PracticeAudioPlayer({ audio, label }: { audio: AudioAsset; label: string }) {
+export function PracticeAudioPlayer({
+  audio,
+  label,
+  autoStart = true,
+}: {
+  audio: AudioAsset
+  label: string
+  /** Review surfaces pass false — the student presses play themselves. */
+  autoStart?: boolean
+}) {
   const url = audioUrl(audio.assetPath)
   const audioRef = useRef<HTMLAudioElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -49,7 +58,7 @@ export function PracticeAudioPlayer({ audio, label }: { audio: AudioAsset; label
   const started = useAudioStore((s) => (s.plays[audio.assetPath] ?? 0) > 0)
   const usePlay = useAudioStore((s) => s.usePlay)
   useEffect(() => {
-    if (started || failed) return
+    if (!autoStart || started || failed) return
     usePlay(audio.assetPath)
     void audioRef.current?.play().catch(() => {
       /* autoplay blocked — the student presses play instead */

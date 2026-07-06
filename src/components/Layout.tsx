@@ -8,6 +8,7 @@ import {
   ChartIcon,
   ChevronDownIcon,
   CloseIcon,
+  GearIcon,
   HeadphonesIcon,
   HomeIcon,
   LogoutIcon,
@@ -116,6 +117,7 @@ const PAGE_TITLES: [string, string][] = [
   ['/reading', 'Reading'],
   ['/listening', 'Listening'],
   ['/dashboard', 'My results'],
+  ['/settings', 'Settings'],
   ['/test/', 'Test'],
   ['/results/', 'Results'],
   ['/handoff', 'Signing you in'],
@@ -136,7 +138,9 @@ export function Layout() {
       ? HeadphonesIcon
       : p.startsWith('/dashboard')
         ? ChartIcon
-        : p.startsWith('/test/')
+        : p.startsWith('/settings')
+          ? GearIcon
+          : p.startsWith('/test/')
           ? BookIcon
           : p.startsWith('/results/')
             ? ChartIcon
@@ -225,6 +229,14 @@ export function Layout() {
                           className="block px-4 py-2.5 text-sm font-semibold text-ink hover:bg-page"
                         >
                           My results
+                        </Link>
+                        <Link
+                          to="/settings"
+                          onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-ink hover:bg-page"
+                        >
+                          <GearIcon width={16} height={16} />
+                          Settings
                         </Link>
                         <button
                           onClick={() => supabase.auth.signOut()}

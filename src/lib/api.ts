@@ -2,10 +2,22 @@ import { supabase } from './supabase'
 import type { Band, SanitizedTest, SessionStatus, Skill, TestMode, TestSession } from '../types/test'
 import type {
   AttemptResult,
+  AttemptReview,
   AttemptSummary,
   StoredAttemptResult,
   TestCatalogEntry,
 } from '../types/attempt'
+import type {
+  DailyMinutes,
+  FirstExam,
+  HeardFrom,
+  OnboardingAnswers,
+  SelfLevel,
+  StudentProfile,
+  StudyPrefs,
+  TargetBand,
+  WeakArea,
+} from '../types/profile'
 
 async function invokeFunction<T>(name: string, body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(name, { body })
@@ -73,6 +85,12 @@ export function submitTest(
   return invokeFunction<AttemptResult>('submit-test', { testId, answers })
 }
 
+/** Full study review of a SUBMITTED attempt (content + keys + transcripts +
+ *  the graded answers) — server enforces that only the owner can fetch it. */
+export function fetchAttemptReview(attemptId: string): Promise<AttemptReview> {
+  return invokeFunction<AttemptReview>('review-attempt', { attemptId })
+}
+
 /** Exchange a MilliyMock hand-off token for a one-time login token hash. */
 export function milliymockHandoff(token: string): Promise<{ tokenHash: string }> {
   return invokeFunction<{ tokenHash: string }>('milliymock-handoff', { token })
@@ -104,6 +122,85 @@ export async function fetchMyAttempts(): Promise<AttemptSummary[]> {
       createdAt: row.created_at as string,
     }
   })
+}
+
+const PROFILE_COLUMNS =
+  'id, name, onboarded_at, first_exam, self_level, target_band, exam_month, weak_areas, daily_minutes, heard_from, heard_from_note'
+
+function mapProfile(row: Record<string, unknown>): StudentProfile {
+  return {
+    id: row.id as string,
+    name: (row.name as string | null) ?? null,
+    onboardedAt: (row.onboarded_at as string | null) ?? null,
+    firstExam: (row.first_exam as FirstExam | null) ?? null,
+    selfLevel: (row.self_level as SelfLevel | null) ?? null,
+    targetBand: (row.target_band as TargetBand | null) ?? null,
+    examMonth: (row.exam_month as string | null) ?? null,
+    weakAreas: (row.weak_areas as WeakArea[] | null) ?? [],
+    dailyMinutes: (row.daily_minutes as DailyMinutes | null) ?? null,
+    heardFrom: (row.heard_from as HeardFrom | null) ?? null,
+    heardFromNote: (row.heard_from_note as string | null) ?? null,
+  }
+}
+
+async function ownUserId(): Promise<string> {
+  const { data } = await supabase.auth.getSession()
+  const id = data.session?.user.id
+  if (!id) throw new Error('Not signed in.')
+  return id
+}
+
+/** The signed-in user's profile row (RLS: own row only). */
+export async function fetchMyProfile(): Promise<StudentProfile> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(PROFILE_COLUMNS)
+    .eq('id', await ownUserId())
+    .single()
+  if (error) throw new Error(error.message)
+  return mapProfile(data as Record<string, unknown>)
+}
+
+/** Save the one-time onboarding answers and stamp onboarded_at, so the wizard
+ *  never shows again. Column grants limit the writable fields; CHECK
+ *  constraints re-validate every value server-side. */
+export async function saveOnboarding(answers: OnboardingAnswers): Promise<StudentProfile> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({
+      first_exam: answers.firstExam,
+      self_level: answers.selfLevel,
+      target_band: answers.targetBand,
+      exam_month: answers.examMonth,
+      weak_areas: answers.weakAreas,
+      daily_minutes: answers.dailyMinutes,
+      heard_from: answers.heardFrom,
+      heard_from_note: answers.heardFrom === 'other' ? answers.heardFromNote : null,
+      onboarded_at: new Date().toISOString(),
+    })
+    .eq('id', await ownUserId())
+    .select(PROFILE_COLUMNS)
+    .single()
+  if (error) throw new Error(error.message)
+  return mapProfile(data as Record<string, unknown>)
+}
+
+/** Update the study preferences editable in /settings (attribution and the
+ *  onboarded_at stamp are deliberately not touchable here). */
+export async function updateStudyPrefs(prefs: StudyPrefs): Promise<StudentProfile> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({
+      target_band: prefs.targetBand,
+      exam_month: prefs.examMonth,
+      weak_areas: prefs.weakAreas,
+      daily_minutes: prefs.dailyMinutes,
+    })
+    .eq('id', await ownUserId())
+    .select(PROFILE_COLUMNS)
+    .single()
+  if (error) throw new Error(error.message)
+  return mapProfile(data as Record<string, unknown>)
 }
 
 /** Re-load a past attempt (RLS: only the owner can read it). */

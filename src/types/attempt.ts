@@ -1,4 +1,4 @@
-import type { Band, CefrLevel, Explanation, ItemType, Skill } from './test'
+import type { AudioAsset, Band, CefrLevel, Explanation, ItemType, ListeningPart, Skill } from './test'
 
 /** Row shape returned when listing published tests (metadata only, never content). */
 export interface TestCatalogEntry {
@@ -40,6 +40,25 @@ export interface StoredAttemptResult {
 
 export interface AttemptResult extends StoredAttemptResult {
   attemptId: string
+}
+
+/** The post-submit study payload from the review-attempt edge function: the
+ *  FULL test content (answer keys + transcripts — safe only AFTER submission,
+ *  and only for the attempt's owner) alongside the student's graded answers. */
+export interface AttemptReview {
+  attemptId: string
+  testId: string
+  testTitle: string
+  skill: Skill
+  submittedAt: string | null
+  rawScore: number
+  total: number
+  band: Band
+  audioMode: 'per_part' | 'single' | null
+  singleAudio: AudioAsset | null
+  /** Full parts including per-item answers and server-side transcripts. */
+  parts: ListeningPart[]
+  items: ItemResult[]
 }
 
 /** One row on the "My results" dashboard. */

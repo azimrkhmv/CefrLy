@@ -109,6 +109,21 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   past expires_at (+2 min grace) with 409 and closes the session.
 - In-test answers are drafted to localStorage (`cefrly-draft-<sessionId>`) so a
   refresh never loses progress; the draft is cleared on submit.
+  DRAFT-WIPE BUG FIXED 2026-07-06: TestPage's restore effect had a cleanup
+  reset() that ran BEFORE the saver subscription unsubscribed (React runs
+  same-component effect cleanups in declaration order; zustand notifies
+  synchronously), so ANY in-app exit (Exit button, route change) overwrote the
+  draft with {} — exit+resume came back blank while the dialog promised
+  "answers are saved". Refresh was unaffected (no cleanups on unload), which
+  is why testing missed it. The fix: the SAVER effect owns the unmount reset
+  and unsubscribes FIRST; the restore effect has no cleanup. Never reintroduce
+  a store-reset that can fire while the draft-saver is subscribed. All
+  localStorage draft ops are try/catch-guarded (blocked/full storage must not
+  crash the exam). Verified live: type → Exit dialog → resume → answer intact.
+  KNOWN LIMITS (by design for now): drafts are client-side only — resuming on
+  another device restores the session/timer but not typed answers; listening
+  simulation playLimit is client-side only (exit/refresh restores plays; audio
+  URLs are public) — real enforcement needs signed URLs + server play counts.
 - Local env goes in .env.local (gitignored). Never commit keys.
 - PHASE 2 (admin dashboard) is built: profiles.role (student/admin/super_admin;
   role changes only via admin-users edge function — column grant blocks direct
@@ -165,7 +180,19 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   part tabs, in TestPage) so it never unmounts on part navigation — the recording
   rolls straight through all six parts. VOLUME: shared slider (VolumeControl.tsx)
   on both players; the 0..1 value lives in useAudioStore + localStorage
-  ('cefrly-volume') so it persists across parts/attempts; store reset() keeps it. Six renderers in
+  ('cefrly-volume') so it persists across parts/attempts; store reset() keeps it
+  (missing key MUST default to 1 — Number(null) is 0, i.e. muted). REVIEW PAGE
+  (/review/:attemptId, ReviewPage.tsx, LISTENING only): post-submit study view in
+  the exam-player style — full recording on top (PracticeAudioPlayer autoStart
+  ={false}), split panes with a draggable divider: LEFT the paper with the
+  student's answers marked right/wrong plus the keys, RIGHT the part transcript.
+  Data comes from the review-attempt edge function (owner-only: full content incl.
+  answers + transcripts + the graded items — safe ONLY post-submit; get-test keeps
+  stripping pre-submit). Transcript convention: plain text, `SPEAKER: line` turns,
+  inline [Qn] where question n is answered (rendered as brand badges). The two
+  real tests currently carry PLACEHOLDER transcripts (plausible scripts written
+  around the official keys, 2026-07-06) — the owner will supply the real ones.
+  Entry point: "Review with audio & transcript" button on listening results. Six renderers in
   src/components/test/listening/ dispatched by ListeningPartRenderer. get-test v4 /
   submit-test v5 strip answers+explanations+transcripts and grade skill-agnostically
   (groups flattened). Admin: /admin/tests/new/listening + skill-dispatching edit
@@ -198,9 +225,15 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   answer states = brand-soft wash + brand border + font-bold. ink-faint is
   decorative-only (fails WCAG AA); informational muted text uses ink-soft.
 - MASCOT (in-app): src/components/Cat.tsx — original flat violet cat, poses per
-  context: read (hero), nap (empty states via src/components/EmptyState.tsx),
-  celebrate (results B2/C1, add .cat-bob), encourage (results below B2), peek
-  (spare accent), avatar (header account button). Never use external cat art.
+  context: read (hero), peek (spare accent), avatar (header account button).
+  The results header's celebrate/encourage SVG poses were REPLACED 2026-07-06
+  by public/cat-read-grey.png for ALL bands (the grey reading-book cat; keeps
+  .cat-bob on B2/C1) — the band-reactive voice lives in the bubble blurb. The
+  nap pose in EmptyState.tsx was REPLACED 2026-07-06 by public/cat-bored.png
+  (user-supplied grey bored lounger on a purple/yellow mat, 796×520; its purple
+  "hmph" notice marks are KEPT — unlike baked z's nothing duplicates them;
+  script scratchpad process_bored_cat.py); non-nap EmptyState poses still use
+  the SVG Cat. Never use external cat art.
   The mascot may be funny/deadpan on non-exam surfaces. Empty states use
   <EmptyState pose title hint action>, not plain text panels. (The SVG `welcome`
   pose exists in Cat.tsx but is unused now that login owns its own design.)
@@ -221,23 +254,31 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   gracefully. (3) The account toggle is now a divider ("No account yet? Sign up"
   / "Already have an account? Log in") and a reassurance card ("Your progress is
   safe with us." with ShieldIcon). All in the auth palette above.
-- Mascot: TWO cats, one picked at random per page load (CATS[] in
+- Mascot: THREE cats, one picked at random per page load (CATS[] in
   AuthPage.tsx, Math.random) so different visitors see different mascots —
-  public/cat-sleeping.png (the full purple cat asleep on a lavender cushion,
-  pulled from the design project's uploads/, background flood-filled to
-  transparent) and public/cat-surprised.png (the round wide-eyed grey cat
-  sitting on a lavender cushion — the FULL-BODY asset, restored; see the
-  surprised-cat note below). Each has its own personality copy (verbatim from
-  the source design: hello/peek/bye/quips); only the sleepy one shows zzz's.
-  The zzz's are ONLY the animated JSX overlay (.zzz-1/2/3 + zzz-float) now — the
-  two z glyphs that were also baked into cat-sleeping.png were erased as
-  disconnected image components (the user found them excessive/inaccurate; one
-  was cut off at the canvas top). The ear/tail flick marks in the asset were
-  kept. If you re-export cat-sleeping.png from the design project, re-erase the
-  baked z's (the design asset still has them).
+  public/cat-sleeping.png (REPLACED 2026-07-06 with user-supplied art: the GREY
+  cat asleep curled on a lavender cushion, matching the band-cat style;
+  1065×700, white bg flood-filled transparent, processed via scratchpad
+  process_sleeping_cat.py — the old purple design-project cat is gone),
+  public/cat-surprised.png (the round wide-eyed grey cat sitting on a lavender
+  cushion — the FULL-BODY asset, restored; see the surprised-cat note below),
+  and public/cat-flop.png (added 2026-07-06: the belly-up flop sleeper ON its
+  lavender cushion — the user replaced the first cushionless version with the
+  "full" art; grey, 917×700, same pipeline). Each has its own personality copy (hello/peek/bye/
+  quips; sleeping+surprised verbatim from the source design, flop written in
+  the same deadpan voice); only sleepy cats show zzz's. The zzz's are ONLY the
+  animated JSX overlay (.zzz-1/2/3 + zzz-float) — the user's standing rule: any
+  baked z glyphs in a sleeping-cat asset must be ERASED before install (done
+  for both sleepers: baked z's dropped as small disconnected components, area
+  < 20000px). CatDef.zzzPos (optional Tailwind classes) anchors the overlay
+  over THAT cat's head — flop uses left-[36%] top-[38px]; default (curled
+  sleeper) is left-[46%] top-[34px].
   Each CatDef carries its OWN `frame` (Tailwind size + anchor of the poke-button
-  box) for extensibility, but both full-body cushion cats now share the same
-  frame: h-[clamp(230px,33vh,300px)] max-w-[480px]. The img fills its frame with
+  box). surprised + flop share h-[clamp(230px,33vh,300px)] max-w-[480px]; the
+  curled sleeper uses a SHORTER h-[clamp(190px,27vh,245px)] because its art is
+  a wide low composition that rendered visibly bigger at the shared height
+  (user call 2026-07-06) — match visual cat/cushion MASS across cats, not
+  frame height. The img fills its frame with
   object-contain object-[left_bottom]. do NOT crop the asset or force a fixed
   auto-height. Preview a specific alternative with ?cat=<key> (e.g.
   /login?cat=surprised, or a numeric index) — otherwise it's random per load.
@@ -268,7 +309,10 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   · No attempts → greeting + "Discover your real CEFR level" hero (read cat +
     demo BandRuler + Start-first-test CTA) + "How it works" 3 steps.
   · Has attempts → greeting + LevelSnapshot (big band + count-up best score +
-    BandRuler(best) + "N more marks to reach <next>") + stat tiles (Tests taken/
+    the reading-book cat top-right — the SAME /cat-read-grey.png as the hero,
+    kept on purpose so the cat "never disappears" after the first attempt
+    (user call 2026-07-06) + BandRuler(best) + "N more marks to reach <next>")
+    + stat tiles (Tests taken/
     Average/Best/Latest) + a Score-trend Sparkline (raw scores over time with
     faint 10/18/28 band guides; shown at ≥2 attempts) + Recent-activity teaser
     (last 3 → See all).
@@ -280,8 +324,11 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   palette-quantized; script pattern in scratchpad process_band_cats.py). `w` is
   the rendered width at the shared 52px height (40/41/45/53); it feeds
   BandRuler's topperHalfWidth prop (default 21) which clamps the fill position
-  so wider cats never hang off the scale's ends. The signed-out demo ruler
-  keeps the base /cat-sit.png (no band earned). Preview any band's snapshot
+  so wider cats never hang off the scale's ends. The demo ruler (no-attempts
+  hero) fills to the C1 boundary and seats the C1 CHONK there — the cat at the
+  C1 position must always be the C1 cat (user call 2026-07-06); the neutral
+  /cat-sit.png stays for surfaces with no band position at all. Preview any
+  band's snapshot
   (cat + quip + fill) with /?band=C1 (case-insensitive; optional &score=NN,
   defaults to a mid-band score) — same spirit as /login?cat=; only the
   LevelSnapshot is overridden, stats/sparkline/activity stay real.
@@ -290,12 +337,19 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   Cefrly as a full 4-skill platform. Greeting name comes from Google
   user_metadata.full_name/name else the email local part.
 - Results header: friendly light card — big Nunito band label + count-up score,
-  cat + speech bubble (bg-brand-soft, blurb text) reacting to the band, BandRuler
+  the grey reading-book cat (public/cat-read-grey.png, bobbing on B2/C1) + a
+  speech bubble (bg-brand-soft, blurb text) reacting to the band, BandRuler
   fill below. No dark panels anywhere.
 - <BandRuler band score animate demo tone> (src/components/BandRuler.tsx): ruled
   CEFR scale (thresholds 10/18/28) with a fill that rises to the student's level;
   `demo` fills to the C1 boundary (signed-out hero, auth). Brand lockup:
   src/components/Logo.tsx.
+- Confirm dialogs: src/components/ConfirmDialog.tsx — Cefrly's OWN alert (the
+  startled cat-surprised.png + calm copy; safe action autofocused; Escape/
+  backdrop cancel; confirm tone 'brand' for commits, 'rose' for leaving).
+  TestPage uses it for Exit and incomplete-Submit (added 2026-07-06 — the user
+  rejected native window.confirm popups). Never use window.confirm on student
+  surfaces; the admin pages still do (acceptable there for now).
 - Loading: shimmer skeletons (src/components/Skeleton.tsx), not "Loading…" text
   (bare text ok for transient route guards). Motion hooks (count-up, in-view
   reveals) in src/lib/motion.ts. Motion classes (.reveal/.page-enter/.ruler-*/
@@ -304,3 +358,45 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   block forces opacity-0 rows visible.
 - DEV ONLY: /cat-preview route in App.tsx shows the mascot pose sheet — remove
   before launch.
+
+## Onboarding (asked ONCE per account — built 2026-07-06)
+- profiles carries the wizard answers (migration 0009: onboarded_at, first_exam
+  first_time/took_mock/took_real, self_level unknown/below_B1..C1, target_band
+  B1/B2/C1, exam_month date = first of month or null, weak_areas text[] ⊆
+  {reading,listening,writing,speaking,vocabulary,timing}, daily_minutes
+  15/30/60/120, heard_from telegram/instagram/youtube/friend_teacher/
+  learning_centre/milliymock/google/other + heard_from_note). CHECK constraints
+  + column-level UPDATE grants (same security model as roles: users can write
+  only name + these columns; role stays locked). Data is deliberately collected
+  now to feed the future STUDY-ROADMAP feature + attribution analytics.
+- /welcome = full-screen 7-step wizard (WelcomePage, outside the app shell):
+  first-exam → self-level → goal (GoalBandPicker: B1/B2/C1 stops on a
+  ruler-style radio track, the band cat slides to the selection) → exam month
+  (MonthGrid: next 12 months + "Haven't decided" = null) → weak-area chips →
+  daily time → heard-from (+free text for Other) → finale with the target-band
+  cat. Draft survives refresh via localStorage 'cefrly-onboarding-draft'; cat
+  quip per step; Continue gated per step.
+- ASKED-ONCE GATE: auth context fetches onboarded_at together with role;
+  ProtectedRoute holds rendering until the profile row arrives (role===null),
+  then: no stamp → funnel everything to /welcome; stamped → /welcome redirects
+  home. So the wizard never reappears on later logins (verified incl. hard
+  reload + direct /welcome nav). markOnboarded() lifts the gate ONLY on the
+  finale CTA — flipping it right after save would bounce the finale screen.
+  Existing accounts (incl. owners) meet the wizard once on their next login.
+- API: fetchMyProfile/saveOnboarding/updateStudyPrefs in src/lib/api.ts
+  (update scoped by own id; returns the updated row). Study prefs (goal/month/
+  weak areas/time) are editable at /settings (SettingsPage; Save enables on
+  dirty, "Saved ✓" on success); attribution is shown read-only there
+  (write-once by convention, not constraint).
+- Dashboard personalization: BandRuler `goal` prop plants a "Goal" marker at
+  the target band's threshold — a white rounded pill (flag icon + GOAL in
+  accent-deep, ring-accent/40, shadow-card) with a short accent stem down to
+  the rule, clamped 28px inside the scale ends (z-0, behind the cat; the lone
+  13px outline flag it replaced read as noise — user call 2026-07-06); LevelSnapshot swaps the
+  "N more marks" line to "…to reach your goal (B2)" / "Goal reached — aim
+  higher?" (falls back to next-band copy without a goal); exam-countdown chip
+  (sun-soft, ClockIcon, links to /settings; "Exam in ~N weeks/months", past →
+  "update it") in the greeting row; weak skills get a "Your focus" badge on
+  the skills roadmap. Shared controls: src/components/choice.tsx (OptionCard/
+  Chip/MonthGrid) and src/components/BandCat.tsx (BAND_CAT/BAND_QUIP/BandCat/
+  QuipBubble — moved out of HomePage; GoalBandPicker reuses them).

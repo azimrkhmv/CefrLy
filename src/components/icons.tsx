@@ -177,6 +177,15 @@ export function ChevronDownIcon(props: IconProps) {
   )
 }
 
+export function GearIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="12" r="3.2" />
+      <path d="M19.4 13.9a7.6 7.6 0 0 0 0-3.8l2-1.5-2-3.5-2.4.9a7.6 7.6 0 0 0-3.3-1.9L13.2 1.6h-2.4L10.3 4.1a7.6 7.6 0 0 0-3.3 1.9l-2.4-.9-2 3.5 2 1.5a7.6 7.6 0 0 0 0 3.8l-2 1.5 2 3.5 2.4-.9a7.6 7.6 0 0 0 3.3 1.9l.5 2.5h2.4l.5-2.5a7.6 7.6 0 0 0 3.3-1.9l2.4.9 2-3.5Z" />
+    </svg>
+  )
+}
+
 export function UsersIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

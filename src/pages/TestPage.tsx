@@ -23,6 +23,7 @@ import { ListeningPartRenderer } from '../components/test/listening/ListeningPar
 import { ListeningAudio } from '../components/test/ListeningAudio'
 import { QuestionNavigator } from '../components/test/QuestionNavigator'
 import { Timer } from '../components/test/Timer'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ModePicker } from '../components/test/ModePicker'
 import { CloseIcon } from '../components/icons'
 
@@ -126,20 +127,27 @@ export function TestPage() {
   })
 
   // Restore the saved draft for this session (survives page refreshes);
-  // drop drafts from older sessions.
+  // drop drafts from older sessions. NO cleanup here: clearing the store on
+  // unmount belongs to the SAVER effect below, after it unsubscribes — a
+  // cleanup reset() in this effect runs first (React executes cleanups in
+  // declaration order) while the saver is still subscribed, and zustand
+  // notifies synchronously, so it overwrote the draft with {} on every in-app
+  // exit — silently losing all answers despite the Exit dialog's promise.
+  // (Refresh never triggered it — no cleanups run on unload — which is why
+  // "refresh keeps answers" testing missed the bug.)
   useEffect(() => {
     if (!sessionId) return
     reset()
     useAudioStore.getState().reset()
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const key = localStorage.key(i)
-      if (key?.startsWith('cefrly-draft-') && key !== draftKey(sessionId)) {
-        localStorage.removeItem(key)
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i)
+        if (key?.startsWith('cefrly-draft-') && key !== draftKey(sessionId)) {
+          localStorage.removeItem(key)
+        }
       }
-    }
-    const saved = localStorage.getItem(draftKey(sessionId))
-    if (saved) {
-      try {
+      const saved = localStorage.getItem(draftKey(sessionId))
+      if (saved) {
         const parsed = JSON.parse(saved) as
           | { answers?: Record<string, string>; marked?: Record<string, boolean> }
           | Record<string, string>
@@ -149,23 +157,37 @@ export function TestPage() {
         } else {
           useAnswersStore.getState().hydrate(parsed as Record<string, string>)
         }
-      } catch {
+      }
+    } catch {
+      // Corrupt draft or blocked storage — start clean rather than crash the exam.
+      try {
         localStorage.removeItem(draftKey(sessionId))
+      } catch {
+        /* storage unavailable */
       }
     }
-    return () => reset()
   }, [sessionId, reset])
 
   // Save every answer/mark change so nothing is lost on refresh.
   useEffect(() => {
     if (!sessionId) return
-    return useAnswersStore.subscribe((state) => {
-      localStorage.setItem(
-        draftKey(sessionId),
-        JSON.stringify({ answers: state.answers, marked: state.marked }),
-      )
+    const unsubscribe = useAnswersStore.subscribe((state) => {
+      try {
+        localStorage.setItem(
+          draftKey(sessionId),
+          JSON.stringify({ answers: state.answers, marked: state.marked }),
+        )
+      } catch {
+        // Storage full/blocked: answers stay in memory; submitting still works.
+      }
     })
-  }, [sessionId])
+    return () => {
+      // ORDER MATTERS: stop persisting BEFORE clearing the store, so leaving
+      // the exam can never write an empty draft over the student's answers.
+      unsubscribe()
+      reset()
+    }
+  }, [sessionId, reset])
 
   const numbering = useMemo(() => {
     const map: Record<string, number> = {}
@@ -179,14 +201,20 @@ export function TestPage() {
   const submission = useMutation({
     mutationFn: () => submitTest(testId!, useAnswersStore.getState().answers),
     onSuccess: (result) => {
+      // reset() BEFORE removing the draft: the saver subscription reacts to
+      // the reset by writing {} — deleting afterwards leaves no orphan key.
+      reset()
+      useAudioStore.getState().reset()
       if (sessionId) localStorage.removeItem(draftKey(sessionId))
       queryClient.removeQueries({ queryKey: ['test', testId] })
       queryClient.removeQueries({ queryKey: ['session-status', testId] })
-      reset()
-      useAudioStore.getState().reset()
       navigate(`/results/${result.attemptId}`, { state: result, replace: true })
     },
   })
+
+  // Which in-app confirmation (ConfirmDialog) is open — replaces the native
+  // window.confirm popups with the startled-cat alert.
+  const [confirmAction, setConfirmAction] = useState<'exit' | 'submit' | null>(null)
 
   function jumpToQuestion(itemId: string) {
     if (!test) return
@@ -204,10 +232,8 @@ export function TestPage() {
   function handleSubmit(auto = false) {
     if (submission.isPending) return
     if (!auto && answeredCount < totalItems) {
-      const confirmed = window.confirm(
-        `You have answered ${answeredCount} of ${totalItems} questions. Submit anyway?`,
-      )
-      if (!confirmed) return
+      setConfirmAction('submit')
+      return
     }
     submission.mutate()
   }
@@ -333,12 +359,10 @@ export function TestPage() {
             <Link
               to={backTo}
               onClick={(e) => {
-                // Never drop out of a live attempt silently — same guard
-                // spirit as the incomplete-submit confirm in handleSubmit.
-                const message = isListening
-                  ? 'Leave the test? Your answers are saved and you can resume this attempt later.'
-                  : 'Leave the test? Your answers are saved, but the timer keeps running.'
-                if (!window.confirm(message)) e.preventDefault()
+                // Never drop out of a live attempt silently — the in-app
+                // startled-cat dialog asks first, then navigates on confirm.
+                e.preventDefault()
+                setConfirmAction('exit')
               }}
               title={
                 isListening
@@ -487,6 +511,29 @@ export function TestPage() {
           </div>
         </div>
       </div>
+
+      {/* Cefrly's own alert — no native browser popups inside the exam. */}
+      <ConfirmDialog
+        open={confirmAction !== null}
+        title={confirmAction === 'submit' ? 'Submit with unanswered questions?' : 'Leave the test?'}
+        message={
+          confirmAction === 'submit'
+            ? `You’ve answered ${answeredCount} of ${totalItems} questions — unanswered ones count as incorrect.`
+            : isListening
+              ? 'Your answers are saved. You can resume this attempt later.'
+              : 'Your answers are saved, but the timer keeps running.'
+        }
+        confirmLabel={confirmAction === 'submit' ? 'Submit anyway' : 'Leave test'}
+        cancelLabel={confirmAction === 'submit' ? 'Keep working' : 'Stay'}
+        tone={confirmAction === 'submit' ? 'brand' : 'rose'}
+        onConfirm={() => {
+          const action = confirmAction
+          setConfirmAction(null)
+          if (action === 'submit') submission.mutate()
+          else navigate(backTo)
+        }}
+        onCancel={() => setConfirmAction(null)}
+      />
     </ExamScreen>
   )
 }

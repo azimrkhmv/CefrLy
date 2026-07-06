@@ -9,8 +9,11 @@ import { ListeningPage } from './pages/ListeningPage'
 import { AuthPage } from './pages/AuthPage'
 import { TestPage } from './pages/TestPage'
 import { ResultsPage } from './pages/ResultsPage'
+import { ReviewPage } from './pages/ReviewPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { HandoffPage } from './pages/HandoffPage'
+import { WelcomePage } from './pages/WelcomePage'
+import { SettingsPage } from './pages/SettingsPage'
 import { AdminTestsPage } from './pages/admin/AdminTestsPage'
 import { TestFormPage } from './pages/admin/TestFormPage'
 import { ListeningTestFormPage } from './pages/admin/ListeningTestFormPage'
@@ -46,15 +49,20 @@ export default function App() {
       </Route>
 
       {/* Everything else requires an account. Signed-out visitors are sent to /login
-          before the app shell renders, so the first thing a new user sees is auth. */}
+          before the app shell renders, so the first thing a new user sees is auth.
+          ProtectedRoute also funnels accounts without onboarded_at to /welcome —
+          the one-time wizard renders full-screen, outside the app shell. */}
       <Route element={<ProtectedRoute />}>
+        <Route path="/welcome" element={<WelcomePage />} />
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/reading" element={<ReadingPage />} />
           <Route path="/listening" element={<ListeningPage />} />
           <Route path="/test/:testId" element={<TestPage />} />
           <Route path="/results/:attemptId" element={<ResultsPage />} />
+          <Route path="/review/:attemptId" element={<ReviewPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>
 

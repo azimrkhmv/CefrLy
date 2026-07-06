@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Band } from '../types/test'
 import { BAND_INFO, BAND_ORDER, BAND_THRESHOLDS } from '../lib/bands'
+import { FlagIcon } from './icons'
 
 const MAX_SCORE = 35
 
@@ -30,6 +31,7 @@ export function BandRuler({
   topper,
   topperHalfWidth = 21,
   topperBubble,
+  goal,
 }: {
   band?: Band
   score?: number
@@ -47,6 +49,9 @@ export function BandRuler({
    * the ruler, so a wide bubble never drags the mascot off-position or spills
    * out of the card at the extremes. */
   topperBubble?: ReactNode
+  /** The student's own goal: plants a small accent flag at that raw score
+   * (behind the mascot). `label` feeds the hover tooltip. */
+  goal?: { score: number; label: string }
 }) {
   const dark = tone === 'dark'
   const palette = {
@@ -118,6 +123,29 @@ export function BandRuler({
           )
         })}
       </div>
+
+      {/* the goal marker: a small "Goal" pill + a stem down to the rule. It
+          sits behind the mascot (z-0 vs z-[1]) so the cat can walk "past" it
+          as the score grows — once the goal is reached the cat covers it and
+          the sentence below takes over. */}
+      {goal && (
+        <span
+          className={`absolute top-[-24px] z-0 flex -translate-x-1/2 flex-col items-center ${
+            animate ? 'reveal' : ''
+          }`}
+          style={{
+            left: `clamp(28px, ${(Math.min(goal.score, MAX_SCORE) / MAX_SCORE) * 100}%, calc(100% - 28px))`,
+            ...(animate ? { animationDelay: '1.1s' } : undefined),
+          }}
+          title={goal.label}
+          aria-hidden
+        >
+          <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-[3px] text-[10px] font-extrabold uppercase tracking-[0.08em] text-accent-deep shadow-card ring-1 ring-accent/40">
+            <FlagIcon width={10} height={10} strokeWidth={2.2} /> Goal
+          </span>
+          <span className="mt-0.5 h-3 w-0.5 rounded-full bg-accent/60" />
+        </span>
+      )}
 
       {/* boundary ticks crossing the rule */}
       {[0, ...BAND_ORDER.slice(1).map((b) => BAND_THRESHOLDS[b]), MAX_SCORE].map((mark, i) => (

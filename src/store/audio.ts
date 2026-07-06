@@ -21,7 +21,9 @@ interface AudioState {
 const VOLUME_KEY = 'cefrly-volume'
 
 function savedVolume(): number {
-  const v = Number(localStorage.getItem(VOLUME_KEY))
+  const raw = localStorage.getItem(VOLUME_KEY)
+  if (raw === null) return 1 // Number(null) is 0 — a fresh browser must NOT start muted
+  const v = Number(raw)
   return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 1
 }
 

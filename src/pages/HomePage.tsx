@@ -1,12 +1,14 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { fetchMyAttempts } from '../lib/api'
+import { fetchMyAttempts, fetchMyProfile } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { BAND_INFO, BAND_ORDER, BAND_THRESHOLDS } from '../lib/bands'
 import { skillMeta } from '../lib/skills'
 import type { AttemptSummary } from '../types/attempt'
 import type { Band } from '../types/test'
+import type { SelfLevel, TargetBand, WeakArea } from '../types/profile'
 import { BandRuler } from '../components/BandRuler'
+import { BAND_CAT, BAND_QUIP, BandCat, QuipBubble } from '../components/BandCat'
 import { useCountUp } from '../lib/motion'
 import {
   ArrowRightIcon,
@@ -28,27 +30,23 @@ const CARD = 'rounded-2xl bg-white shadow-soft ring-1 ring-line/50'
 const CARD_HERO = 'rounded-2xl bg-white shadow-lift ring-1 ring-line/50'
 const KICKER = 'text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft'
 
-// The ruler cat changes with the student's band: unimpressed below B1, then
-// happier (and rounder) at every level up to the blissful C1 chonk. All four
-// are processed like cat-sit.png (transparent bg, floor shadow kept, 520px
-// tall). `w` is the rendered width at the shared 52px height — BandRuler
-// clamps the cat by half of it so it never hangs off the scale's ends.
-const RULER_CAT: Record<Band, { src: string; w: number }> = {
-  below_B1: { src: '/cat-band-below-b1.png', w: 40 },
-  B1: { src: '/cat-band-b1.png', w: 41 },
-  B2: { src: '/cat-band-b2.png', w: 45 },
-  C1: { src: '/cat-band-c1.png', w: 53 },
-}
-
-const RULER_QUIP: Record<Band, string> = {
-  below_B1: 'Everyone starts here.',
-  B1: 'Climbing nicely.',
-  B2: 'Look at you go.',
-  C1: 'Top of the scale.',
-}
-
 // Mid-band scores used by the ?band= preview when no &score= is given.
 const PREVIEW_SCORE: Record<Band, number> = { below_B1: 5, B1: 14, B2: 23, C1: 32 }
+
+// The exam-countdown chip label, from the onboarding exam month (YYYY-MM-01).
+function examCountdown(examMonth: string): { label: string; past: boolean } {
+  const [y, m] = examMonth.split('-').map(Number)
+  const now = new Date()
+  const monthsAway = (y - now.getFullYear()) * 12 + (m - 1 - now.getMonth())
+  if (monthsAway < 0) return { label: 'Exam month passed — update it', past: true }
+  if (monthsAway === 0) return { label: 'Exam this month', past: false }
+  const days = Math.max(1, Math.round((new Date(y, m - 1, 1).getTime() - now.getTime()) / 86400000))
+  if (days <= 70) {
+    const weeks = Math.max(1, Math.round(days / 7))
+    return { label: `Exam in ~${weeks} week${weeks > 1 ? 's' : ''}`, past: false }
+  }
+  return { label: `Exam in ~${monthsAway} months`, past: false }
+}
 
 function greetingName(email?: string, meta?: Record<string, unknown>): string {
   const raw =
@@ -58,33 +56,6 @@ function greetingName(email?: string, meta?: Record<string, unknown>): string {
     ''
   const first = raw.split(/[ ._-]/)[0]
   return first ? first.charAt(0).toUpperCase() + first.slice(1) : ''
-}
-
-// The mascot that rides the CEFR ruler to the student's score. Decorative — the
-// score + "N marks" sentence below stay the accessible source of truth. Its
-// quip bubble is passed separately (BandRuler topperBubble) so the wide bubble
-// never drags the cat off-position at the scale's extremes.
-function RulerCat({ band }: { band?: Band }) {
-  const cat = band ? RULER_CAT[band] : { src: '/cat-sit.png', w: 42 }
-  return (
-    <img
-      src={cat.src}
-      alt=""
-      aria-hidden
-      draggable={false}
-      width={cat.w}
-      height={52}
-      className="block h-[52px] w-auto select-none"
-    />
-  )
-}
-
-function RulerQuip({ quip }: { quip: string }) {
-  return (
-    <span className="bubble-pop block whitespace-nowrap rounded-2xl bg-brand-soft px-3 py-1 text-xs font-bold text-brand-deep">
-      {quip}
-    </span>
-  )
 }
 
 function StatTile({
@@ -167,50 +138,149 @@ function Sparkline({ scores }: { scores: number[] }) {
   )
 }
 
-function LevelSnapshot({ best }: { best: AttemptSummary }) {
+function LevelSnapshot({
+  best,
+  selfLevel,
+  targetBand,
+}: {
+  best: AttemptSummary
+  selfLevel?: SelfLevel | null
+  targetBand?: TargetBand | null
+}) {
+  // The level the student claimed at onboarding owns this card; test results
+  // only take over when there is nothing to fall back on ("Not sure yet", or
+  // a profile predating the wizard).
+  const selfBand = selfLevel && selfLevel !== 'unknown' ? selfLevel : null
+  const band = selfBand ?? best.band
+  const rulerScore = selfBand ? PREVIEW_SCORE[selfBand] : best.rawScore
   const score = useCountUp(best.rawScore)
-  const idx = BAND_ORDER.indexOf(best.band)
+  const idx = BAND_ORDER.indexOf(band)
   const nextBand = idx < BAND_ORDER.length - 1 ? BAND_ORDER[idx + 1] : null
   const toNext = nextBand ? Math.max(0, BAND_THRESHOLDS[nextBand] - best.rawScore) : 0
+  // The student's own goal (from onboarding) takes over the "N more marks"
+  // sentence and plants a flag on the ruler; without one we fall back to the
+  // next band up the scale.
+  const goalScore = targetBand ? BAND_THRESHOLDS[targetBand] : null
+  const toGoal = goalScore !== null ? Math.max(0, goalScore - best.rawScore) : 0
+  const goalAbove = targetBand ? BAND_ORDER.indexOf(targetBand) > idx : false
   const meta = skillMeta(best.skill)
   return (
     <section className={`${CARD_HERO} p-7 sm:p-9`}>
-      <p className={KICKER}>Your indicative {meta.label.toLowerCase()} level</p>
-      <div className="mt-2 flex items-end gap-3">
-        <span className="text-[40px] font-extrabold leading-none text-heading">
-          {BAND_INFO[best.band].label}
-        </span>
-        <span className="tnum pb-1 text-lg font-bold text-ink-soft">
-          {score}/{best.total} best
-        </span>
+      <div className="flex flex-wrap items-start justify-between gap-6">
+        <div className="min-w-0">
+          <p className={KICKER}>
+            {selfBand ? 'Your current level' : `Your indicative ${meta.label.toLowerCase()} level`}
+          </p>
+          <div className="mt-2 flex items-end gap-3">
+            <span className="text-[40px] font-extrabold leading-none text-heading">
+              {BAND_INFO[band].label}
+            </span>
+            {selfBand ? (
+              <span className="mb-1.5 rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-bold text-brand">
+                Self-assessed
+              </span>
+            ) : (
+              <span className="tnum pb-1 text-lg font-bold text-ink-soft">
+                {score}/{best.total} best
+              </span>
+            )}
+          </div>
+          <p className="mt-2 max-w-md text-sm text-ink-soft">{BAND_INFO[band].blurb}</p>
+        </div>
+        {/* the reading-book cat from the first-test hero keeps its seat here
+            once attempts exist — it must never disappear from Home */}
+        <img
+          src="/cat-read-grey.png"
+          alt=""
+          aria-hidden
+          draggable={false}
+          width={138}
+          height={150}
+          className="h-[150px] w-auto select-none"
+        />
       </div>
-      <p className="mt-2 max-w-md text-sm text-ink-soft">{BAND_INFO[best.band].blurb}</p>
 
       <div className="mt-6 pt-20 sm:pt-24">
         <BandRuler
-          band={best.band}
-          score={best.rawScore}
+          band={band}
+          score={rulerScore}
           animate
-          topper={<RulerCat band={best.band} />}
-          topperHalfWidth={Math.ceil(RULER_CAT[best.band].w / 2)}
-          topperBubble={<RulerQuip quip={RULER_QUIP[best.band]} />}
+          topper={<BandCat band={band} />}
+          topperHalfWidth={Math.ceil(BAND_CAT[band].w / 2)}
+          topperBubble={<QuipBubble>{BAND_QUIP[band]}</QuipBubble>}
+          goal={targetBand ? { score: BAND_THRESHOLDS[targetBand], label: `Goal: ${targetBand}` } : undefined}
         />
       </div>
 
       <p className="mt-6 text-sm text-ink-soft">
-        {nextBand && toNext > 0 ? (
-          <>
-            <span className="font-extrabold text-brand">
-              {toNext} more mark{toNext > 1 ? 's' : ''}
-            </span>{' '}
-            to reach {BAND_INFO[nextBand].label}.
-          </>
+        {selfBand ? (
+          // Self-assessed level: no real score behind the band, so talk in
+          // bands, never in made-up marks.
+          goalAbove && targetBand ? (
+            <>
+              Your goal is <span className="font-extrabold text-brand">{targetBand}</span> — every
+              test moves you closer.{' '}
+              <Link to={meta.to} className="font-bold text-brand hover:underline">
+                Practice →
+              </Link>
+            </>
+          ) : targetBand ? (
+            <>
+              You’re {BAND_ORDER.indexOf(targetBand) < idx ? 'already past' : 'at'} your goal level
+              ({targetBand}) — prove it in a test.{' '}
+              <Link to={meta.to} className="font-bold text-brand hover:underline">
+                Start →
+              </Link>
+            </>
+          ) : (
+            <>
+              Confirm it with a mock test.{' '}
+              <Link to={meta.to} className="font-bold text-brand hover:underline">
+                Practice →
+              </Link>
+            </>
+          )
+        ) : targetBand && goalScore !== null ? (
+          toGoal > 0 ? (
+            <>
+              <span className="font-extrabold text-brand">
+                {toGoal} more mark{toGoal > 1 ? 's' : ''}
+              </span>{' '}
+              to reach your goal ({targetBand}).{' '}
+              <Link to={meta.to} className="font-bold text-brand hover:underline">
+                Practice →
+              </Link>
+            </>
+          ) : (
+            <>
+              Goal reached — <span className="font-extrabold text-brand">{targetBand}</span> is
+              yours.{' '}
+              {targetBand !== 'C1' ? (
+                <Link to="/settings" className="font-bold text-brand hover:underline">
+                  Aim higher →
+                </Link>
+              ) : (
+                <>Top of the scale — keep it sharp.</>
+              )}
+            </>
+          )
         ) : (
-          <>You’re at the top of the {meta.label.toLowerCase()} scale — keep it sharp.</>
-        )}{' '}
-        <Link to={meta.to} className="font-bold text-brand hover:underline">
-          Practice →
-        </Link>
+          <>
+            {nextBand && toNext > 0 ? (
+              <>
+                <span className="font-extrabold text-brand">
+                  {toNext} more mark{toNext > 1 ? 's' : ''}
+                </span>{' '}
+                to reach {BAND_INFO[nextBand].label}.
+              </>
+            ) : (
+              <>You’re at the top of the {meta.label.toLowerCase()} scale — keep it sharp.</>
+            )}{' '}
+            <Link to={meta.to} className="font-bold text-brand hover:underline">
+              Practice →
+            </Link>
+          </>
+        )}
       </p>
     </section>
   )
@@ -223,28 +293,37 @@ const SKILLS = [
   { key: 'speaking', name: 'Speaking', Icon: MicIcon, desc: 'Interview & talk', to: null, tile: 'bg-rose-50 text-rose-800' },
 ] as const
 
-function SkillsRoadmap() {
+function SkillsRoadmap({ weakAreas }: { weakAreas?: WeakArea[] }) {
   return (
     <section>
       <h2 className="mb-4 text-xl font-extrabold text-heading">Your CEFR skills</h2>
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {SKILLS.map(({ key, name, Icon, desc, to, tile }) => {
           const available = to !== null
+          const focus = weakAreas?.includes(key as WeakArea) ?? false
           return (
             <div key={key} className={`${CARD} p-5 ${available ? '' : 'opacity-80'}`}>
               <div className="flex items-center justify-between">
                 <span className={`grid h-12 w-12 place-items-center rounded-xl ${tile}`}>
                   <Icon width={22} height={22} />
                 </span>
-                {available ? (
-                  <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-bold text-brand">
-                    Available
-                  </span>
-                ) : (
-                  <span className="rounded-full bg-page px-2.5 py-0.5 text-[11px] font-bold lowercase text-ink-soft">
-                    soon
-                  </span>
-                )}
+                <span className="flex items-center gap-1.5">
+                  {/* the student named this skill a struggle at onboarding */}
+                  {focus && (
+                    <span className="rounded-full bg-sun-soft px-2.5 py-0.5 text-[11px] font-bold text-sun-ink">
+                      Your focus
+                    </span>
+                  )}
+                  {available ? (
+                    <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-bold text-brand">
+                      Available
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-page px-2.5 py-0.5 text-[11px] font-bold lowercase text-ink-soft">
+                      soon
+                    </span>
+                  )}
+                </span>
               </div>
               <p className={`mt-3 font-extrabold ${available ? 'text-heading' : 'text-ink-soft'}`}>{name}</p>
               <p className="mt-0.5 text-sm text-ink-soft">{desc}</p>
@@ -355,8 +434,9 @@ function NewUserHome() {
           <BandRuler
             demo
             animate
-            topper={<RulerCat />}
-            topperBubble={<RulerQuip quip="This seat’s waiting for you." />}
+            topper={<BandCat band="C1" />}
+            topperHalfWidth={Math.ceil(BAND_CAT.C1.w / 2)}
+            topperBubble={<QuipBubble>This seat’s waiting for you.</QuipBubble>}
           />
         </div>
       </section>
@@ -398,6 +478,15 @@ export function HomePage() {
     isLoading,
     error,
   } = useQuery({ queryKey: ['my-attempts'], queryFn: fetchMyAttempts, enabled: !!session })
+
+  // Onboarding answers personalize the page (goal flag, exam countdown, focus
+  // badges); the page renders fine while — or if — this is still loading.
+  const { data: profile } = useQuery({
+    queryKey: ['my-profile'],
+    queryFn: fetchMyProfile,
+    enabled: !!session,
+  })
+  const exam = profile?.examMonth ? examCountdown(profile.examMonth) : null
 
   const name = greetingName(
     session?.user.email,
@@ -445,19 +534,34 @@ export function HomePage() {
               : 'Let’s find your English level and build from there.'}
           </p>
         </div>
-        {hasAttempts && (
-          <Link
-            to="/reading"
-            className="group inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
-          >
-            Start a test
-            <ArrowRightIcon
-              width={15}
-              height={15}
-              className="motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5"
-            />
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {exam && (
+            <Link
+              to="/settings"
+              title="Change your exam month in Settings"
+              className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+                exam.past
+                  ? 'bg-white text-ink-soft ring-1 ring-line hover:text-ink'
+                  : 'bg-sun-soft text-sun-ink hover:ring-1 hover:ring-sun/50'
+              }`}
+            >
+              <ClockIcon width={15} height={15} /> {exam.label}
+            </Link>
+          )}
+          {hasAttempts && (
+            <Link
+              to="/reading"
+              className="group inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+            >
+              Start a test
+              <ArrowRightIcon
+                width={15}
+                height={15}
+                className="motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5"
+              />
+            </Link>
+          )}
+        </div>
       </div>
 
       {isLoading && <HomeSkeleton />}
@@ -472,7 +576,13 @@ export function HomePage() {
 
       {hasAttempts && (
         <>
-          <LevelSnapshot best={snapshot!} />
+          <LevelSnapshot
+            best={snapshot!}
+            // ?band= previews the earned-band card, so it suppresses the
+            // self-assessed override.
+            selfLevel={previewBand ? null : profile?.selfLevel}
+            targetBand={profile?.targetBand}
+          />
 
           <section className={chron.length >= 2 ? 'grid gap-5 lg:grid-cols-[1fr_1.3fr]' : ''}>
             <div className="grid grid-cols-2 gap-5">
@@ -506,7 +616,7 @@ export function HomePage() {
         </>
       )}
 
-      <SkillsRoadmap />
+      <SkillsRoadmap weakAreas={profile?.weakAreas} />
 
       {hasAttempts && <RecentActivity attempts={attempts!} />}
     </div>

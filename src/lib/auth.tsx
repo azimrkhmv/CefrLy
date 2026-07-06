@@ -12,6 +12,13 @@ interface AuthState {
   role: Role | null
   /** True while the role for the current session is being fetched. */
   roleLoading: boolean
+  /** profiles.onboarded_at — null means the /welcome wizard hasn't been
+   *  completed (it runs exactly once per account). Loaded together with role,
+   *  so `role !== null` also means this value is settled. */
+  onboardedAt: string | null
+  /** Lifts the onboarding gate immediately after the wizard saves, without a
+   *  profile refetch. */
+  markOnboarded: () => void
 }
 
 const AuthContext = createContext<AuthState>({
@@ -19,6 +26,8 @@ const AuthContext = createContext<AuthState>({
   loading: true,
   role: null,
   roleLoading: false,
+  onboardedAt: null,
+  markOnboarded: () => {},
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -26,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<Role | null>(null)
   const [roleLoading, setRoleLoading] = useState(false)
+  const [onboardedAt, setOnboardedAt] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -47,18 +57,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId) {
       setRole(null)
+      setOnboardedAt(null)
       return
     }
     let cancelled = false
     setRoleLoading(true)
     supabase
       .from('profiles')
-      .select('role')
+      .select('role, onboarded_at')
       .eq('id', userId)
       .single()
       .then(({ data }) => {
         if (cancelled) return
         setRole((data?.role as Role | undefined) ?? 'student')
+        setOnboardedAt((data?.onboarded_at as string | null | undefined) ?? null)
         setRoleLoading(false)
       })
     return () => {
@@ -67,7 +79,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [userId])
 
   return (
-    <AuthContext.Provider value={{ session, loading, role, roleLoading }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        loading,
+        role,
+        roleLoading,
+        onboardedAt,
+        markOnboarded: () => setOnboardedAt(new Date().toISOString()),
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )
