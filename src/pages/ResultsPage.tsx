@@ -134,6 +134,11 @@ function ResultsView({ result }: { result: AttemptResult }) {
         </div>
       </section>
 
+      {/* Listening attempts skip this flat list — the audio review page
+          (/review/:attemptId, linked above) covers answers, keys AND the
+          transcript in one place. Reading has no audio review, so it keeps
+          the per-part answer review with explanations. */}
+      {result.skill !== 'listening' && (
       <section className="space-y-6">
         <h2 className="text-xl font-extrabold text-heading">Answer review</h2>
         {[...byPart.entries()]
@@ -166,6 +171,7 @@ function ResultsView({ result }: { result: AttemptResult }) {
             )
           })}
       </section>
+      )}
 
       <div className="flex flex-wrap gap-3">
         <Link
