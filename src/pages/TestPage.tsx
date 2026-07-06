@@ -332,6 +332,14 @@ export function TestPage() {
           <div className="flex min-w-0 items-center gap-2 sm:gap-4">
             <Link
               to={backTo}
+              onClick={(e) => {
+                // Never drop out of a live attempt silently — same guard
+                // spirit as the incomplete-submit confirm in handleSubmit.
+                const message = isListening
+                  ? 'Leave the test? Your answers are saved and you can resume this attempt later.'
+                  : 'Leave the test? Your answers are saved, but the timer keeps running.'
+                if (!window.confirm(message)) e.preventDefault()
+              }}
               title={
                 isListening
                   ? 'Leave the test — your answers are saved.'
