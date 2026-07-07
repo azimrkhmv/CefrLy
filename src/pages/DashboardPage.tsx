@@ -30,7 +30,8 @@ function AttemptCard({ attempt }: { attempt: AttemptSummary }) {
   return (
     <li>
       <Link
-        to={`/results/${attempt.id}`}
+        // Reading opens its Analysis page; listening keeps the score/results page.
+        to={attempt.skill === 'listening' ? `/results/${attempt.id}` : `/analyze/${attempt.id}`}
         // Same quiet card as the Samples grid: no top bar; the whole card is the
         // link, lifting on hover with the brand-tinted shadow (no jump).
         className="group flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-card transition-[border-color,box-shadow] duration-200 hover:border-brand/30 hover:shadow-soft"

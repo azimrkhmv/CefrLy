@@ -229,7 +229,14 @@ export function TestPage() {
       if (sessionId) localStorage.removeItem(draftKey(sessionId))
       queryClient.removeQueries({ queryKey: ['test', testId] })
       queryClient.removeQueries({ queryKey: ['session-status', testId] })
-      navigate(`/results/${result.attemptId}`, { state: result, replace: true })
+      // Reading opens its Analysis page directly; listening keeps the score
+      // page (which carries the audio/transcript review link).
+      navigate(
+        result.skill === 'listening'
+          ? `/results/${result.attemptId}`
+          : `/analyze/${result.attemptId}`,
+        { state: result, replace: true },
+      )
     },
   })
 

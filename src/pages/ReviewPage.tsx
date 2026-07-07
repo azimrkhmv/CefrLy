@@ -56,7 +56,7 @@ export function ReviewPage() {
   }
   // Audio + transcript review only makes sense for listening; reading attempts
   // keep the ordinary results page.
-  if (data.skill !== 'listening') return <Navigate to={`/results/${data.attemptId}`} replace />
+  if (data.skill !== 'listening') return <Navigate to={`/analyze/${data.attemptId}`} replace />
 
   return <ReviewScreen review={data} />
 }

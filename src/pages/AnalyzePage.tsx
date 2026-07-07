@@ -106,11 +106,11 @@ function AnalyzeScreen({ review }: { review: AttemptReview }) {
         <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-2 sm:gap-4">
             <Link
-              to={`/results/${review.attemptId}`}
+              to="/dashboard"
               className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
             >
               <CloseIcon width={18} height={18} />
-              <span className="hidden sm:inline">Back to results</span>
+              <span className="hidden sm:inline">My results</span>
             </Link>
             <div className="flex min-w-0 items-center gap-2">
               <BookIcon className="hidden shrink-0 text-brand sm:block" width={20} height={20} />

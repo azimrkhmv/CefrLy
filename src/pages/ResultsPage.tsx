@@ -1,12 +1,17 @@
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchAttempt, fetchMyAttempts } from '../lib/api'
 import { BAND_INFO, BAND_ORDER } from '../lib/bands'
 import { BandRuler } from '../components/BandRuler'
-import { useCountUp, useInView } from '../lib/motion'
-import type { AttemptResult, ItemResult } from '../types/attempt'
+import { useCountUp } from '../lib/motion'
+import type { AttemptResult } from '../types/attempt'
 import type { Band } from '../types/test'
 
+// Post-submit results. READING attempts get the richer Analysis page instead
+// (/analyze/:id — band + answer key + passage highlights + explanations), so
+// this page now serves LISTENING: the score header + the audio/transcript
+// review link. Any reading attempt that lands here (old link, dashboard) is
+// redirected to its analysis.
 export function ResultsPage() {
   const { attemptId } = useParams<{ attemptId: string }>()
   const location = useLocation()
@@ -30,6 +35,12 @@ export function ResultsPage() {
     )
   }
 
+  // Reading (incl. legacy rows with no stored skill) uses the Analysis page as
+  // its results view — no separate score-only screen.
+  if ((result.skill ?? 'reading') !== 'listening') {
+    return <Navigate to={`/analyze/${result.attemptId}`} replace />
+  }
+
   return <ResultsView result={result} />
 }
 
@@ -41,18 +52,14 @@ function ResultsView({ result }: { result: AttemptResult }) {
   const accuracy = result.total > 0 ? Math.round((result.rawScore / result.total) * 100) : 0
   const shownScore = useCountUp(result.rawScore)
 
-  // "Up from X": compare this attempt's band with the best band achieved
-  // before it. Only the SAME skill counts — reading and listening are separate
-  // indicative bands (both use the 28/18/10 scale), so a prior listening B1
-  // must not read as an earlier reading band on a reading result. Part drills
-  // carry no band, so they never take part.
+  // "Up from X": compare this attempt's band with the best earlier listening
+  // band (same skill only — reading/listening are separate indicative bands).
   const { data: attempts } = useQuery({ queryKey: ['my-attempts'], queryFn: fetchMyAttempts })
-  const resultSkill = result.skill ?? 'reading'
   const earlierBands = (attempts ?? [])
     .filter(
       (a) =>
         a.id !== result.attemptId &&
-        a.skill === resultSkill &&
+        a.skill === 'listening' &&
         a.createdAt < result.submittedAt &&
         a.band !== null,
     )
@@ -63,22 +70,6 @@ function ResultsView({ result }: { result: AttemptResult }) {
     result.band && previousBestRank !== null && currentRank > previousBestRank
       ? BAND_INFO[BAND_ORDER[previousBestRank]].label
       : null
-
-  const byPart = new Map<number, ItemResult[]>()
-  for (const item of result.items) {
-    const list = byPart.get(item.partNumber) ?? []
-    list.push(item)
-    byPart.set(item.partNumber, list)
-  }
-
-  // Number questions the SAME way the exam player does: positionally, 1..N over
-  // the items in order. `result.items` is already in exam order (the submit
-  // function walks parts then items). Parsing the id (q21…) would mislabel a
-  // single-part drill of Parts 2–5 — its stored ids keep the full paper's
-  // global numbers, so a Part 4 drill would read "21–29" here while the exam
-  // showed "1–9". Position matches the exam for both full mocks and drills.
-  const numberById = new Map<string, number>()
-  result.items.forEach((item, index) => numberById.set(item.id, index + 1))
 
   const submittedOn = new Date(result.submittedAt).toLocaleDateString(undefined, {
     day: 'numeric',
@@ -118,23 +109,14 @@ function ResultsView({ result }: { result: AttemptResult }) {
             <p className="reveal reveal-3 mt-3 text-sm text-ink-soft">
               {isPart
                 ? `Part ${result.partNumber ?? ''} practice — single-part scores don't carry a CEFR band; take a full mock for one.`
-                : 'Indicative reading band only — the full four-skill result comes from a complete mock exam.'}
+                : 'Indicative listening band only — the full four-skill result comes from a complete mock exam.'}
             </p>
-            {result.skill === 'listening' ? (
-              <Link
-                to={`/review/${result.attemptId}`}
-                className="reveal reveal-4 mt-4 inline-block rounded-xl bg-accent px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
-              >
-                Review with audio &amp; transcript
-              </Link>
-            ) : (
-              <Link
-                to={`/analyze/${result.attemptId}`}
-                className="reveal reveal-4 mt-4 inline-block rounded-xl bg-accent px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
-              >
-                Analyze this attempt
-              </Link>
-            )}
+            <Link
+              to={`/review/${result.attemptId}`}
+              className="reveal reveal-4 mt-4 inline-block rounded-xl bg-accent px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
+            >
+              Review with audio &amp; transcript
+            </Link>
           </div>
 
           {/* the mascot delivers the verdict */}
@@ -144,7 +126,7 @@ function ResultsView({ result }: { result: AttemptResult }) {
                 ? band.blurb
                 : accuracy >= 70
                   ? 'Sharp work on this part — keep the streak going.'
-                  : 'Every drill counts. Check the review below and go again.'}
+                  : 'Every drill counts — review it and go again.'}
               <span
                 className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-brand-soft"
                 aria-hidden
@@ -172,45 +154,6 @@ function ResultsView({ result }: { result: AttemptResult }) {
         )}
       </section>
 
-      {/* Listening attempts skip this flat list — the audio review page
-          (/review/:attemptId, linked above) covers answers, keys AND the
-          transcript in one place. Reading has no audio review, so it keeps
-          the per-part answer review with explanations. */}
-      {result.skill !== 'listening' && (
-      <section className="space-y-6">
-        <h2 className="text-xl font-extrabold text-heading">Answer review</h2>
-        {[...byPart.entries()]
-          .sort(([a], [b]) => a - b)
-          .map(([partNumber, items]) => {
-            const correctCount = items.filter((i) => i.correct).length
-            return (
-              <div
-                key={partNumber}
-                className="rounded-2xl border border-line bg-white p-5 shadow-card"
-              >
-                <h3 className="font-extrabold text-heading">
-                  Part {partNumber}
-                  <span className="tnum ml-2 text-sm font-semibold text-ink-soft">
-                    {correctCount}/{items.length} correct
-                  </span>
-                </h3>
-                <div className="mb-4 mt-2.5 h-0.5 w-full rounded-full bg-page" aria-hidden>
-                  <div
-                    className="h-0.5 rounded-full bg-brand"
-                    style={{ width: `${(correctCount / items.length) * 100}%` }}
-                  />
-                </div>
-                <ol className="space-y-3">
-                  {items.map((item) => (
-                    <ItemReview key={item.id} item={item} number={numberById.get(item.id)!} />
-                  ))}
-                </ol>
-              </div>
-            )
-          })}
-      </section>
-      )}
-
       <div className="flex flex-wrap gap-3">
         <Link
           to="/"
@@ -226,55 +169,5 @@ function ResultsView({ result }: { result: AttemptResult }) {
         </Link>
       </div>
     </div>
-  )
-}
-
-function ItemReview({ item, number }: { item: ItemResult; number: number }) {
-  const [ref, inView] = useInView<HTMLLIElement>()
-
-  return (
-    <li
-      ref={ref}
-      className={`rounded-xl border border-line bg-white p-4 ${inView ? 'reveal' : 'opacity-0'}`}
-    >
-      <div className="flex items-start gap-3">
-        <span className="q-badge">{number}</span>
-        <div className="min-w-0 flex-1 text-sm">
-          <p className={`mb-1 text-xs font-medium ${item.correct ? 'text-ok' : 'text-rose-700'}`}>
-            {item.correct ? 'Correct' : 'Incorrect'}
-          </p>
-          {item.prompt && <p className="mb-2 font-medium text-ink">{item.prompt}</p>}
-          <p>
-            <span className="text-ink-soft">Your answer: </span>
-            {item.userAnswerLabel != null ? (
-              <span className={item.correct ? 'font-semibold text-ok' : 'font-semibold text-rose-700'}>
-                {item.userAnswerLabel}
-              </span>
-            ) : (
-              <span className="italic text-ink-soft">No answer</span>
-            )}
-          </p>
-          {!item.correct && (
-            <p>
-              <span className="text-ink-soft">Correct answer: </span>
-              <span className="font-semibold text-ink">{item.correctAnswerLabel}</span>
-            </p>
-          )}
-          <details className="mt-2">
-            <summary className="cursor-pointer font-medium text-brand hover:underline">
-              Explanation
-            </summary>
-            <div className="mt-2 space-y-1 rounded-xl bg-page p-3 text-ink">
-              <p>
-                <span className="font-semibold">Where: </span>
-                {item.explanation.location}
-              </p>
-              <p className="italic text-ink-soft">“{item.explanation.quote}”</p>
-              <p>{item.explanation.reasoning}</p>
-            </div>
-          </details>
-        </div>
-      </div>
-    </li>
   )
 }

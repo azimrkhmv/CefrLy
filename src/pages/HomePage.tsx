@@ -393,7 +393,7 @@ function RecentActivity({ attempts }: { attempts: AttemptSummary[] }) {
                 </span>
               )}
               <Link
-                to={`/results/${a.id}`}
+                to={a.skill === 'listening' ? `/results/${a.id}` : `/analyze/${a.id}`}
                 className="inline-flex items-center rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-ink transition-colors hover:border-brand hover:text-brand"
               >
                 Review
