@@ -13,23 +13,28 @@ import type { Skill } from '../types/test'
 // No "All" tab (user call 2026-07-06) — the four skills are the sections.
 type Filter = Skill
 
-// Per-skill card dressing: the colored top bar + icon tile mirror the skill
-// colors used on the Home roadmap (reading = brand violet, listening = sun).
+// Per-skill icon tile: mirrors the skill colors used on the Home roadmap
+// (reading = brand violet, listening = sun). No colored top bar — cards stay
+// quiet like the Samples grid; the chip + tile carry the skill.
 const SKILL_CARD: Record<
   Skill,
-  { bar: string; tile: string; Icon: (props: { width?: number; height?: number }) => React.ReactElement }
+  { tile: string; Icon: (props: { width?: number; height?: number }) => React.ReactElement }
 > = {
-  reading: { bar: 'bg-brand', tile: 'bg-brand-soft text-brand', Icon: BookIcon },
-  listening: { bar: 'bg-sun', tile: 'bg-sun-soft text-sun-ink', Icon: HeadphonesIcon },
+  reading: { tile: 'bg-brand-soft text-brand', Icon: BookIcon },
+  listening: { tile: 'bg-sun-soft text-sun-ink', Icon: HeadphonesIcon },
 }
 
 function AttemptCard({ attempt }: { attempt: AttemptSummary }) {
   const meta = skillMeta(attempt.skill)
   const card = SKILL_CARD[attempt.skill]
   return (
-    <li className="flex flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-card">
-      <div className={`h-1.5 w-full ${card.bar}`} aria-hidden />
-      <div className="flex-1 p-5">
+    <li>
+      <Link
+        to={`/results/${attempt.id}`}
+        // Same quiet card as the Samples grid: no top bar; the whole card is the
+        // link, lifting on hover with the brand-tinted shadow (no jump).
+        className="group flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-card transition-[border-color,box-shadow] duration-200 hover:border-brand/30 hover:shadow-soft"
+      >
         <div className="flex items-start gap-3">
           <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${card.tile}`}>
             <card.Icon width={20} height={20} />
@@ -67,20 +72,17 @@ function AttemptCard({ attempt }: { attempt: AttemptSummary }) {
             {attempt.rawScore}/{attempt.total}
           </span>
         </div>
-      </div>
-      <div className="flex justify-end border-t border-line px-5 py-3">
-        <Link
-          to={`/results/${attempt.id}`}
-          className="group inline-flex items-center gap-1.5 text-sm font-bold text-brand hover:underline"
-        >
-          Review
-          <ArrowRightIcon
-            width={15}
-            height={15}
-            className="motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5"
-          />
-        </Link>
-      </div>
+        <div className="mt-auto flex items-center border-t border-line pt-3.5">
+          <span className="inline-flex items-center gap-1.5 text-sm font-bold text-brand">
+            Review
+            <ArrowRightIcon
+              width={15}
+              height={15}
+              className="transition-transform duration-200 motion-safe:group-hover:translate-x-1"
+            />
+          </span>
+        </div>
+      </Link>
     </li>
   )
 }
@@ -194,8 +196,11 @@ export function DashboardPage() {
             />
           ) : (
             <>
-              <div className={`grid gap-4 ${best ? 'sm:grid-cols-2' : ''}`}>
-                <div className="rounded-2xl border border-line bg-white p-5 shadow-card">
+              {/* Compact stats strip: one quiet panel split into cells that hugs
+                  its content, instead of two big half-empty boxes. Stacks with a
+                  horizontal divider on mobile, sits inline on desktop. */}
+              <div className="flex w-fit flex-col divide-y divide-line rounded-2xl border border-line bg-white shadow-card sm:flex-row sm:divide-x sm:divide-y-0">
+                <div className="px-6 py-4">
                   <p className="text-sm font-semibold text-ink-soft">
                     {skillMeta(filter).label} tests taken
                   </p>
@@ -203,9 +208,9 @@ export function DashboardPage() {
                 </div>
                 {/* full mocks only — part drills have no comparable /35 score */}
                 {best && best.band && (
-                  <div className="rounded-2xl border border-line bg-white p-5 shadow-card">
+                  <div className="px-6 py-4">
                     <p className="text-sm font-semibold text-ink-soft">Best full mock</p>
-                    <p className="mt-1 flex items-baseline gap-2.5">
+                    <p className="mt-1 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                       <span className="tnum text-2xl font-extrabold text-heading">
                         {best.rawScore}/{best.total}
                       </span>

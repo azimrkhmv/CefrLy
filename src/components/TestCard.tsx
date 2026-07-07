@@ -22,7 +22,7 @@ export function TestCard({
   const meta = skillMeta(test.skill)
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-line bg-white p-6 shadow-card transition-all duration-200 hover:border-ink-faint hover:shadow-lift motion-safe:hover:-translate-y-0.5">
+    <div className="flex h-full flex-col rounded-2xl border border-line bg-white p-6 shadow-card transition-[border-color,box-shadow] duration-200 hover:border-brand/30 hover:shadow-soft">
       <div className="flex flex-wrap items-center gap-2">
         <span className={`inline-block rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] ${meta.chip}`}>
           {meta.label}

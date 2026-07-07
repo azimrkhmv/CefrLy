@@ -22,6 +22,8 @@ dist/
 
 # real exam source material (papers + audio) — lives in Supabase, never in git
 listening sample/
+/reading samples/
+/samples/
 
 # logs
 *.log

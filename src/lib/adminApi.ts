@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import type { AnyTest, CefrLevel } from '../types/test'
+import type { SampleCategory, SampleContent } from '../types/sample'
 
 // Client for the admin-tests edge function. The browser NEVER touches the
 // tests/test_content tables for admin work — every read and write goes
@@ -119,4 +120,83 @@ export function adminSetUserRole(
   role: 'student' | 'admin',
 ): Promise<{ ok: true; userId: string; role: string }> {
   return invokeUsers({ action: 'setUserRole', userId, role })
+}
+
+// --- admin-samples (Writing/Speaking model-answer library) -----------------
+// Same shape as the tests client: role-gated edge function, validator errors
+// surface as ValidationError so the form can list them.
+
+export type SampleStatus = 'draft' | 'published' | 'archived'
+
+export interface AdminSampleRow {
+  id: string
+  slug: string
+  category: SampleCategory
+  badge: string
+  title: string
+  status: SampleStatus
+  sort_order: number
+  created_at: string
+}
+
+export interface AdminSampleFull extends AdminSampleRow {
+  content: SampleContent
+}
+
+export interface SampleUpsertInput {
+  slug: string
+  category: SampleCategory
+  badge: string
+  title: string
+  content: SampleContent
+  status: 'draft' | 'published'
+  sortOrder: number
+}
+
+async function invokeSamples<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('admin-samples', { body })
+  if (error) {
+    let message = 'Samples request failed.'
+    const ctx = (error as { context?: Response }).context
+    if (ctx) {
+      try {
+        const parsed = (await ctx.json()) as { error?: string; errors?: string[] }
+        if (Array.isArray(parsed.errors) && parsed.errors.length > 0) {
+          throw new ValidationError(parsed.errors)
+        }
+        if (parsed.error) message = parsed.error
+      } catch (err) {
+        if (err instanceof ValidationError) throw err
+      }
+    }
+    throw new Error(message)
+  }
+  return data as T
+}
+
+export async function adminListSamples(): Promise<AdminSampleRow[]> {
+  const { samples } = await invokeSamples<{ samples: AdminSampleRow[] }>({ action: 'list' })
+  return samples
+}
+
+export async function adminGetSample(slug: string): Promise<AdminSampleFull> {
+  const { sample } = await invokeSamples<{ sample: AdminSampleFull }>({ action: 'get', slug })
+  return sample
+}
+
+export function adminUpsertSample(
+  input: SampleUpsertInput,
+): Promise<{ ok: true; slug: string; id: string }> {
+  return invokeSamples({ action: 'upsert', ...input })
+}
+
+export function adminSetSampleStatus(
+  slug: string,
+  status: 'draft' | 'published',
+): Promise<{ ok: true; slug: string; status: SampleStatus }> {
+  return invokeSamples({ action: 'setStatus', slug, status })
+}
+
+export function adminArchiveSample(slug: string): Promise<{ ok: true; slug: string; status: 'archived' }> {
+  return invokeSamples({ action: 'delete', slug })
 }

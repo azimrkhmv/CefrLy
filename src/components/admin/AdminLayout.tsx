@@ -24,6 +24,9 @@ export function AdminLayout() {
             <NavLink to="/admin/tests/new" className={navLinkClass}>
               New test
             </NavLink>
+            <NavLink to="/admin/samples" className={navLinkClass}>
+              Samples
+            </NavLink>
             {role === 'super_admin' && (
               <NavLink to="/admin/admins" className={navLinkClass}>
                 Admins

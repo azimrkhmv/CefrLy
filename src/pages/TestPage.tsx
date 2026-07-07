@@ -430,6 +430,10 @@ export function TestPage() {
   const skillLabel = isListening ? 'Listening' : 'Reading'
   const backTo = catalogPath
   const isPractice = test.session.mode === 'practice'
+  // Show the DURATION OF THIS ATTEMPT, not the test's default: reading practice
+  // runs for the student's chosen 20–90 min, so `test.durationSec` (the fixed
+  // simulation length) would mislabel it. The session carries the real figure.
+  const shownDurationMin = Math.round((test.session.durationSec ?? test.durationSec) / 60)
   // Listening has NO wall clock in either mode — the recordings set the pace
   // (simulation locks them; practice frees them). So no timer and nothing to
   // pause: the pause button is the READING-practice timer control only.
@@ -463,10 +467,10 @@ export function TestPage() {
                 {test.scope === 'part'
                   ? isListening
                     ? `${skillLabel} · Part ${test.partNumber} practice · ${totalItems} questions`
-                    : `${skillLabel} · Part ${test.partNumber} practice · ${totalItems} questions · ${Math.round(test.durationSec / 60)} minutes`
+                    : `${skillLabel} · Part ${test.partNumber} practice · ${totalItems} questions · ${shownDurationMin} minutes`
                   : isListening
                     ? `${skillLabel} · ${totalItems} questions · ${test.parts.length} parts`
-                    : `${skillLabel} · ${totalItems} questions · ${Math.round(test.durationSec / 60)} minutes`}
+                    : `${skillLabel} · ${totalItems} questions · ${shownDurationMin} minutes`}
               </p>
             </div>
           </div>
@@ -527,9 +531,21 @@ export function TestPage() {
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-8">
           {submission.isError && (
-            <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-800">
-              {submission.error instanceof Error ? submission.error.message : 'Submission failed.'}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-800">
+              <span className="min-w-0">
+                {submission.error instanceof Error ? submission.error.message : 'Submission failed.'}
+              </span>
+              {/* A failed submit must always be recoverable — in reading
+                  simulation the Submit button is otherwise locked and the timer
+                  won't fire its auto-submit twice, so this is the only retry. */}
+              <button
+                onClick={() => submission.mutate()}
+                disabled={submission.isPending}
+                className="shrink-0 rounded-xl bg-brand px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-brand-deep disabled:opacity-50"
+              >
+                {submission.isPending ? 'Submitting…' : 'Try again'}
+              </button>
+            </div>
           )}
 
           {isPaused && !isListening && (

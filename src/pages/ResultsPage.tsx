@@ -42,10 +42,20 @@ function ResultsView({ result }: { result: AttemptResult }) {
   const shownScore = useCountUp(result.rawScore)
 
   // "Up from X": compare this attempt's band with the best band achieved
-  // before it (any earlier banded attempt; part drills don't take part).
+  // before it. Only the SAME skill counts — reading and listening are separate
+  // indicative bands (both use the 28/18/10 scale), so a prior listening B1
+  // must not read as an earlier reading band on a reading result. Part drills
+  // carry no band, so they never take part.
   const { data: attempts } = useQuery({ queryKey: ['my-attempts'], queryFn: fetchMyAttempts })
+  const resultSkill = result.skill ?? 'reading'
   const earlierBands = (attempts ?? [])
-    .filter((a) => a.id !== result.attemptId && a.createdAt < result.submittedAt && a.band !== null)
+    .filter(
+      (a) =>
+        a.id !== result.attemptId &&
+        a.skill === resultSkill &&
+        a.createdAt < result.submittedAt &&
+        a.band !== null,
+    )
     .map((a) => BAND_ORDER.indexOf(a.band as Band))
   const currentRank = result.band ? BAND_ORDER.indexOf(result.band) : -1
   const previousBestRank = earlierBands.length > 0 ? Math.max(...earlierBands) : null
@@ -60,6 +70,15 @@ function ResultsView({ result }: { result: AttemptResult }) {
     list.push(item)
     byPart.set(item.partNumber, list)
   }
+
+  // Number questions the SAME way the exam player does: positionally, 1..N over
+  // the items in order. `result.items` is already in exam order (the submit
+  // function walks parts then items). Parsing the id (q21…) would mislabel a
+  // single-part drill of Parts 2–5 — its stored ids keep the full paper's
+  // global numbers, so a Part 4 drill would read "21–29" here while the exam
+  // showed "1–9". Position matches the exam for both full mocks and drills.
+  const numberById = new Map<string, number>()
+  result.items.forEach((item, index) => numberById.set(item.id, index + 1))
 
   const submittedOn = new Date(result.submittedAt).toLocaleDateString(undefined, {
     day: 'numeric',
@@ -101,12 +120,19 @@ function ResultsView({ result }: { result: AttemptResult }) {
                 ? `Part ${result.partNumber ?? ''} practice — single-part scores don't carry a CEFR band; take a full mock for one.`
                 : 'Indicative reading band only — the full four-skill result comes from a complete mock exam.'}
             </p>
-            {result.skill === 'listening' && (
+            {result.skill === 'listening' ? (
               <Link
                 to={`/review/${result.attemptId}`}
                 className="reveal reveal-4 mt-4 inline-block rounded-xl bg-accent px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
               >
                 Review with audio &amp; transcript
+              </Link>
+            ) : (
+              <Link
+                to={`/analyze/${result.attemptId}`}
+                className="reveal reveal-4 mt-4 inline-block rounded-xl bg-accent px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
+              >
+                Analyze this attempt
               </Link>
             )}
           </div>
@@ -175,8 +201,8 @@ function ResultsView({ result }: { result: AttemptResult }) {
                   />
                 </div>
                 <ol className="space-y-3">
-                  {items.map((item, index) => (
-                    <ItemReview key={item.id} item={item} fallbackNumber={index + 1} />
+                  {items.map((item) => (
+                    <ItemReview key={item.id} item={item} number={numberById.get(item.id)!} />
                   ))}
                 </ol>
               </div>
@@ -203,9 +229,7 @@ function ResultsView({ result }: { result: AttemptResult }) {
   )
 }
 
-function ItemReview({ item, fallbackNumber }: { item: ItemResult; fallbackNumber: number }) {
-  const numberMatch = item.id.match(/q(\d+)$/)
-  const questionNumber = numberMatch ? Number(numberMatch[1]) : fallbackNumber
+function ItemReview({ item, number }: { item: ItemResult; number: number }) {
   const [ref, inView] = useInView<HTMLLIElement>()
 
   return (
@@ -214,7 +238,7 @@ function ItemReview({ item, fallbackNumber }: { item: ItemResult; fallbackNumber
       className={`rounded-xl border border-line bg-white p-4 ${inView ? 'reveal' : 'opacity-0'}`}
     >
       <div className="flex items-start gap-3">
-        <span className="q-badge">{questionNumber}</span>
+        <span className="q-badge">{number}</span>
         <div className="min-w-0 flex-1 text-sm">
           <p className={`mb-1 text-xs font-medium ${item.correct ? 'text-ok' : 'text-rose-700'}`}>
             {item.correct ? 'Correct' : 'Incorrect'}

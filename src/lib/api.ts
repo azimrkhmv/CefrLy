@@ -18,6 +18,7 @@ import type {
   TargetBand,
   WeakArea,
 } from '../types/profile'
+import type { Sample } from '../types/sample'
 
 async function invokeFunction<T>(name: string, body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(name, { body })
@@ -45,6 +46,19 @@ export async function listTests(): Promise<TestCatalogEntry[]> {
     .order('created_at', { ascending: true })
   if (error) throw new Error(error.message)
   return (data ?? []) as TestCatalogEntry[]
+}
+
+/** Published Writing/Speaking samples, in catalog order. Samples carry no
+ *  answer keys, so RLS-guarded direct reads are safe (published rows only). */
+export async function fetchSamples(): Promise<Sample[]> {
+  const { data, error } = await supabase
+    .from('samples')
+    .select('id, slug, category, badge, title, content')
+    .order('category', { ascending: true })
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as Sample[]
 }
 
 /** Sanitized test (no answers, explanations or transcripts) via the get-test

@@ -438,6 +438,99 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
 - NOTE: `npx tsc --noEmit` checks NOTHING here (solution-style root tsconfig
   with files:[]) — always use `npx tsc -p tsconfig.app.json --noEmit`.
 
+## Samples library (Writing/Speaking model answers — DB-backed 2026-07-07)
+- STRUCTURE MATCHES THE REAL MULTILEVEL EXAM (restructured 2026-07-07 from the
+  owner's papers in the gitignored `samples/` folder; the original 10 samples
+  were FAKE/wrong-format and were deleted). WRITING has 3 tabs — Part 1 shares
+  ONE scenario split into Task 1.1 (informal email, B1, ~50 words) + Task 1.2
+  (formal email, B2, ~120–150) and Part 2 is a forum post/article (C1,
+  ~180–200). SPEAKING stays ONE tab (user call) with cards badged by part:
+  Part 1.1 interview · 1.2 photo comparison · 2 photo talk · 3 for/against.
+  (This samples library is SEPARATE from the future Writing/Speaking mock-test
+  skills — the "soon" roadmap chips — which are NOT built yet.)
+- Table `samples` (migration 0011; category CHECK swapped by migration 0012 to
+  writing1_1|writing1_2|writing2|speaking): slug UNIQUE, category, badge, title,
+  content jsonb {task[], bullets?[], images?[], vocab?[], note, model, why[]} —
+  model is string[] paragraphs for writing, {speaker,text}[] turns for speaking;
+  vocab is {term, meaning, uz?}[] (the glossary from the papers) — status
+  draft/published/archived, sort_order. A sample has NO secret (the model answer
+  IS the content), so unlike tests the browser reads published rows DIRECTLY
+  under RLS (one select-only policy: authenticated + status='published'; NO
+  write policies → service_role only). Live: 13 curated real samples published
+  (3 Task 1.1 + 3 Task 1.2 sharing the same fitness/movie/cooking scenarios, 3
+  Part 2 forum posts, 4 speaking parts from Test 1). Every sample carries a
+  vocab glossary. More of the owner's 10 writing / 10 speaking tests can be
+  added later (speaking Parts 1.2/2/3 photos still need real image assets).
+- Edge function `admin-samples` (deployed, verify_jwt on): list/get/upsert/
+  setStatus/delete(soft archive) with the same requireAdmin re-check as
+  admin-tests; validator supabase/functions/admin-samples/validate.ts mirrors
+  src/types/sample.ts and rejects unknown content keys; upsert writes nothing
+  on failure. NO admin UI yet (deliberate) — authoring goes through the
+  function or the seed pipeline; an /admin/samples form can reuse it as-is.
+- Seed pipeline: supabase/seed/samples.json is the canonical content; `node
+  scripts/build-samples-seed.mjs` validates + generates samples-seed.sql
+  (dollar-quoted jsonb, idempotent ON CONFLICT (slug) upsert). The 13 real
+  samples are seeded & published in the live DB.
+- Frontend: SamplesPage fetches via fetchSamples() (api.ts + TanStack Query,
+  queryKey ['samples']) — the hardcoded sample arrays are GONE; 4-tab strip
+  (writing1_1/writing1_2/writing2/speaking), chips + card icon derive from
+  category (CATEGORY_CHIPS), detail reads sample.content and renders a
+  <SampleVocab> glossary (term in brand + meaning + muted Uzbek); added
+  TestGridSkeleton loading, error line, per-tab EmptyState. Shared types in
+  src/types/sample.ts.
+- PROMPT IMAGES (schema, added 2026-07-07): content.images?: {assetPath, alt,
+  caption?}[] (1–4) — the photo(s) a Speaking task describes/compares (the
+  real "new format" WRITING is emails + a forum post, NO chart/map). Files live
+  in the public `images` bucket (same one listening maps use), resolved with
+  imageUrl(assetPath) from src/lib/storage.ts; <SampleImages> renders them in the
+  task panel (1 = full width, 2 = side-by-side compare, 3+ = grid; captions;
+  object-contain, max-h-80) + an image count in card meta. Validated in
+  admin-samples validate.ts (deployed v3, MAX_IMAGES=4) + build-samples-seed.mjs.
+  LIVE speaking photos (added 2026-07-07, extracted from `samples/speaking/
+  Test 1.pdf` via PyMuPDF/Pillow — scratchpad extract_speaking_imgs.py +
+  process_speaking_photos.py): `sp12-pictures-walking-driving` shows 2 JPEGs
+  (Photo A driving + Photo B walking — the wide composite was split at the white
+  gap), `sp2-critical-decision` shows 1 (the arrows/"decisions" photo), under
+  images/samples/speaking/test1-*.jpg (uploaded via the body-driven ingest —
+  asset-ingest-temp with a shared-secret guard, then restored to its dead stub).
+  Speaking Tests 2–10 photos still to add. (The orphaned demo SVGs from the
+  deleted fake samples were removed from storage 2026-07-07 via the Storage API
+  — images/samples/ now holds only the 3 referenced JPEGs.)
+- AUDIT 2026-07-07 (clean-room pass over the whole samples surface): DB verified
+  — 13 published rows, category CHECK = writing1_1|writing1_2|writing2|speaking,
+  status CHECK, unique slug, RLS on with one published-select policy (no write
+  policies), zero content-shape violations (SQL invariant sweep: no stray keys,
+  correct model shape per category, all images resolve to storage), no drift
+  between samples.json ↔ samples-seed.sql ↔ live rows, no stale category refs
+  anywhere in src. Fixed: SamplesPage now keys the model-shape decision off
+  `category` everywhere (removed the `isTurns` data-shape heuristic — one source
+  of truth); removed the 3 orphaned SVGs. KNOWN NON-BUGS / future polish: the
+  open sample is local useState not a route (no deep-link / Back closes the page
+  — worth moving to /samples/:slug), tab strip lacks ARIA tablist roles, and the
+  whole samples feature is still uncommitted in git.
+- ADMIN DASHBOARD (built 2026-07-07): /admin/samples (AdminSamplesPage, list
+  grouped by the 4 categories with status chips + Edit/Publish/Unpublish/Archive,
+  mirrors AdminTestsPage) + /admin/samples/new & /admin/samples/:slug
+  (SampleFormPage — one page, create vs edit differ by prefill + locked slug &
+  category). Frontend-only: reuses the deployed admin-samples fn via new
+  adminApi.ts helpers (adminListSamples/adminGetSample/adminUpsertSample/
+  adminSetSampleStatus/adminArchiveSample; invokeSamples surfaces validator
+  errors[] as ValidationError). Draft logic + client validator (mirrors the
+  server) in src/lib/sampleDraft.ts; repeating-field editors (StringListEditor
+  ↑↓✕, TurnListEditor for speaking, VocabEditor, ImagesEditor w/ uploadMedia
+  ('images', samples/<slug>/…)) in src/components/admin/form/SampleEditors.tsx;
+  shared category metadata (labels + badge hints + usesTurns) in
+  SAMPLE_CATEGORIES (types/sample.ts). Category-aware: writing → paragraph model
+  editor, speaking → dialogue-turn editor (draft holds BOTH so switching never
+  loses input). Save = upsert (server re-validates every save, draft or
+  published); Publish/Unpublish = setStatus; Archive = soft delete (hidden from
+  list; no restore action yet — un-archive via DB). Saves invalidate
+  ['admin-samples'] + ['admin-sample',slug] + student ['samples']. Nav link added
+  to AdminLayout. Verified: tsc + prod build clean, edge fn deployed/tested,
+  payload contract matches the fn; live admin flow needs an admin session to
+  exercise (auth-gated). NOTE: NumberField lives in SampleEditors (fields.tsx
+  has none).
+
 ## Onboarding (asked ONCE per account — built 2026-07-06)
 - profiles carries the wizard answers (migration 0009: onboarded_at, first_exam
   first_time/took_mock/took_real, self_level unknown/below_B1..C1, target_band

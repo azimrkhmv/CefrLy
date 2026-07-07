@@ -6,9 +6,10 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     watch: {
-      // content drops (audio samples, PDFs) — not source; Windows locks on
-      // in-use media files crash the watcher with EBUSY
-      ignored: ['**/listening sample/**'],
+      // Exam source material (audio, PDFs, papers) — NOT app source. Windows
+      // locks in-use media files, which crashes Vite's watcher with EBUSY
+      // (e.g. an open speaking Test PDF). Keep these folders out of the watch.
+      ignored: ['**/listening sample/**', '**/reading samples/**', '**/samples/**'],
     },
   },
 })

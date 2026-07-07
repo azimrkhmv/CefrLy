@@ -10,6 +10,7 @@ import { AuthPage } from './pages/AuthPage'
 import { TestPage } from './pages/TestPage'
 import { ResultsPage } from './pages/ResultsPage'
 import { ReviewPage } from './pages/ReviewPage'
+import { AnalyzePage } from './pages/AnalyzePage'
 import { SamplesPage } from './pages/SamplesPage'
 import { PricingPage } from './pages/PricingPage'
 import { SupportPage } from './pages/SupportPage'
@@ -22,6 +23,8 @@ import { TestFormPage } from './pages/admin/TestFormPage'
 import { ListeningTestFormPage } from './pages/admin/ListeningTestFormPage'
 import { PartTestFormPage } from './pages/admin/PartTestFormPage'
 import { TestFormRouter } from './pages/admin/TestFormRouter'
+import { AdminSamplesPage } from './pages/admin/AdminSamplesPage'
+import { SampleFormPage } from './pages/admin/SampleFormPage'
 import { AdminUsersPage } from './pages/admin/AdminUsersPage'
 import { Cat } from './components/Cat'
 
@@ -68,6 +71,7 @@ export default function App() {
           <Route path="/test/:testId" element={<TestPage />} />
           <Route path="/results/:attemptId" element={<ResultsPage />} />
           <Route path="/review/:attemptId" element={<ReviewPage />} />
+          <Route path="/analyze/:attemptId" element={<AnalyzePage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
@@ -81,6 +85,9 @@ export default function App() {
           <Route path="/admin/tests/new/listening" element={<ListeningTestFormPage />} />
           <Route path="/admin/tests/new/part" element={<PartTestFormPage />} />
           <Route path="/admin/tests/:slug" element={<TestFormRouter />} />
+          <Route path="/admin/samples" element={<AdminSamplesPage />} />
+          <Route path="/admin/samples/new" element={<SampleFormPage />} />
+          <Route path="/admin/samples/:slug" element={<SampleFormPage />} />
           <Route element={<SuperAdminRoute />}>
             <Route path="/admin/admins" element={<AdminUsersPage />} />
           </Route>
