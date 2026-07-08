@@ -17,7 +17,6 @@ import {
   MenuIcon,
   MicIcon,
   PenIcon,
-  ShieldIcon,
   StarIcon,
   UsersIcon,
 } from './icons'
@@ -46,7 +45,7 @@ function SoonItem({ icon, label }: { icon: ReactNode; label: string }) {
 }
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
-  const { session, role } = useAuth()
+  const { session } = useAuth()
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">
       <div className="pt-3">
@@ -73,19 +72,13 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <StarIcon width={18} height={18} />
           Samples
         </NavLink>
-        {(session || role === 'admin' || role === 'super_admin') && (
+        {session && (
           <div className="my-3 border-t border-line" aria-hidden />
         )}
         {session && (
           <NavLink to="/dashboard" className={navLinkClass}>
             <ChartIcon width={18} height={18} />
             My results
-          </NavLink>
-        )}
-        {(role === 'admin' || role === 'super_admin') && (
-          <NavLink to="/admin/tests" className={navLinkClass}>
-            <ShieldIcon width={18} height={18} />
-            Admin
           </NavLink>
         )}
       </nav>
