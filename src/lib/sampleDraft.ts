@@ -15,7 +15,7 @@ import type {
   SpeakingTurn,
   VocabItem,
 } from '../types/sample'
-import { SAMPLE_CATEGORIES } from '../types/sample'
+import { SAMPLE_CATEGORIES, sampleUsesTurns } from '../types/sample'
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
@@ -51,7 +51,8 @@ export const emptySampleDraft = (): SampleDraft => ({
   why: [''],
 })
 
-const isSpeaking = (c: SampleCategory | ''): boolean => c === 'speaking'
+// A blank category (new draft, nothing picked yet) is not a turns category.
+const isSpeaking = (c: SampleCategory | ''): boolean => c !== '' && sampleUsesTurns(c)
 
 /** Load an existing sample into the editable draft. */
 export function sampleToDraft(s: AdminSampleFull): SampleDraft {

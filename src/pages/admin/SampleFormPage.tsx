@@ -67,8 +67,8 @@ export function SampleFormPage() {
   }, [existing.data])
 
   const liveErrors = useMemo(() => sampleDraftErrors(draft), [draft])
-  const speaking = draft.category === 'speaking'
   const categoryMeta = SAMPLE_CATEGORIES.find((c) => c.key === draft.category)
+  const speaking = categoryMeta?.usesTurns ?? false
 
   const invalidate = (slug: string) => {
     queryClient.invalidateQueries({ queryKey: ['admin-samples'] })

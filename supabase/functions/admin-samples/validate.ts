@@ -2,8 +2,20 @@
 // shapes in src/types/sample.ts — a sample that passes here renders cleanly
 // on the /samples page. Kept deliberately lenient on style, strict on shape.
 
-export const CATEGORIES = ['writing1_1', 'writing1_2', 'writing2', 'speaking'] as const
+export const CATEGORIES = [
+  'writing1_1',
+  'writing1_2',
+  'writing2',
+  'speaking1_1',
+  'speaking1_2',
+  'speaking2',
+  'speaking3',
+] as const
 export type Category = (typeof CATEGORIES)[number]
+
+// Speaking categories carry dialogue turns for `model`; writing carries
+// paragraphs. Keep this in sync with SAMPLE_CATEGORIES.usesTurns in the client.
+const TURN_CATEGORIES = new Set<string>(['speaking1_1', 'speaking1_2', 'speaking2', 'speaking3'])
 
 const MAX_ITEMS = 40 // no array in a sample legitimately needs more
 const MAX_TEXT = 8000 // per paragraph/turn — a sample is a lesson, not a book
@@ -106,7 +118,7 @@ export function validateSample(category: unknown, badge: unknown, title: unknown
     errors.push('content.model must be a non-empty array.')
   } else if (model.length > MAX_ITEMS) {
     errors.push(`content.model has too many items (max ${MAX_ITEMS}).`)
-  } else if (category === 'speaking') {
+  } else if (TURN_CATEGORIES.has(category as string)) {
     model.forEach((turn, i) => {
       if (typeof turn !== 'object' || turn === null || Array.isArray(turn)) {
         errors.push(`content.model[${i}] must be a {speaker, text} turn.`)

@@ -7,7 +7,8 @@ const jsonUrl = new URL('../supabase/seed/samples.json', import.meta.url)
 const { samples } = JSON.parse(readFileSync(jsonUrl, 'utf8'))
 
 // --- validation (mirrors supabase/functions/admin-samples/validate.ts) -------
-const CATEGORIES = ['writing1_1', 'writing1_2', 'writing2', 'speaking']
+const CATEGORIES = ['writing1_1', 'writing1_2', 'writing2', 'speaking1_1', 'speaking1_2', 'speaking2', 'speaking3']
+const TURN_CATEGORIES = new Set(['speaking1_1', 'speaking1_2', 'speaking2', 'speaking3'])
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 if (!Array.isArray(samples) || samples.length === 0) throw new Error('samples.json: no samples')
@@ -47,7 +48,7 @@ for (const s of samples) {
   if (!filledString(c.note)) throw new Error(`${where}: content.note missing`)
   if (c.why !== undefined && !stringArray(c.why)) throw new Error(`${where}: content.why must be non-empty string[] when present`)
   if (!Array.isArray(c.model) || c.model.length === 0) throw new Error(`${where}: empty model`)
-  if (s.category === 'speaking') {
+  if (TURN_CATEGORIES.has(s.category)) {
     for (const turn of c.model) {
       if (!filledString(turn?.speaker) || !filledString(turn?.text)) {
         throw new Error(`${where}: speaking model turns need {speaker, text}`)

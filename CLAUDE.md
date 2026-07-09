@@ -444,12 +444,20 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   were FAKE/wrong-format and were deleted). WRITING has 3 tabs — Part 1 shares
   ONE scenario split into Task 1.1 (informal email, B1, ~50 words) + Task 1.2
   (formal email, B2, ~120–150) and Part 2 is a forum post/article (C1,
-  ~180–200). SPEAKING stays ONE tab (user call) with cards badged by part:
-  Part 1.1 interview · 1.2 photo comparison · 2 photo talk · 3 for/against.
+  ~180–200). SPEAKING is now SPLIT into its four parts too (was ONE tab; the
+  "keep it one tab" call was REVERSED by the owner 2026-07-09 — the single tab
+  buried 96 samples in one pile): Part 1.1 interview → speaking1_1 · 1.2 photo
+  comparison → speaking1_2 · 2 photo talk → speaking2 · 3 for/against →
+  speaking3. The /samples tabs are now TWO-TIER: a Writing/Speaking skill toggle,
+  then that skill's part sub-tabs (driven off SAMPLE_CATEGORIES.skill/partLabel).
   (This samples library is SEPARATE from the future Writing/Speaking mock-test
   skills — the "soon" roadmap chips — which are NOT built yet.)
-- Table `samples` (migration 0011; category CHECK swapped by migration 0012 to
-  writing1_1|writing1_2|writing2|speaking): slug UNIQUE, category, badge, title,
+- Table `samples` (migration 0011; category CHECK swapped by 0012 to add the
+  writing split, then by migration 0013 (2026-07-09) to the current 7:
+  writing1_1|writing1_2|writing2|speaking1_1|speaking1_2|speaking2|speaking3 —
+  bare `speaking` is GONE. 0013's apply order matters: re-categorize/re-seed the
+  rows BEFORE the new CHECK, or it rejects old `speaking` rows): slug UNIQUE,
+  category, badge, title,
   content jsonb {task[], bullets?[], images?[], vocab?[], note, model, why[]} —
   model is string[] paragraphs for writing, {speaker,text}[] turns for speaking;
   vocab is {term, meaning, uz?}[] (the glossary from the papers) — status
@@ -472,9 +480,11 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   (dollar-quoted jsonb, idempotent ON CONFLICT (slug) upsert). The 13 real
   samples are seeded & published in the live DB.
 - Frontend: SamplesPage fetches via fetchSamples() (api.ts + TanStack Query,
-  queryKey ['samples']) — the hardcoded sample arrays are GONE; 4-tab strip
-  (writing1_1/writing1_2/writing2/speaking), chips + card icon derive from
-  category (CATEGORY_CHIPS), detail reads sample.content and renders a
+  queryKey ['samples']) — the hardcoded sample arrays are GONE; TWO-TIER tabs
+  (skill toggle → part sub-tabs, both off SAMPLE_CATEGORIES), chips + card icon +
+  model-shape (turns vs paragraphs) all derive from the category's skill via
+  sampleSkill()/sampleUsesTurns()/chipsFor() (NO more hardcoded === 'speaking'
+  checks — one source of truth), detail reads sample.content and renders a
   <SampleVocab> glossary (term in brand + meaning + muted Uzbek); added
   TestGridSkeleton loading, error line, per-tab EmptyState. Shared types in
   src/types/sample.ts.

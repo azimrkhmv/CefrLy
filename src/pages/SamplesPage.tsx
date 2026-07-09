@@ -5,13 +5,16 @@ import { imageUrl } from '../lib/storage'
 import { EmptyState } from '../components/EmptyState'
 import { TestGridSkeleton } from '../components/Skeleton'
 import { ArrowRightIcon, MicIcon, PenIcon } from '../components/icons'
-import type { Sample, SampleCategory, SampleImage, SpeakingTurn, VocabItem } from '../types/sample'
+import type { Sample, SampleCategory, SampleImage, SampleSkill, SpeakingTurn, VocabItem } from '../types/sample'
+import { SAMPLE_CATEGORIES, SAMPLE_SKILLS, sampleSkill, sampleUsesTurns } from '../types/sample'
 
 // Model answers for the two skills Cefrly does NOT test yet, in the real
 // Multilevel format. Writing splits into Task 1.1 (informal email), Task 1.2
-// (formal email) and Part 2 (forum post); Speaking gathers its four parts under
-// one tab, each card badged by part. Content comes from the `samples` table
-// (published rows, RLS) — authored via the admin-samples edge function.
+// (formal email) and Part 2 (forum post); Speaking splits into its four parts
+// (1.1 interview, 1.2 photo comparison, 2 photo talk, 3 for/against). The tabs
+// are two-tier: a Writing/Speaking skill toggle, then that skill's part sub-
+// tabs. Content comes from the `samples` table (published rows, RLS) — authored
+// via the admin-samples edge function.
 
 // No CEFR-level chip: the samples aren't level-graded, so we don't assert a
 // band we can't verify. The task register still shows in the badge eyebrow
@@ -21,22 +24,16 @@ const CHIP = {
   model: { label: 'model answer', className: 'bg-emerald-50 text-emerald-800' },
 }
 
-// Card dressing is derived from the category, not stored per sample.
-const CATEGORY_CHIPS: Record<SampleCategory, { label: string; className: string }[]> = {
-  writing1_1: [CHIP.model],
-  writing1_2: [CHIP.model],
-  writing2: [CHIP.model],
-  speaking: [CHIP.speaking, CHIP.model],
-}
+// Card dressing is derived from the category's skill, not stored per sample.
+const chipsFor = (category: SampleCategory): { label: string; className: string }[] =>
+  sampleSkill(category) === 'speaking' ? [CHIP.speaking, CHIP.model] : [CHIP.model]
 
-const TABS: { key: SampleCategory; label: string }[] = [
-  { key: 'writing1_1', label: 'Writing Task 1.1' },
-  { key: 'writing1_2', label: 'Writing Task 1.2' },
-  { key: 'writing2', label: 'Writing Part 2' },
-  { key: 'speaking', label: 'Speaking' },
-]
+// First part-category of a skill — the sub-tab we land on when the skill toggles.
+const firstCategoryOf = (skill: SampleSkill): SampleCategory =>
+  SAMPLE_CATEGORIES.find((c) => c.skill === skill)!.key
 
 export function SamplesPage() {
+  const [skill, setSkill] = useState<SampleSkill>('writing')
   const [tab, setTab] = useState<SampleCategory>('writing1_1')
   const [openSlug, setOpenSlug] = useState<string | null>(null)
 
@@ -46,8 +43,19 @@ export function SamplesPage() {
     error,
   } = useQuery({ queryKey: ['samples'], queryFn: fetchSamples })
 
+  const subTabs = SAMPLE_CATEGORIES.filter((c) => c.skill === skill)
   const samples = (allSamples ?? []).filter((s) => s.category === tab)
   const open = samples.find((s) => s.slug === openSlug) ?? null
+
+  const selectSkill = (next: SampleSkill) => {
+    setSkill(next)
+    setTab(firstCategoryOf(next))
+    setOpenSlug(null)
+  }
+  const selectTab = (next: SampleCategory) => {
+    setTab(next)
+    setOpenSlug(null)
+  }
 
   return (
     <div className="space-y-6">
@@ -59,28 +67,45 @@ export function SamplesPage() {
         </p>
       </div>
 
-      {/* Category tabs — Writing 1.1 / 1.2 / Part 2 / Speaking */}
-      <div className="max-w-full overflow-x-auto">
+      {/* Two-tier tabs: skill toggle (Writing / Speaking), then part sub-tabs. */}
+      <div className="space-y-3">
         <nav
-          className="inline-flex whitespace-nowrap rounded-xl border border-line bg-white p-1"
-          aria-label="Sample categories"
+          className="inline-flex rounded-xl border border-line bg-white p-1"
+          aria-label="Skill"
         >
-          {TABS.map((t) => (
+          {SAMPLE_SKILLS.map((s) => (
             <button
-              key={t.key}
+              key={s.key}
               type="button"
-              onClick={() => {
-                setTab(t.key)
-                setOpenSlug(null)
-              }}
-              className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
-                tab === t.key ? 'bg-brand text-white' : 'text-ink-soft hover:text-ink'
+              onClick={() => selectSkill(s.key)}
+              className={`rounded-lg px-5 py-2 text-sm font-bold transition-colors ${
+                skill === s.key ? 'bg-brand text-white' : 'text-ink-soft hover:text-ink'
               }`}
             >
-              {t.label}
+              {s.label}
             </button>
           ))}
         </nav>
+
+        <div className="max-w-full overflow-x-auto">
+          <nav
+            className="inline-flex whitespace-nowrap rounded-xl border border-line bg-white p-1"
+            aria-label={`${skill} parts`}
+          >
+            {subTabs.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => selectTab(t.key)}
+                className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
+                  tab === t.key ? 'bg-brand text-white' : 'text-ink-soft hover:text-ink'
+                }`}
+              >
+                {t.partLabel}
+              </button>
+            ))}
+          </nav>
+        </div>
       </div>
 
       {isLoading ? (
@@ -115,7 +140,7 @@ export function SamplesPage() {
 // ---- The lesson-style card grid ----------------------------------------------
 
 function SampleGridCard({ sample, onOpen }: { sample: Sample; onOpen: () => void }) {
-  const speaking = sample.category === 'speaking'
+  const speaking = sampleSkill(sample.category) === 'speaking'
   return (
     <button
       type="button"
@@ -133,7 +158,7 @@ function SampleGridCard({ sample, onOpen }: { sample: Sample; onOpen: () => void
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
-        {CATEGORY_CHIPS[sample.category].map((chip) => (
+        {chipsFor(sample.category).map((chip) => (
           <span
             key={chip.label}
             className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${chip.className}`}
@@ -160,7 +185,7 @@ function SampleGridCard({ sample, onOpen }: { sample: Sample; onOpen: () => void
 // ---- One sample opened -------------------------------------------------------
 
 function SampleDetail({ sample, onBack }: { sample: Sample; onBack: () => void }) {
-  const speakingModel = sample.category === 'speaking'
+  const speakingModel = sampleUsesTurns(sample.category)
   const { task, bullets, images, note, model, vocab, why } = sample.content
   return (
     <div className="space-y-4">

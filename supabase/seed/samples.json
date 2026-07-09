@@ -404,7 +404,7 @@
     },
     {
       "slug": "sp11-interview",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "Personal interview questions",
       "sortOrder": 1,
@@ -481,10 +481,10 @@
     },
     {
       "slug": "sp12-pictures-walking-driving",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "Comparing two pictures — driving vs walking",
-      "sortOrder": 2,
+      "sortOrder": 1,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -566,10 +566,10 @@
     },
     {
       "slug": "sp2-critical-decision",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "A critical decision",
-      "sortOrder": 3,
+      "sortOrder": 1,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -638,10 +638,10 @@
     },
     {
       "slug": "sp3-personal-guns",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "For and against: personal gun ownership",
-      "sortOrder": 4,
+      "sortOrder": 1,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points FOR and AGAINST, and you discuss both sides before giving your own view. (Statement: “Citizens should be allowed to carry personal guns.”)",
@@ -703,10 +703,10 @@
     },
     {
       "slug": "sp-t11-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "Do you have a large family?",
-      "sortOrder": 111,
+      "sortOrder": 2,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -752,10 +752,10 @@
     },
     {
       "slug": "sp-t11-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "What would it be like living in these two places?",
-      "sortOrder": 112,
+      "sortOrder": 2,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -833,10 +833,10 @@
     },
     {
       "slug": "sp-t11-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "Tell me about the movie you enjoyed watching is going to cinema a…",
-      "sortOrder": 113,
+      "sortOrder": 2,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -898,10 +898,10 @@
     },
     {
       "slug": "sp-t11-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Social media and its impact on teenagers",
-      "sortOrder": 114,
+      "sortOrder": 2,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -962,10 +962,10 @@
     },
     {
       "slug": "sp-t12-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "What kind of music do you like and why?",
-      "sortOrder": 121,
+      "sortOrder": 3,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -1027,10 +1027,10 @@
     },
     {
       "slug": "sp-t12-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "Compare the two vacation spots",
-      "sortOrder": 122,
+      "sortOrder": 3,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -1084,10 +1084,10 @@
     },
     {
       "slug": "sp-t12-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "What are your thoughts on the role of technology in education?",
-      "sortOrder": 123,
+      "sortOrder": 3,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -1141,10 +1141,10 @@
     },
     {
       "slug": "sp-t12-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "The use of plastic should be banned",
-      "sortOrder": 124,
+      "sortOrder": 3,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -1202,10 +1202,10 @@
     },
     {
       "slug": "sp-t13-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "What do you do for a living?",
-      "sortOrder": 131,
+      "sortOrder": 4,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -1267,10 +1267,10 @@
     },
     {
       "slug": "sp-t13-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "Compare the two living environments",
-      "sortOrder": 132,
+      "sortOrder": 4,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -1340,10 +1340,10 @@
     },
     {
       "slug": "sp-t13-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "What are your thoughts on learning a second language?",
-      "sortOrder": 133,
+      "sortOrder": 4,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -1389,10 +1389,10 @@
     },
     {
       "slug": "sp-t13-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Cities should definitely have more green spaces and parks",
-      "sortOrder": 134,
+      "sortOrder": 4,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -1449,10 +1449,10 @@
     },
     {
       "slug": "sp-t14-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "What are your favorite types of movies and why?",
-      "sortOrder": 141,
+      "sortOrder": 5,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -1522,10 +1522,10 @@
     },
     {
       "slug": "sp-t14-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "Compare the two types of libraries",
-      "sortOrder": 142,
+      "sortOrder": 5,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -1587,10 +1587,10 @@
     },
     {
       "slug": "sp-t14-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "What are your thoughts on the impact of social media on personal…",
-      "sortOrder": 143,
+      "sortOrder": 5,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -1652,10 +1652,10 @@
     },
     {
       "slug": "sp-t14-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Increasing fines for littering is a topic that has both benefits and…",
-      "sortOrder": 144,
+      "sortOrder": 5,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -1728,10 +1728,10 @@
     },
     {
       "slug": "sp-t15-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "What is your favorite book and why?",
-      "sortOrder": 151,
+      "sortOrder": 6,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -1789,10 +1789,10 @@
     },
     {
       "slug": "sp-t15-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "Compare the two shopping experiences",
-      "sortOrder": 152,
+      "sortOrder": 6,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -1862,10 +1862,10 @@
     },
     {
       "slug": "sp-t15-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "What are your thoughts on the importance of physical fitness?",
-      "sortOrder": 153,
+      "sortOrder": 6,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -1927,10 +1927,10 @@
     },
     {
       "slug": "sp-t15-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Encouraging people to work from home has several clear benefits",
-      "sortOrder": 154,
+      "sortOrder": 6,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -1995,10 +1995,10 @@
     },
     {
       "slug": "sp-t16-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "What kind of food do you like and why?",
-      "sortOrder": 161,
+      "sortOrder": 7,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -2064,10 +2064,10 @@
     },
     {
       "slug": "sp-t16-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "Compare the two sources of news",
-      "sortOrder": 162,
+      "sortOrder": 7,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -2133,10 +2133,10 @@
     },
     {
       "slug": "sp-t16-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "What are your thoughts on the benefits of a university education?",
-      "sortOrder": 163,
+      "sortOrder": 7,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -2210,10 +2210,10 @@
     },
     {
       "slug": "sp-t16-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Television should definitely have more educational programs",
-      "sortOrder": 164,
+      "sortOrder": 7,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -2262,10 +2262,10 @@
     },
     {
       "slug": "sp-t17-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "What is your favorite sport and why?",
-      "sortOrder": 171,
+      "sortOrder": 8,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -2331,10 +2331,10 @@
     },
     {
       "slug": "sp-t17-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "Compare the two shopping environments",
-      "sortOrder": 172,
+      "sortOrder": 8,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -2384,10 +2384,10 @@
     },
     {
       "slug": "sp-t17-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "What are your thoughts on the impact of climate change?",
-      "sortOrder": 173,
+      "sortOrder": 8,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -2433,10 +2433,10 @@
     },
     {
       "slug": "sp-t17-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Banning cars from city centers has several benefits",
-      "sortOrder": 174,
+      "sortOrder": 8,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -2489,10 +2489,10 @@
     },
     {
       "slug": "sp-t18-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "What kind of movies do you enjoy and why?",
-      "sortOrder": 181,
+      "sortOrder": 9,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -2534,10 +2534,10 @@
     },
     {
       "slug": "sp-t18-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "Compare the two modes of transportation",
-      "sortOrder": 182,
+      "sortOrder": 9,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -2591,10 +2591,10 @@
     },
     {
       "slug": "sp-t18-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "What are your thoughts on the importance of recycling?",
-      "sortOrder": 183,
+      "sortOrder": 9,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -2664,10 +2664,10 @@
     },
     {
       "slug": "sp-t18-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Students should have homework",
-      "sortOrder": 184,
+      "sortOrder": 9,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -2716,10 +2716,10 @@
     },
     {
       "slug": "sp-t19-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "What is your favorite holiday and why?",
-      "sortOrder": 191,
+      "sortOrder": 10,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -2761,10 +2761,10 @@
     },
     {
       "slug": "sp-t19-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "Compare the two dining experiences",
-      "sortOrder": 192,
+      "sortOrder": 10,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -2822,10 +2822,10 @@
     },
     {
       "slug": "sp-t19-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "What are your thoughts on the impact of technology on communication?",
-      "sortOrder": 193,
+      "sortOrder": 10,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -2879,10 +2879,10 @@
     },
     {
       "slug": "sp-t19-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Electric cars have become a hot topic when discussing the future of…",
-      "sortOrder": 194,
+      "sortOrder": 10,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -2943,10 +2943,10 @@
     },
     {
       "slug": "sp-t20-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "What kind of books do you like to read and why?",
-      "sortOrder": 201,
+      "sortOrder": 11,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -3000,10 +3000,10 @@
     },
     {
       "slug": "sp-t20-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "Compare the two devices shown in the pictures",
-      "sortOrder": 202,
+      "sortOrder": 11,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -3061,10 +3061,10 @@
     },
     {
       "slug": "sp-t20-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "What are your thoughts on the impact of tourism on local cultures?",
-      "sortOrder": 203,
+      "sortOrder": 11,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -3126,10 +3126,10 @@
     },
     {
       "slug": "sp-t20-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "The idea of making public transportation free for everyone has both…",
-      "sortOrder": 204,
+      "sortOrder": 11,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -3174,10 +3174,10 @@
     },
     {
       "slug": "sp-t21-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "Tell me about yourself",
-      "sortOrder": 211,
+      "sortOrder": 12,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -3213,10 +3213,10 @@
     },
     {
       "slug": "sp-t21-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "What are the benefits oftravelling?",
-      "sortOrder": 212,
+      "sortOrder": 12,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -3260,10 +3260,10 @@
     },
     {
       "slug": "sp-t21-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "Describe a time when you received unexpected good news",
-      "sortOrder": 213,
+      "sortOrder": 12,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -3299,10 +3299,10 @@
     },
     {
       "slug": "sp-t21-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Smartphones should be banned in schools",
-      "sortOrder": 214,
+      "sortOrder": 12,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -3337,10 +3337,10 @@
     },
     {
       "slug": "sp-t22-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "Describe your house",
-      "sortOrder": 221,
+      "sortOrder": 13,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -3376,10 +3376,10 @@
     },
     {
       "slug": "sp-t22-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "What are some advantages of exercising outdoors compared to…",
-      "sortOrder": 222,
+      "sortOrder": 13,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -3423,10 +3423,10 @@
     },
     {
       "slug": "sp-t22-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "Describe a time when you took a risk",
-      "sortOrder": 223,
+      "sortOrder": 13,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -3462,10 +3462,10 @@
     },
     {
       "slug": "sp-t22-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Single-use plastics should be banned",
-      "sortOrder": 224,
+      "sortOrder": 13,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -3496,10 +3496,10 @@
     },
     {
       "slug": "sp-t23-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "What is your favorite hobby",
-      "sortOrder": 231,
+      "sortOrder": 14,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -3535,10 +3535,10 @@
     },
     {
       "slug": "sp-t23-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "Why might some people prefer to eat alone rather than with family?",
-      "sortOrder": 232,
+      "sortOrder": 14,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -3582,10 +3582,10 @@
     },
     {
       "slug": "sp-t23-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "Describe a person who influenced you",
-      "sortOrder": 233,
+      "sortOrder": 14,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -3621,10 +3621,10 @@
     },
     {
       "slug": "sp-t23-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Making public transport free for everyone",
-      "sortOrder": 234,
+      "sortOrder": 14,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -3659,10 +3659,10 @@
     },
     {
       "slug": "sp-t24-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "Where is your hometown?",
-      "sortOrder": 241,
+      "sortOrder": 15,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -3698,10 +3698,10 @@
     },
     {
       "slug": "sp-t24-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "What challenges might arise during solo travel?",
-      "sortOrder": 242,
+      "sortOrder": 15,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -3745,10 +3745,10 @@
     },
     {
       "slug": "sp-t24-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "Describe a time when you achieved a goal",
-      "sortOrder": 243,
+      "sortOrder": 15,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -3788,10 +3788,10 @@
     },
     {
       "slug": "sp-t24-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Fast food should be banned in schools",
-      "sortOrder": 244,
+      "sortOrder": 15,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -3826,10 +3826,10 @@
     },
     {
       "slug": "sp-t25-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "Do you live in a house or a flat?",
-      "sortOrder": 251,
+      "sortOrder": 16,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -3865,10 +3865,10 @@
     },
     {
       "slug": "sp-t25-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "What advantages does online shopping offer over traditional shopping?",
-      "sortOrder": 252,
+      "sortOrder": 16,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -3912,10 +3912,10 @@
     },
     {
       "slug": "sp-t25-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "How do you plan to develop or improve this skill?",
-      "sortOrder": 253,
+      "sortOrder": 16,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -3947,10 +3947,10 @@
     },
     {
       "slug": "sp-t25-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "School uniforms and whether students should wear them",
-      "sortOrder": 254,
+      "sortOrder": 16,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -3981,10 +3981,10 @@
     },
     {
       "slug": "sp-t26-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "What is your favourite number",
-      "sortOrder": 261,
+      "sortOrder": 17,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -4020,10 +4020,10 @@
     },
     {
       "slug": "sp-t26-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "Why do people get excited about sales and discounts?",
-      "sortOrder": 262,
+      "sortOrder": 17,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -4067,10 +4067,10 @@
     },
     {
       "slug": "sp-t26-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "Describe a time when you faced challenges",
-      "sortOrder": 263,
+      "sortOrder": 17,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -4106,10 +4106,10 @@
     },
     {
       "slug": "sp-t26-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Banning zoos has strong arguments on both sides",
-      "sortOrder": 264,
+      "sortOrder": 17,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -4144,10 +4144,10 @@
     },
     {
       "slug": "sp-t27-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "Do you like to get up early?",
-      "sortOrder": 271,
+      "sortOrder": 18,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -4183,10 +4183,10 @@
     },
     {
       "slug": "sp-t27-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "How do convenience and comfort differ between public and private…",
-      "sortOrder": 272,
+      "sortOrder": 18,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -4230,10 +4230,10 @@
     },
     {
       "slug": "sp-t27-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "Describe a piece of advice you received from an elderly person",
-      "sortOrder": 273,
+      "sortOrder": 18,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -4265,10 +4265,10 @@
     },
     {
       "slug": "sp-t27-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "The use of cameras in public places for safety is a topic of significant…",
-      "sortOrder": 274,
+      "sortOrder": 18,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -4307,10 +4307,10 @@
     },
     {
       "slug": "sp-t28-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "What do you do at the weekends?",
-      "sortOrder": 281,
+      "sortOrder": 19,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -4346,10 +4346,10 @@
     },
     {
       "slug": "sp-t28-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "What are the problems related to eating fast food?",
-      "sortOrder": 282,
+      "sortOrder": 19,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -4393,10 +4393,10 @@
     },
     {
       "slug": "sp-t28-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "Describe a time when you experienced a failure",
-      "sortOrder": 283,
+      "sortOrder": 19,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -4428,10 +4428,10 @@
     },
     {
       "slug": "sp-t28-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "The death penalty should be abolished",
-      "sortOrder": 284,
+      "sortOrder": 19,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -4466,10 +4466,10 @@
     },
     {
       "slug": "sp-t30-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "What do you do to relax?",
-      "sortOrder": 301,
+      "sortOrder": 20,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -4505,10 +4505,10 @@
     },
     {
       "slug": "sp-t30-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "How does the weather affect outdoor cinema?",
-      "sortOrder": 302,
+      "sortOrder": 20,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -4552,10 +4552,10 @@
     },
     {
       "slug": "sp-t30-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "Describe a time when you resolved a conflict what steps did you take…",
-      "sortOrder": 303,
+      "sortOrder": 20,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -4591,10 +4591,10 @@
     },
     {
       "slug": "sp-t30-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "The idea of having a single global language sounds appealing, but it has…",
-      "sortOrder": 304,
+      "sortOrder": 20,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -4629,10 +4629,10 @@
     },
     {
       "slug": "sp-t31-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "How often do you eat out?",
-      "sortOrder": 311,
+      "sortOrder": 21,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -4668,10 +4668,10 @@
     },
     {
       "slug": "sp-t31-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "What are the advantages of e-books over paper books?",
-      "sortOrder": 312,
+      "sortOrder": 21,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -4715,10 +4715,10 @@
     },
     {
       "slug": "sp-t31-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "Describe a piece of art you appreciate do you think museums are still…",
-      "sortOrder": 313,
+      "sortOrder": 21,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -4750,10 +4750,10 @@
     },
     {
       "slug": "sp-t31-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Homework should be abolished in schools has strong points on both sides",
-      "sortOrder": 314,
+      "sortOrder": 21,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -4784,10 +4784,10 @@
     },
     {
       "slug": "sp-t32-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "How often do you watch tv?",
-      "sortOrder": 321,
+      "sortOrder": 22,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -4823,10 +4823,10 @@
     },
     {
       "slug": "sp-t32-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "What are the advantages of traditional lerning method?",
-      "sortOrder": 322,
+      "sortOrder": 22,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -4870,10 +4870,10 @@
     },
     {
       "slug": "sp-t32-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "Describe a project or task that required careful planning how do you…",
-      "sortOrder": 323,
+      "sortOrder": 22,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -4909,10 +4909,10 @@
     },
     {
       "slug": "sp-t32-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "The government should encourage the use of electric cars because they help…",
-      "sortOrder": 324,
+      "sortOrder": 22,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -4943,10 +4943,10 @@
     },
     {
       "slug": "sp-t35-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "Who is your best friend?",
-      "sortOrder": 351,
+      "sortOrder": 23,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -4982,10 +4982,10 @@
     },
     {
       "slug": "sp-t35-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "What advantages do small stores offer that supermarkets might not?",
-      "sortOrder": 352,
+      "sortOrder": 23,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -5029,10 +5029,10 @@
     },
     {
       "slug": "sp-t35-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "Describe a time when you helped someone",
-      "sortOrder": 353,
+      "sortOrder": 23,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -5064,10 +5064,10 @@
     },
     {
       "slug": "sp-t35-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Adopting a four-week work schedule could bring significant benefits",
-      "sortOrder": 354,
+      "sortOrder": 23,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
@@ -5098,10 +5098,10 @@
     },
     {
       "slug": "sp-t36-11",
-      "category": "speaking",
+      "category": "speaking1_1",
       "badge": "Part 1.1 · Interview",
       "title": "Do you like cooking?",
-      "sortOrder": 361,
+      "sortOrder": 24,
       "content": {
         "task": [
           "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
@@ -5137,10 +5137,10 @@
     },
     {
       "slug": "sp-t36-12",
-      "category": "speaking",
+      "category": "speaking1_2",
       "badge": "Part 1.2 · Photo comparison",
       "title": "Which mode of travel do you prefer and why?",
-      "sortOrder": 362,
+      "sortOrder": 24,
       "content": {
         "task": [
           "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
@@ -5184,10 +5184,10 @@
     },
     {
       "slug": "sp-t36-2",
-      "category": "speaking",
+      "category": "speaking2",
       "badge": "Part 2 · Photo talk",
       "title": "Describe a book that left a strong impression on you",
-      "sortOrder": 363,
+      "sortOrder": 24,
       "content": {
         "task": [
           "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
@@ -5219,10 +5219,10 @@
     },
     {
       "slug": "sp-t36-3",
-      "category": "speaking",
+      "category": "speaking3",
       "badge": "Part 3 · For & against",
       "title": "Space exploration is a highly debated topic, with strong arguments on both…",
-      "sortOrder": 364,
+      "sortOrder": 24,
       "content": {
         "task": [
           "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."

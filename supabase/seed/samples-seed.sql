@@ -342,7 +342,7 @@ values
     "Supports claims with real, specific examples (highlighting textbooks, collecting books)."
   ]
 }$seed$::jsonb, 'published', 3),
-  ('sp11-interview', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$Personal interview questions$seed$, $seed${
+  ('sp11-interview', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$Personal interview questions$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each — enough to show your range, but not a memorised speech."
   ],
@@ -412,7 +412,7 @@ values
     "Stays on topic and finishes each answer cleanly, without rambling."
   ]
 }$seed$::jsonb, 'published', 1),
-  ('sp12-pictures-walking-driving', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$Comparing two pictures — driving vs walking$seed$, $seed${
+  ('sp12-pictures-walking-driving', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$Comparing two pictures — driving vs walking$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: What do you see in these pictures? What are some advantages of walking over driving? Why do some people prefer having a car of their own?"
@@ -489,8 +489,8 @@ values
     "Uses precise topic vocabulary (pedestrians, emissions, cost-effective) accurately.",
     "Answers every part of each question, including the follow-up on car ownership."
   ]
-}$seed$::jsonb, 'published', 2),
-  ('sp2-critical-decision', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$A critical decision$seed$, $seed${
+}$seed$::jsonb, 'published', 1),
+  ('sp2-critical-decision', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$A critical decision$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: Tell me about a critical decision you have made. How has this decision influenced you and your life? What factors have the highest impact on the decisions people make?"
@@ -554,8 +554,8 @@ values
     "Rich C1 vocabulary used naturally (“self-reliant”, “broadened my worldview”, “align”).",
     "Rounds off with a genuine conclusion rather than stopping abruptly."
   ]
-}$seed$::jsonb, 'published', 3),
-  ('sp3-personal-guns', 'speaking', $seed$Part 3 · For & against$seed$, $seed$For and against: personal gun ownership$seed$, $seed${
+}$seed$::jsonb, 'published', 1),
+  ('sp3-personal-guns', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$For and against: personal gun ownership$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points FOR and AGAINST, and you discuss both sides before giving your own view. (Statement: “Citizens should be allowed to carry personal guns.”)",
     "FOR: guns help people protect themselves; they deter crimes like burglary; they are needed for hunting or target sports. AGAINST: guns are used to commit crimes; fewer guns reduce the homicide rate; military-style guns are not useful for hunting."
@@ -612,8 +612,8 @@ values
     "Reaches a measured personal conclusion instead of taking an extreme side.",
     "Precise topic vocabulary (deter, homicide, strike a balance) used correctly."
   ]
-}$seed$::jsonb, 'published', 4),
-  ('sp-t11-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$Do you have a large family?$seed$, $seed${
+}$seed$::jsonb, 'published', 1),
+  ('sp-t11-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$Do you have a large family?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -654,8 +654,8 @@ values
       "meaning": "tiniq"
     }
   ]
-}$seed$::jsonb, 'published', 111),
-  ('sp-t11-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$What would it be like living in these two places?$seed$, $seed${
+}$seed$::jsonb, 'published', 2),
+  ('sp-t11-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$What would it be like living in these two places?$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: Tell me what you see in the two pictures What would it be like living in these two places? Which of these two places would it be better for old people to live in?"
@@ -728,8 +728,8 @@ values
       "meaning": "haddan tashqari"
     }
   ]
-}$seed$::jsonb, 'published', 112),
-  ('sp-t11-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$Tell me about the movie you enjoyed watching is going to cinema a…$seed$, $seed${
+}$seed$::jsonb, 'published', 2),
+  ('sp-t11-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$Tell me about the movie you enjoyed watching is going to cinema a…$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: Tell me about the movie you enjoyed watching is going to cinema a popular activity in your country? What people can learn from watching movies?"
@@ -786,8 +786,8 @@ values
       "meaning": "zafarlar/ g`alabalar"
     }
   ]
-}$seed$::jsonb, 'published', 113),
-  ('sp-t11-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Social media and its impact on teenagers$seed$, $seed${
+}$seed$::jsonb, 'published', 2),
+  ('sp-t11-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Social media and its impact on teenagers$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -843,8 +843,8 @@ values
       "meaning": "donolik bilan"
     }
   ]
-}$seed$::jsonb, 'published', 114),
-  ('sp-t12-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$What kind of music do you like and why?$seed$, $seed${
+}$seed$::jsonb, 'published', 2),
+  ('sp-t12-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$What kind of music do you like and why?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -901,8 +901,8 @@ values
       "meaning": "sohil"
     }
   ]
-}$seed$::jsonb, 'published', 121),
-  ('sp-t12-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two vacation spots$seed$, $seed${
+}$seed$::jsonb, 'published', 3),
+  ('sp-t12-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two vacation spots$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: Compare the two vacation spots Which vacation spot do you prefer and why? What are the advantages and disadvantages of vacationing in each location?"
@@ -951,8 +951,8 @@ values
       "meaning": "yolg'izlik"
     }
   ]
-}$seed$::jsonb, 'published', 122),
-  ('sp-t12-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the role of technology in education?$seed$, $seed${
+}$seed$::jsonb, 'published', 3),
+  ('sp-t12-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the role of technology in education?$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: What are your thoughts on the role of technology in education? Do you think technology improves the quality of education? Why or why not? How can teachers effectively integrate technology into their teaching?"
@@ -1001,8 +1001,8 @@ values
       "meaning": "to'ldiruvchi"
     }
   ]
-}$seed$::jsonb, 'published', 123),
-  ('sp-t12-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$The use of plastic should be banned$seed$, $seed${
+}$seed$::jsonb, 'published', 3),
+  ('sp-t12-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$The use of plastic should be banned$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -1055,8 +1055,8 @@ values
       "meaning": "muqobillar"
     }
   ]
-}$seed$::jsonb, 'published', 124),
-  ('sp-t13-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$What do you do for a living?$seed$, $seed${
+}$seed$::jsonb, 'published', 3),
+  ('sp-t13-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$What do you do for a living?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -1113,8 +1113,8 @@ values
       "meaning": "dam olish"
     }
   ]
-}$seed$::jsonb, 'published', 131),
-  ('sp-t13-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two living environments$seed$, $seed${
+}$seed$::jsonb, 'published', 4),
+  ('sp-t13-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two living environments$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: Compare the two living environments Which environment do you prefer to live in and why? What are the challenges of living in each environment?"
@@ -1179,8 +1179,8 @@ values
       "meaning": "bezovta"
     }
   ]
-}$seed$::jsonb, 'published', 132),
-  ('sp-t13-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on learning a second language?$seed$, $seed${
+}$seed$::jsonb, 'published', 4),
+  ('sp-t13-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on learning a second language?$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: What are your thoughts on learning a second language? Do you think it is essential for everyone to learn a second language? Why or why not? How can schools encourage students to learn new languages?"
@@ -1221,8 +1221,8 @@ values
       "meaning": "xilma-xil"
     }
   ]
-}$seed$::jsonb, 'published', 133),
-  ('sp-t13-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Cities should definitely have more green spaces and parks$seed$, $seed${
+}$seed$::jsonb, 'published', 4),
+  ('sp-t13-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Cities should definitely have more green spaces and parks$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -1274,8 +1274,8 @@ values
       "meaning": "yashashga yaroqli"
     }
   ]
-}$seed$::jsonb, 'published', 134),
-  ('sp-t14-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$What are your favorite types of movies and why?$seed$, $seed${
+}$seed$::jsonb, 'published', 4),
+  ('sp-t14-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$What are your favorite types of movies and why?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -1340,8 +1340,8 @@ values
       "meaning": "kayfiyatimni ko'taradi"
     }
   ]
-}$seed$::jsonb, 'published', 141),
-  ('sp-t14-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two types of libraries$seed$, $seed${
+}$seed$::jsonb, 'published', 5),
+  ('sp-t14-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two types of libraries$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: Compare the two types of libraries Which type of library do you prefer and why? What are the benefits and challenges of using each type of library?"
@@ -1398,8 +1398,8 @@ values
       "meaning": "teginish/sezadigan/sezuvchi"
     }
   ]
-}$seed$::jsonb, 'published', 142),
-  ('sp-t14-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the impact of social media on personal…$seed$, $seed${
+}$seed$::jsonb, 'published', 5),
+  ('sp-t14-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the impact of social media on personal…$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: What are your thoughts on the impact of social media on personal relationships? Do you think social media helps or hinders relationships? Why? How can people use social media responsibly to maintain healthy relationships?"
@@ -1456,8 +1456,8 @@ values
       "meaning": "fikrli"
     }
   ]
-}$seed$::jsonb, 'published', 143),
-  ('sp-t14-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Increasing fines for littering is a topic that has both benefits and…$seed$, $seed${
+}$seed$::jsonb, 'published', 5),
+  ('sp-t14-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Increasing fines for littering is a topic that has both benefits and…$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -1525,8 +1525,8 @@ values
       "meaning": "utilizatsiya qilish"
     }
   ]
-}$seed$::jsonb, 'published', 144),
-  ('sp-t15-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$What is your favorite book and why?$seed$, $seed${
+}$seed$::jsonb, 'published', 5),
+  ('sp-t15-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$What is your favorite book and why?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -1579,8 +1579,8 @@ values
       "meaning": "arziydi"
     }
   ]
-}$seed$::jsonb, 'published', 151),
-  ('sp-t15-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two shopping experiences$seed$, $seed${
+}$seed$::jsonb, 'published', 6),
+  ('sp-t15-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two shopping experiences$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: Compare the two shopping experiences Which shopping experience do you prefer and why? What are the pros and cons of shopping in each place?"
@@ -1645,8 +1645,8 @@ values
       "meaning": "kelishmoq"
     }
   ]
-}$seed$::jsonb, 'published', 152),
-  ('sp-t15-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the importance of physical fitness?$seed$, $seed${
+}$seed$::jsonb, 'published', 6),
+  ('sp-t15-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the importance of physical fitness?$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: What are your thoughts on the importance of physical fitness? Do you think schools should prioritize physical education? Why or why not? How can individuals maintain a healthy lifestyle?"
@@ -1703,8 +1703,8 @@ values
       "meaning": "namlangan"
     }
   ]
-}$seed$::jsonb, 'published', 153),
-  ('sp-t15-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Encouraging people to work from home has several clear benefits$seed$, $seed${
+}$seed$::jsonb, 'published', 6),
+  ('sp-t15-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Encouraging people to work from home has several clear benefits$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -1764,8 +1764,8 @@ values
       "meaning": "o'chirish"
     }
   ]
-}$seed$::jsonb, 'published', 154),
-  ('sp-t16-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$What kind of food do you like and why?$seed$, $seed${
+}$seed$::jsonb, 'published', 6),
+  ('sp-t16-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$What kind of food do you like and why?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -1826,8 +1826,8 @@ values
       "meaning": "ho`llash"
     }
   ]
-}$seed$::jsonb, 'published', 161),
-  ('sp-t16-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two sources of news$seed$, $seed${
+}$seed$::jsonb, 'published', 7),
+  ('sp-t16-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two sources of news$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: Compare the two sources of news Which source of news do you prefer and why? What are the advantages and disadvantages of each source?"
@@ -1888,8 +1888,8 @@ values
       "meaning": "haddan tashqari"
     }
   ]
-}$seed$::jsonb, 'published', 162),
-  ('sp-t16-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the benefits of a university education?$seed$, $seed${
+}$seed$::jsonb, 'published', 7),
+  ('sp-t16-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the benefits of a university education?$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: What are your thoughts on the benefits of a university education? Do you think a university degree is necessary for success? Why or why not? How can universities improve the quality of education they provide?"
@@ -1958,8 +1958,8 @@ values
       "meaning": "karyera bo`yicha maslahat"
     }
   ]
-}$seed$::jsonb, 'published', 163),
-  ('sp-t16-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Television should definitely have more educational programs$seed$, $seed${
+}$seed$::jsonb, 'published', 7),
+  ('sp-t16-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Television should definitely have more educational programs$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -2003,8 +2003,8 @@ values
       "meaning": "afzalliklar"
     }
   ]
-}$seed$::jsonb, 'published', 164),
-  ('sp-t17-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$What is your favorite sport and why?$seed$, $seed${
+}$seed$::jsonb, 'published', 7),
+  ('sp-t17-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$What is your favorite sport and why?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -2065,8 +2065,8 @@ values
       "meaning": "aks ettirish"
     }
   ]
-}$seed$::jsonb, 'published', 171),
-  ('sp-t17-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two shopping environments$seed$, $seed${
+}$seed$::jsonb, 'published', 8),
+  ('sp-t17-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two shopping environments$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: Compare the two shopping environments Which shopping method do you prefer and why? What are the benefits and challenges of each shopping method?"
@@ -2111,8 +2111,8 @@ values
       "meaning": "imtiyozlar"
     }
   ]
-}$seed$::jsonb, 'published', 172),
-  ('sp-t17-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the impact of climate change?$seed$, $seed${
+}$seed$::jsonb, 'published', 8),
+  ('sp-t17-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the impact of climate change?$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: What are your thoughts on the impact of climate change? Do you think individuals can make a difference in combating climate change? Why or why not? How can governments and organizations address climate change effectively?"
@@ -2153,8 +2153,8 @@ values
       "meaning": "qo'shish"
     }
   ]
-}$seed$::jsonb, 'published', 173),
-  ('sp-t17-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Banning cars from city centers has several benefits$seed$, $seed${
+}$seed$::jsonb, 'published', 8),
+  ('sp-t17-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Banning cars from city centers has several benefits$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -2202,8 +2202,8 @@ values
       "meaning": "og'ir yuklar"
     }
   ]
-}$seed$::jsonb, 'published', 174),
-  ('sp-t18-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$What kind of movies do you enjoy and why?$seed$, $seed${
+}$seed$::jsonb, 'published', 8),
+  ('sp-t18-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$What kind of movies do you enjoy and why?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -2240,8 +2240,8 @@ values
       "meaning": "bag'ishlanish/sodiqlik"
     }
   ]
-}$seed$::jsonb, 'published', 181),
-  ('sp-t18-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two modes of transportation$seed$, $seed${
+}$seed$::jsonb, 'published', 9),
+  ('sp-t18-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two modes of transportation$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: Compare the two modes of transportation Which mode of transportation do you prefer and why? What are the benefits and drawbacks of each mode?"
@@ -2290,8 +2290,8 @@ values
       "meaning": "effective-tejamkor"
     }
   ]
-}$seed$::jsonb, 'published', 182),
-  ('sp-t18-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the importance of recycling?$seed$, $seed${
+}$seed$::jsonb, 'published', 9),
+  ('sp-t18-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the importance of recycling?$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: What are your thoughts on the importance of recycling? Do you think recycling should be mandatory? Why or why not? How can communities encourage people to recycle more?"
@@ -2356,8 +2356,8 @@ values
       "meaning": "poligonlar"
     }
   ]
-}$seed$::jsonb, 'published', 183),
-  ('sp-t18-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Students should have homework$seed$, $seed${
+}$seed$::jsonb, 'published', 9),
+  ('sp-t18-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Students should have homework$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -2401,8 +2401,8 @@ values
       "meaning": "kurashmoq"
     }
   ]
-}$seed$::jsonb, 'published', 184),
-  ('sp-t19-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$What is your favorite holiday and why?$seed$, $seed${
+}$seed$::jsonb, 'published', 9),
+  ('sp-t19-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$What is your favorite holiday and why?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -2439,8 +2439,8 @@ values
       "meaning": "vaqtni chog 'o'tkazish"
     }
   ]
-}$seed$::jsonb, 'published', 191),
-  ('sp-t19-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two dining experiences$seed$, $seed${
+}$seed$::jsonb, 'published', 10),
+  ('sp-t19-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two dining experiences$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: Compare the two dining experiences Which dining experience do you prefer and why? What are the benefits and challenges of each dining method?"
@@ -2493,8 +2493,8 @@ values
       "meaning": "imtiyoz"
     }
   ]
-}$seed$::jsonb, 'published', 192),
-  ('sp-t19-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the impact of technology on communication?$seed$, $seed${
+}$seed$::jsonb, 'published', 10),
+  ('sp-t19-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the impact of technology on communication?$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: What are your thoughts on the impact of technology on communication? Do you think technology has improved or worsened communication? Why? How can people use technology to communicate effectively?"
@@ -2543,8 +2543,8 @@ values
       "meaning": "chegaralar"
     }
   ]
-}$seed$::jsonb, 'published', 193),
-  ('sp-t19-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Electric cars have become a hot topic when discussing the future of…$seed$, $seed${
+}$seed$::jsonb, 'published', 10),
+  ('sp-t19-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Electric cars have become a hot topic when discussing the future of…$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -2600,8 +2600,8 @@ values
       "meaning": "to'siqlar"
     }
   ]
-}$seed$::jsonb, 'published', 194),
-  ('sp-t20-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$What kind of books do you like to read and why?$seed$, $seed${
+}$seed$::jsonb, 'published', 10),
+  ('sp-t20-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$What kind of books do you like to read and why?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -2650,8 +2650,8 @@ values
       "meaning": "tinchlantiruvchi"
     }
   ]
-}$seed$::jsonb, 'published', 201),
-  ('sp-t20-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two devices shown in the pictures$seed$, $seed${
+}$seed$::jsonb, 'published', 11),
+  ('sp-t20-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$Compare the two devices shown in the pictures$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: Compare the two devices shown in the pictures Which device do you prefer to use and why? What are the benefits and drawbacks of each device?"
@@ -2704,8 +2704,8 @@ values
       "meaning": "ko'p qirralilik"
     }
   ]
-}$seed$::jsonb, 'published', 202),
-  ('sp-t20-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the impact of tourism on local cultures?$seed$, $seed${
+}$seed$::jsonb, 'published', 11),
+  ('sp-t20-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$What are your thoughts on the impact of tourism on local cultures?$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: What are your thoughts on the impact of tourism on local cultures? Do you think tourism benefits local communities? Why or why not? How can tourism be managed to preserve local cultures?"
@@ -2762,8 +2762,8 @@ values
       "meaning": "buzish"
     }
   ]
-}$seed$::jsonb, 'published', 203),
-  ('sp-t20-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$The idea of making public transportation free for everyone has both…$seed$, $seed${
+}$seed$::jsonb, 'published', 11),
+  ('sp-t20-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$The idea of making public transportation free for everyone has both…$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -2803,8 +2803,8 @@ values
       "meaning": "soliq"
     }
   ]
-}$seed$::jsonb, 'published', 204),
-  ('sp-t21-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$Tell me about yourself$seed$, $seed${
+}$seed$::jsonb, 'published', 11),
+  ('sp-t21-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$Tell me about yourself$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -2835,8 +2835,8 @@ values
       "text": "My family is small but very close-knit. I have three siblings, and we all share a strong bond. My parents have always been supportive and taught me the importance of hard work and kindness. We enjoy spending time together, whether it's sharing meals, trtraveling, or just relaxing at home. They've been a big influence on who I am today."
     }
   ]
-}$seed$::jsonb, 'published', 211),
-  ('sp-t21-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$What are the benefits oftravelling?$seed$, $seed${
+}$seed$::jsonb, 'published', 12),
+  ('sp-t21-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$What are the benefits oftravelling?$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: What do you see in these pictures? What are the benefits of travelling? What are the advantages of travelling by plane? What do you see in these pictures? What are the benefits oftravelling? What are the advantages oftravelling by plane?"
@@ -2875,8 +2875,8 @@ values
       "text": "Traveling by plane is fast, making it the quickest way to cover long distances. It connects you to many destinations worldwide, saving time, especially for international trips. Modern airlines also offer amenities like in-flight entertainment and meals, enhancing the travel experience. Overall, flying is convenient and efficient."
     }
   ]
-}$seed$::jsonb, 'published', 212),
-  ('sp-t21-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$Describe a time when you received unexpected good news$seed$, $seed${
+}$seed$::jsonb, 'published', 12),
+  ('sp-t21-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$Describe a time when you received unexpected good news$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: Describe a time when you received unexpected good news How did you feel at that moment? How did this good news impact your life or change your plans?"
@@ -2907,8 +2907,8 @@ values
       "text": "That moment of unexpected good news reminded me that sometimes the best things happen when youleast expect them. It taught me the importance of staying patient, working hard, and being open tounexpected opportunities."
     }
   ]
-}$seed$::jsonb, 'published', 213),
-  ('sp-t21-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Smartphones should be banned in schools$seed$, $seed${
+}$seed$::jsonb, 'published', 12),
+  ('sp-t21-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Smartphones should be banned in schools$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -2938,8 +2938,8 @@ values
       "text": "In conclusion, while there are real concerns about distractions and bullying, we should also consider the educational benefits and safety that smartphones provide. A balanced approach may be the best way to use their advantages while reducing their downsides. Thank you."
     }
   ]
-}$seed$::jsonb, 'published', 214),
-  ('sp-t22-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$Describe your house$seed$, $seed${
+}$seed$::jsonb, 'published', 12),
+  ('sp-t22-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$Describe your house$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -2970,8 +2970,8 @@ values
       "text": "If I had to pick a favorite drink, it would be lemonade. It's refreshing, sweet, and a little tangy-perfect for a hot day! Lemonade brings back memories of summer picnics and time spent with friends and family. Just a few simple ingredients-lemons, water, and sugar-make it so easy to prepare. Plus, it's versatile! You can add strawberries or mint for a fun twist. So, next time you need a cool drink, grab a glass of lemonade and enjoy the bright, sunny flavor! Cheers!"
     }
   ]
-}$seed$::jsonb, 'published', 221),
-  ('sp-t22-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$What are some advantages of exercising outdoors compared to…$seed$, $seed${
+}$seed$::jsonb, 'published', 13),
+  ('sp-t22-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$What are some advantages of exercising outdoors compared to…$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: What do you see in these pictures? What are some advantages of exercising outdoors compared to exercising indoors? Do people in your country exercise regularly?"
@@ -3010,8 +3010,8 @@ values
       "text": "In my country, many people try to exercise regularly, though habits vary. In cities, you'll often see people jogging in parks or attending gym classes, like yoga or dance, especially after work. In rural areas, exercise often comes from daily activities, like farming or walking. While some are very active, others find it hard to stay motivated. Overall, there's a growing awareness of the importance of fitness, and more people are working to incorporate exercise into their lives for better physical and mental health."
     }
   ]
-}$seed$::jsonb, 'published', 222),
-  ('sp-t22-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$Describe a time when you took a risk$seed$, $seed${
+}$seed$::jsonb, 'published', 13),
+  ('sp-t22-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$Describe a time when you took a risk$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: Describe a time when you took a risk What were the possible consequences of this risk? Do you think the risk was worth it?"
@@ -3042,8 +3042,8 @@ values
       "text": "Looking back, I believe the risk was worth it. I'm now doing something I love and feel morefulfilled in my work. The journey has taught me resilience and has opened up newopportunities I never imagined. Taking that leap of faith changed my life for the better, andi'm grateful I took the chance."
     }
   ]
-}$seed$::jsonb, 'published', 223),
-  ('sp-t22-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Single-use plastics should be banned$seed$, $seed${
+}$seed$::jsonb, 'published', 13),
+  ('sp-t22-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Single-use plastics should be banned$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -3069,8 +3069,8 @@ values
       "text": "On the other hand, there are valid concerns about such a ban. For many people, single-use plastics are incredibly convenient. They make life simpler, especially for those who are always on the go. Also, alternatives to single-use plastics can be more expensive, putting extra strain on consumers and businesses. Lastly, certain industries, like healthcare, rely on single-use plastics for safety and hygiene. These products are crucial in preventing infections and protecting patients."
     }
   ]
-}$seed$::jsonb, 'published', 224),
-  ('sp-t23-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$What is your favorite hobby$seed$, $seed${
+}$seed$::jsonb, 'published', 13),
+  ('sp-t23-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$What is your favorite hobby$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -3101,8 +3101,8 @@ values
       "text": "Yes, I really enjoy sports! Playing sports keeps me active and healthy, and it's a great way to have fun with friends. My favorite sport is basketball because I love the teamwork and fast pace of the game. I also enjoy watching sports, especially during big tournaments. It's exciting to cheer for my favorite teams and see them compete. Overall, sports bring people together, and I love being part of that energy and excitement!"
     }
   ]
-}$seed$::jsonb, 'published', 231),
-  ('sp-t23-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$Why might some people prefer to eat alone rather than with family?$seed$, $seed${
+}$seed$::jsonb, 'published', 14),
+  ('sp-t23-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$Why might some people prefer to eat alone rather than with family?$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: What do you see in these pictures? Why might some people prefer to eat alone rather than with family? What are the benefits of eating with family compared to eating alone?"
@@ -3141,8 +3141,8 @@ values
       "text": "Eating with family has many benefits compared to dining alone. First, it strengthens family bonds by providing opportunities for connection and communication. Second, family meals encourage healthier eating habits, as they often involve preparing balanced meals together. Third, sharing meals offers emotional support, creating a sense of belonging, especially for children and teenagers. Finally, family meals promote learning and sharing traditions, teaching valuable life skills. Overall, dining together enhances well-being, promotes healthier lifestyles, and creates lasting memories."
     }
   ]
-}$seed$::jsonb, 'published', 232),
-  ('sp-t23-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$Describe a person who influenced you$seed$, $seed${
+}$seed$::jsonb, 'published', 14),
+  ('sp-t23-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$Describe a person who influenced you$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: Describe a person who influenced you What specific qualities or actions of this person inspired you the most? How has your life or perspective changed as a result of their influence?"
@@ -3173,8 +3173,8 @@ values
       "text": "Overall, my grandmother's strength and positivity have shaped who I am today. She has shown methat kindness and hard work can make a real difference in life. I am grateful for her influence andstrive to carry her lessons with me every day."
     }
   ]
-}$seed$::jsonb, 'published', 233),
-  ('sp-t23-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Making public transport free for everyone$seed$, $seed${
+}$seed$::jsonb, 'published', 14),
+  ('sp-t23-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Making public transport free for everyone$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -3204,8 +3204,8 @@ values
       "text": "In conclusion, while free public transport has great potential, we need to carefully consider the financial implications and explore balanced solutions, such as subsidies for low-income individuals."
     }
   ]
-}$seed$::jsonb, 'published', 234),
-  ('sp-t24-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$Where is your hometown?$seed$, $seed${
+}$seed$::jsonb, 'published', 14),
+  ('sp-t24-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$Where is your hometown?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -3236,8 +3236,8 @@ values
       "text": "I think I could be a teacher! I enjoy sharing knowledge and helping others learn. Teaching allows you to make a positive impact on students' lives, and I find that very rewarding. I like the idea of creating engaging lessons and inspiring curiosity in students. Of course, teaching comes with challenges, but I believe that being patient and adaptable are key qualities. Overall, I would love the opportunity to guide others and share my passion for learning!"
     }
   ]
-}$seed$::jsonb, 'published', 241),
-  ('sp-t24-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$What challenges might arise during solo travel?$seed$, $seed${
+}$seed$::jsonb, 'published', 15),
+  ('sp-t24-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$What challenges might arise during solo travel?$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: What do you see in these pictures? What challenges might arise during solo travel? What are some benefits of traveling solo compared to traveling with family?"
@@ -3276,8 +3276,8 @@ values
       "text": "Traveling solo has some great benefits compared to traveling with family. First, youhave complete freedom to choose where to go and what to do. You can explore at yourown pace and make spontaneous plans without needing to coordinate with others. Second, solo travel helps you learn more about yourself. It's a chance to reflect andgrow as you navigate new experiences on your own. You also have more opportunities to meet new people. When you travel alone, you'reoften more open to making connections with fellow travelers."
     }
   ]
-}$seed$::jsonb, 'published', 242),
-  ('sp-t24-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$Describe a time when you achieved a goal$seed$, $seed${
+}$seed$::jsonb, 'published', 15),
+  ('sp-t24-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$Describe a time when you achieved a goal$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: Describe a time when you achieved a goal What obstacles did you face along the way, and how did you overcome them? How did achieving this goal affect you, and what did you learn from the experience?"
@@ -3312,8 +3312,8 @@ values
       "text": "From this experience, I learned the importance of patience and perseverance. It taught me thatbreaking a big goal into smaller steps makes it easier to achieve. Most importantly, I discoveredthat with dedication, I can accomplish things I once thought were impossible. This experienceinspired me to set new goals, whether in music or other areas of my life."
     }
   ]
-}$seed$::jsonb, 'published', 243),
-  ('sp-t24-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Fast food should be banned in schools$seed$, $seed${
+}$seed$::jsonb, 'published', 15),
+  ('sp-t24-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Fast food should be banned in schools$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -3343,8 +3343,8 @@ values
       "text": "In conclusion, banning fast food in schools is essential for promoting better health and encouraging lifelong healthy habits. Thank you!"
     }
   ]
-}$seed$::jsonb, 'published', 244),
-  ('sp-t25-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$Do you live in a house or a flat?$seed$, $seed${
+}$seed$::jsonb, 'published', 15),
+  ('sp-t25-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$Do you live in a house or a flat?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -3375,8 +3375,8 @@ values
       "text": "My room is a cozy and inviting space that reflects my personality. The walls are painted a soft blue, which creates a calm atmosphere. I have a comfortable bed with colorful pillows and a warm blanket, perfect for relaxing or reading. My desk is organized with my books, a laptop, and some plants that add a touch of nature. I also have a small bookshelf filled with my favorite novels. A corner of the room features a comfy chair where I like to unwind. Overall, my room is a perfect blend of comfort and creativity, making it a great place to spend my time."
     }
   ]
-}$seed$::jsonb, 'published', 251),
-  ('sp-t25-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$What advantages does online shopping offer over traditional shopping?$seed$, $seed${
+}$seed$::jsonb, 'published', 16),
+  ('sp-t25-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$What advantages does online shopping offer over traditional shopping?$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: What do you see in these pictures? What advantages does online shopping offer over traditional shopping? What are some disadvantages of online shopping compared to traditional shopping?"
@@ -3415,8 +3415,8 @@ values
       "text": "Online shopping has several disadvantages compared to traditional shopping. First, you can't physically inspect items, which may lead to disappointment. Second, shipping delays can be frustrating, and returning items often requires extra time and effort. Additionally, there are security concerns, such as the risk of fraud. Finally, you miss the immediate satisfaction of taking your purchase home right away. These factors can make traditional shopping more appealing for many consumers."
     }
   ]
-}$seed$::jsonb, 'published', 252),
-  ('sp-t25-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$How do you plan to develop or improve this skill?$seed$, $seed${
+}$seed$::jsonb, 'published', 16),
+  ('sp-t25-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$How do you plan to develop or improve this skill?$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: How do you plan to develop or improve this skill? How do you think mastering this skill will impact your career in the future?"
@@ -3443,8 +3443,8 @@ values
       "text": "Mastering effective communication will have a significant impact on my career. It willallow me to express my ideas more persuasively, which can open up greater opportunitiesfor advancement. Strong communicators often excel at networking, creating valuableconnections. Additionally, effective communication fosters teamwork and collaboration,which are essential for success in any organization."
     }
   ]
-}$seed$::jsonb, 'published', 253),
-  ('sp-t25-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$School uniforms and whether students should wear them$seed$, $seed${
+}$seed$::jsonb, 'published', 16),
+  ('sp-t25-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$School uniforms and whether students should wear them$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -3470,8 +3470,8 @@ values
       "text": "On the other hand, there are valid concerns. One argument against uniforms is that they restrict individual style. Clothing is a form of self-expression, and uniforms can limit this. There's also the financial burden uniforms can place on families. Buying specific uniforms can be an extra expense that some may struggle with. Schools could help by offering second-hand options. Lastly, some students find uniforms uncomfortable, which can distract from their learning experience."
     }
   ]
-}$seed$::jsonb, 'published', 254),
-  ('sp-t26-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$What is your favourite number$seed$, $seed${
+}$seed$::jsonb, 'published', 16),
+  ('sp-t26-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$What is your favourite number$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -3502,8 +3502,8 @@ values
       "text": "My favorite season is summer. I love the long, sunny days and the warm weather that encourages outdoor activities. It's the perfect time for going to the beach, having barbecues, and enjoying nature. Summer also brings vibrant colors, from blooming flowers to lush green landscapes. I appreciate the carefree atmosphere, whether it's traveling, camping, or simply relaxing outside with friends. Overall, summer feels like a time of joy and adventure!"
     }
   ]
-}$seed$::jsonb, 'published', 261),
-  ('sp-t26-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$Why do people get excited about sales and discounts?$seed$, $seed${
+}$seed$::jsonb, 'published', 17),
+  ('sp-t26-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$Why do people get excited about sales and discounts?$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: What do you see in these pictures? Why do people get excited about sales and discounts? What are some advantages of shopping at an indoor market compared to an outdoor market?"
@@ -3542,8 +3542,8 @@ values
       "text": "Shopping at an indoor market offers several advantages, such as protection from weather conditions, a consistent and comfortable environment, and better hygiene standards. Indoor markets often provide a wider variety of products and added conveniences like designated parking and restrooms. Additionally, they may have enhanced security, making shoppers feel safer while browsing."
     }
   ]
-}$seed$::jsonb, 'published', 262),
-  ('sp-t26-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$Describe a time when you faced challenges$seed$, $seed${
+}$seed$::jsonb, 'published', 17),
+  ('sp-t26-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$Describe a time when you faced challenges$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: Describe a time when you faced challenges How did you approach solving these challenges? What did you learn from facing these challenges?"
@@ -3574,8 +3574,8 @@ values
       "text": "From this experience, I learned the importance of time management and seeking help whenneeded. I discovered that breaking challenges into smaller tasks makes them moremanageable and less intimidating. Overall, facing these challenges taught me resilience andthe value of community support, skills that I carry with me today."
     }
   ]
-}$seed$::jsonb, 'published', 263),
-  ('sp-t26-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Banning zoos has strong arguments on both sides$seed$, $seed${
+}$seed$::jsonb, 'published', 17),
+  ('sp-t26-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Banning zoos has strong arguments on both sides$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -3605,8 +3605,8 @@ values
       "text": "In conclusion, while concerns about animal welfare in zoos are valid, they also play vital roles in conservation, education, and research. A balanced approach to improve conditions may be more beneficial than an outright ban."
     }
   ]
-}$seed$::jsonb, 'published', 264),
-  ('sp-t27-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$Do you like to get up early?$seed$, $seed${
+}$seed$::jsonb, 'published', 17),
+  ('sp-t27-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$Do you like to get up early?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -3637,8 +3637,8 @@ values
       "text": "Yes, I really enjoy riding a bike! It's a fun way to explore new places and stay active at the same time. I love the feeling of the wind on my face and the freedom that comes with cycling. Whether it's a leisurely ride in the park or a more challenging trail, biking is a great way to enjoy the outdoors and clear my mind."
     }
   ]
-}$seed$::jsonb, 'published', 271),
-  ('sp-t27-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$How do convenience and comfort differ between public and private…$seed$, $seed${
+}$seed$::jsonb, 'published', 18),
+  ('sp-t27-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$How do convenience and comfort differ between public and private…$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: What do you see in these pictures? How do convenience and comfort differ between public and private transport? What are some benefits of using private transport compared to public transport?"
@@ -3677,8 +3677,8 @@ values
       "text": "Using private transport offers several key benefits over public transport. First, convenience is a major advantage. You can travel directly to your destination without relying on fixed schedules or routes, allowing for more flexibility in your plans. Second, private transport often saves time. You can avoid long waits and transfers that come with public transport. Finally, there's privacy. You can choose who travels with you, creating a more comfortable and personal experience."
     }
   ]
-}$seed$::jsonb, 'published', 272),
-  ('sp-t27-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$Describe a piece of advice you received from an elderly person$seed$, $seed${
+}$seed$::jsonb, 'published', 18),
+  ('sp-t27-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$Describe a piece of advice you received from an elderly person$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: Describe a piece of advice you received from an elderly person How this advice changed your life? What aspects of life do elderly people typically emphasize when giving advice?"
@@ -3705,8 +3705,8 @@ values
       "text": "Elderly people often emphasize the importance of patience, kindness, and connection in their advice. They remind us to value relationships, cherish experiences, and approach life with an open heart. Their wisdom highlights the significance of slowing down and appreciating the journey we're on."
     }
   ]
-}$seed$::jsonb, 'published', 273),
-  ('sp-t27-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$The use of cameras in public places for safety is a topic of significant…$seed$, $seed${
+}$seed$::jsonb, 'published', 18),
+  ('sp-t27-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$The use of cameras in public places for safety is a topic of significant…$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -3740,8 +3740,8 @@ values
       "text": "In conclusion, while cameras can enhance safety, we must carefully consider the implications for privacy and the financial aspects involved."
     }
   ]
-}$seed$::jsonb, 'published', 274),
-  ('sp-t28-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$What do you do at the weekends?$seed$, $seed${
+}$seed$::jsonb, 'published', 18),
+  ('sp-t28-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$What do you do at the weekends?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -3772,8 +3772,8 @@ values
       "text": "I prefer to spend my free time with others. I find that being with friends and family brings joy and energy to my days. Whether we're going on adventures, sharing meals, or just hanging out, those connections create lasting memories and laughter. I love the conversations and experiences we share, which help strengthen our bonds. While I appreciate moments of solitude, the time spent with others truly enriches my life and brings me a sense of fulfillment."
     }
   ]
-}$seed$::jsonb, 'published', 281),
-  ('sp-t28-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$What are the problems related to eating fast food?$seed$, $seed${
+}$seed$::jsonb, 'published', 19),
+  ('sp-t28-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$What are the problems related to eating fast food?$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: What do you see in these pictures? What are the problems related to eating fast food? Why people choose to eat fast food instead of healthy food? What do you see in these pictures? What are the problems related to eating fast food? Why people choose to eat fast food instead of healthy food?"
@@ -3812,8 +3812,8 @@ values
       "text": "People often choose fast food over healthy options for a few key reasons. First, it's convenient and quick, perfect for busy lifestyles. It's usually cheaper than healthier meals, which matters to many. Fast food is also heavily advertised, with tempting ads that attract people. The flavors are satisfying and indulgent, making it hard to resist. Finally, some people may not have easy access to fresh, healthy foods, making fast food a more available choice. While it's convconvenient, it's important to think about its impact on our health!"
     }
   ]
-}$seed$::jsonb, 'published', 282),
-  ('sp-t28-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$Describe a time when you experienced a failure$seed$, $seed${
+}$seed$::jsonb, 'published', 19),
+  ('sp-t28-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$Describe a time when you experienced a failure$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: Describe a time when you experienced a failure How did you respond to this failure?-What lessons did you learn from this experience?"
@@ -3840,8 +3840,8 @@ values
       "text": "From this experience, I learned that being a good leader means listening to others and working together. It's not just about my ideas; everyone has valuable input. I also realized how important it is to be open to change and feedback. After our meeting, we worked together to improve our strategy, and a few months later, we successfully completed the project."
     }
   ]
-}$seed$::jsonb, 'published', 283),
-  ('sp-t28-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$The death penalty should be abolished$seed$, $seed${
+}$seed$::jsonb, 'published', 19),
+  ('sp-t28-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$The death penalty should be abolished$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -3871,8 +3871,8 @@ values
       "text": "But overall, the risks and moral concerns outweigh these reasons. The death penalty is irreversible, it doesn'treduce crime, and it contradicts the value of life. That's why it should be abolished."
     }
   ]
-}$seed$::jsonb, 'published', 284),
-  ('sp-t30-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$What do you do to relax?$seed$, $seed${
+}$seed$::jsonb, 'published', 19),
+  ('sp-t30-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$What do you do to relax?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -3903,8 +3903,8 @@ values
       "text": "Yes, I enjoy riding a bike! It's a great way to stay active and explore new places. I love the feeling of freedom it gives me, especially when riding through parks or quiet streets. It's also a wonderful way to relax and clear my mind while getting some fresh air."
     }
   ]
-}$seed$::jsonb, 'published', 301),
-  ('sp-t30-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$How does the weather affect outdoor cinema?$seed$, $seed${
+}$seed$::jsonb, 'published', 20),
+  ('sp-t30-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$How does the weather affect outdoor cinema?$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: What do you see in these pictures? How does the weather affect outdoor cinema? Which one do you think offers better experience?"
@@ -3943,8 +3943,8 @@ values
       "text": "If I had to choose, I would say an indoor cinema offers a better experience. It provides a comfortable, controlled environment where you don't have to worry about the weather. The temperature is just right, and the sound and screen quality are usually top-notch, making it easier to focus and enjoy the movie. You also don't have to deal with distractions like wind or noise, which can sometimes happen in outdoor cinemas."
     }
   ]
-}$seed$::jsonb, 'published', 302),
-  ('sp-t30-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$Describe a time when you resolved a conflict what steps did you take…$seed$, $seed${
+}$seed$::jsonb, 'published', 20),
+  ('sp-t30-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$Describe a time when you resolved a conflict what steps did you take…$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: Describe a time when you resolved a conflict what steps did you take to resolve a conflict you faced? How did you feel after successfully resolving a conflict?"
@@ -3975,8 +3975,8 @@ values
       "text": "After resolving the conflict, I felt a sense of relief and satisfaction. It was a reminder that communication and patience can solve many problems. I was glad to have strengthened our friendship and learned a valuable lesson about conflict resolution."
     }
   ]
-}$seed$::jsonb, 'published', 303),
-  ('sp-t30-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$The idea of having a single global language sounds appealing, but it has…$seed$, $seed${
+}$seed$::jsonb, 'published', 20),
+  ('sp-t30-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$The idea of having a single global language sounds appealing, but it has…$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -4006,8 +4006,8 @@ values
       "text": "Overall, while a single language could improve communication, we need to think about how it might affect cultural diversity and if it's realistic for everyone."
     }
   ]
-}$seed$::jsonb, 'published', 304),
-  ('sp-t31-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$How often do you eat out?$seed$, $seed${
+}$seed$::jsonb, 'published', 20),
+  ('sp-t31-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$How often do you eat out?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -4038,8 +4038,8 @@ values
       "text": "My favorite type of food is Asian cuisine because of its rich flavors and variety. I really enjoy dishes like sushi, ramen and noodles, the balance of spices, sauces, and fresh ingredients makes every meal so satisfying. Plus, there is always something new and exciting to try from different countries like Japan, China, or thailand, which makes it even more special for me!"
     }
   ]
-}$seed$::jsonb, 'published', 311),
-  ('sp-t31-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$What are the advantages of e-books over paper books?$seed$, $seed${
+}$seed$::jsonb, 'published', 21),
+  ('sp-t31-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$What are the advantages of e-books over paper books?$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: What do you see in these pictures? What are the advantages of e-books over paper books? Do you think the paper books will disapper in the future?"
@@ -4078,8 +4078,8 @@ values
       "text": "I do not think paper books will completely disappear in the future. While e-books are convenient and eco-friendly, many people still love the experience of holding a physical book, flipping the pages, and even the smell of the paper. Paper books have a nostalgic and emotional value that digital formats can not fully replace."
     }
   ]
-}$seed$::jsonb, 'published', 312),
-  ('sp-t31-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$Describe a piece of art you appreciate do you think museums are still…$seed$, $seed${
+}$seed$::jsonb, 'published', 21),
+  ('sp-t31-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$Describe a piece of art you appreciate do you think museums are still…$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: Describe a piece of art you appreciate do you think museums are still important? Are you good at drawing yourself?"
@@ -4106,8 +4106,8 @@ values
       "text": "As for drawing, I would not say I am very good at it, but I enjoy trying! I admire artists like leonardo da vinci who can bring their imagination to life on paper or canvas. While I may not be talented at drawing, I love appreciating the effort and creativity that goes into creating art."
     }
   ]
-}$seed$::jsonb, 'published', 313),
-  ('sp-t31-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Homework should be abolished in schools has strong points on both sides$seed$, $seed${
+}$seed$::jsonb, 'published', 21),
+  ('sp-t31-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Homework should be abolished in schools has strong points on both sides$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -4133,8 +4133,8 @@ values
       "text": "On the other hand, homework has benefits too. It helps students practice what they learn in class and improves their memory of the material. Homework also teaches valuable skills like time management, discipline, and responsibility, which are important for success later in life. Additionally, it helps teachers see how well students understand the lessons and where they might need extra help."
     }
   ]
-}$seed$::jsonb, 'published', 314),
-  ('sp-t32-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$How often do you watch tv?$seed$, $seed${
+}$seed$::jsonb, 'published', 21),
+  ('sp-t32-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$How often do you watch tv?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -4165,8 +4165,8 @@ values
       "text": "Yes, I have a cat. Cats are amazing pets-they are independent yet affectionate, and they bring so much comfort and joy. I love spending time with mine, whether itвђ™s playing, relaxing, or just watching them explore. Having a cat really makes life more fun and lively!"
     }
   ]
-}$seed$::jsonb, 'published', 321),
-  ('sp-t32-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$What are the advantages of traditional lerning method?$seed$, $seed${
+}$seed$::jsonb, 'published', 22),
+  ('sp-t32-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$What are the advantages of traditional lerning method?$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: What do you see in these pictures? What are the advantages of traditional lerning method? Should schools use technology in education?"
@@ -4205,8 +4205,8 @@ values
       "text": "Yes, schools should use technology in education. It enhances learning by providing access to a wide range of resources and interactive tools. Technology can make lessons more engaging and personalized, helping students learn at their own pace. It also prepares students for the digital world theyвђ™ll work in.В"
     }
   ]
-}$seed$::jsonb, 'published', 322),
-  ('sp-t32-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$Describe a project or task that required careful planning how do you…$seed$, $seed${
+}$seed$::jsonb, 'published', 22),
+  ('sp-t32-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$Describe a project or task that required careful planning how do you…$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: Describe a project or task that required careful planning how do you organize and manage the planning process for this task? What challenges did you face while planning, and how did you overcome them?"
@@ -4237,8 +4237,8 @@ values
       "text": "With careful planning and problem-solving, I was able to complete the presentation on time and deliver it confidently."
     }
   ]
-}$seed$::jsonb, 'published', 323),
-  ('sp-t32-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$The government should encourage the use of electric cars because they help…$seed$, $seed${
+}$seed$::jsonb, 'published', 22),
+  ('sp-t32-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$The government should encourage the use of electric cars because they help…$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -4264,8 +4264,8 @@ values
       "text": "Despite these challenges, the benefits of electric cars, like cleaner air and long-term savings, make them a good option. The government can help by offering incentives, improving charging stations, and supporting better battery technology."
     }
   ]
-}$seed$::jsonb, 'published', 324),
-  ('sp-t35-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$Who is your best friend?$seed$, $seed${
+}$seed$::jsonb, 'published', 22),
+  ('sp-t35-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$Who is your best friend?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -4296,8 +4296,8 @@ values
       "text": "Reflecting on my first teacher, I realize that my mother was the first to teach me. She taught me how to tie my shoes and the alphabet. She taught me so many things throughout my life. She was my first teacher, one with the honored and sacred name of mother."
     }
   ]
-}$seed$::jsonb, 'published', 351),
-  ('sp-t35-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$What advantages do small stores offer that supermarkets might not?$seed$, $seed${
+}$seed$::jsonb, 'published', 23),
+  ('sp-t35-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$What advantages do small stores offer that supermarkets might not?$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: What do you see in these pictures? What advantages do small stores offer that supermarkets might not? Which do you prefer for shopping?"
@@ -4336,8 +4336,8 @@ values
       "text": "I prefer shopping at traditional street stores. I enjoy the personal touch and the chance to interact directly with vendors. Being able to bargain for better prices adds an element of fun and helps me feel more connected to the local community. While supermarkets offer convenience and a wide range of products, I find the experience of exploring street stores and discovering unique items more rewarding and engaging."
     }
   ]
-}$seed$::jsonb, 'published', 352),
-  ('sp-t35-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$Describe a time when you helped someone$seed$, $seed${
+}$seed$::jsonb, 'published', 23),
+  ('sp-t35-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$Describe a time when you helped someone$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: Describe a time when you helped someone What motivated you to help them? How did the experience make you feel afterward?"
@@ -4364,8 +4364,8 @@ values
       "text": "After we worked together for a while, I could see that she felt relieved and more confident in finishing the project. I was happy to see her stress reduce, and it felt really good knowing that I had made a positive impact. Helping her made me realize how important it is to support those we care about, and it also made me appreciate the simple things we can do to make someone's day better. It felt rewarding to know that my help had made a difference, and I left feeling fulfilled and happy."
     }
   ]
-}$seed$::jsonb, 'published', 353),
-  ('sp-t35-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Adopting a four-week work schedule could bring significant benefits$seed$, $seed${
+}$seed$::jsonb, 'published', 23),
+  ('sp-t35-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Adopting a four-week work schedule could bring significant benefits$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -4391,8 +4391,8 @@ values
       "text": "In conclusion, while a four-week work schedule has clear benefits, its implementation would need to be carefully considered to balance the advantages with the potential drawbacks."
     }
   ]
-}$seed$::jsonb, 'published', 354),
-  ('sp-t36-11', 'speaking', $seed$Part 1.1 · Interview$seed$, $seed$Do you like cooking?$seed$, $seed${
+}$seed$::jsonb, 'published', 23),
+  ('sp-t36-11', 'speaking1_1', $seed$Part 1.1 · Interview$seed$, $seed$Do you like cooking?$seed$, $seed${
   "task": [
     "In Part 1.1 the examiner asks short questions about you and your life. Answer naturally in a few sentences each, enough to show your range but not a memorised speech."
   ],
@@ -4423,8 +4423,8 @@ values
       "text": "Yes, I love visiting new places! Exploring different cities and cultures is always exciting because it gives me the chance to learn something new, meet interesting people, and try different foods. Traveling also helps me see the world from different perspectives and creates unforgettable memories. Whether it's a historical site, a natural wonder, or a modern city, every place has something unique to offer."
     }
   ]
-}$seed$::jsonb, 'published', 361),
-  ('sp-t36-12', 'speaking', $seed$Part 1.2 · Photo comparison$seed$, $seed$Which mode of travel do you prefer and why?$seed$, $seed${
+}$seed$::jsonb, 'published', 24),
+  ('sp-t36-12', 'speaking1_2', $seed$Part 1.2 · Photo comparison$seed$, $seed$Which mode of travel do you prefer and why?$seed$, $seed${
   "task": [
     "In Part 1.2 you are shown two pictures and asked to describe and compare them, then answer follow-up questions.",
     "Questions: What do you see in these pictures? Which mode of travel do you prefer and why? Which offers more convenience for long-distance trips?"
@@ -4463,8 +4463,8 @@ values
       "text": "For long-distance trips, trains offer more convenience than cars. Trains provide a comfortable ride without the need to focus on driving, allowing passengers to rest, read, or work. They also have restrooms, dining options, and more space to move around. In contrast, long car trips can be tiring, require frequent stops, and depend on road conditions."
     }
   ]
-}$seed$::jsonb, 'published', 362),
-  ('sp-t36-2', 'speaking', $seed$Part 2 · Photo talk$seed$, $seed$Describe a book that left a strong impression on you$seed$, $seed${
+}$seed$::jsonb, 'published', 24),
+  ('sp-t36-2', 'speaking2', $seed$Part 2 · Photo talk$seed$, $seed$Describe a book that left a strong impression on you$seed$, $seed${
   "task": [
     "In Part 2 you are shown a photo and asked to speak on a more personal or abstract topic, giving your own experience and opinion.",
     "Questions: Describe a book that left a strong impression on you How has this book influenced your thoughts or beliefs? Would you recommend this book to others and why?"
@@ -4491,8 +4491,8 @@ values
       "text": "I would definitely recommend this book to others because it is filled with wisdom and motivation. The story is simple yet deep, making it easy to connect with. It encourages people to pursue their dreams and trust the journey of life. If you ever feel lost or unsure about your future, this book can provide inspiration and a fresh perspective."
     }
   ]
-}$seed$::jsonb, 'published', 363),
-  ('sp-t36-3', 'speaking', $seed$Part 3 · For & against$seed$, $seed$Space exploration is a highly debated topic, with strong arguments on both…$seed$, $seed${
+}$seed$::jsonb, 'published', 24),
+  ('sp-t36-3', 'speaking3', $seed$Part 3 · For & against$seed$, $seed$Space exploration is a highly debated topic, with strong arguments on both…$seed$, $seed${
   "task": [
     "In Part 3 you are given a statement with points for and against; discuss both sides, then give your own view. The prompt is shown below."
   ],
@@ -4518,7 +4518,7 @@ values
       "text": "On the other hand, space exploration has led to significant scientific advancements and technological progress. Many everyday technologies, such as gps and medical imaging, originated from space research. Space missions also drive innovation, creating new industries and job opportunities. Furthermore, space exploration fosters global cooperation, bringing countries together to work toward shared goals. It inspires curiosity and pushes the limits of human knowledge."
     }
   ]
-}$seed$::jsonb, 'published', 364)
+}$seed$::jsonb, 'published', 24)
 on conflict (slug) do update
   set category = excluded.category,
       badge = excluded.badge,
