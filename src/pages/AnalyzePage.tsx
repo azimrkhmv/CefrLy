@@ -8,7 +8,7 @@ import { BandRuler } from '../components/BandRuler'
 import { useCountUp } from '../lib/motion'
 import { COMMUNITY_URL } from '../components/Layout'
 import { HighlightedPassage, HighlightedText, type GapFill, type QuoteHighlight } from '../lib/passageHighlights'
-import { ArrowRightIcon, BookIcon, CloseIcon, FlagIcon } from '../components/icons'
+import { ArrowRightIcon, BookIcon, CloseIcon, FlagIcon, HomeIcon } from '../components/icons'
 import type { Item, Part } from '../types/test'
 import type { AttemptReview, ItemResult } from '../types/attempt'
 
@@ -105,13 +105,23 @@ function AnalyzeScreen({ review }: { review: AttemptReview }) {
       <header className="shrink-0 border-b border-line bg-white">
         <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-            <Link
-              to="/dashboard"
-              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
-            >
-              <CloseIcon width={18} height={18} />
-              <span className="hidden sm:inline">My results</span>
-            </Link>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                to="/"
+                aria-label="Home"
+                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-2 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+              >
+                <HomeIcon width={18} height={18} />
+                <span className="hidden sm:inline">Home</span>
+              </Link>
+              <Link
+                to="/dashboard"
+                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+              >
+                <CloseIcon width={18} height={18} />
+                <span className="hidden sm:inline">My results</span>
+              </Link>
+            </div>
             <div className="flex min-w-0 items-center gap-2">
               <BookIcon className="hidden shrink-0 text-brand sm:block" width={20} height={20} />
               <div className="min-w-0">

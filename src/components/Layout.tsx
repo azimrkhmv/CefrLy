@@ -24,22 +24,79 @@ import {
 // TODO: point this at the real community invite (Telegram/Discord/etc.).
 export const COMMUNITY_URL = 'https://t.me/cefrly'
 
-const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${
-    isActive ? 'bg-brand text-white' : 'text-ink hover:bg-brand-soft hover:text-brand'
-  }`
+// Sidebar design "2b — Rail & tint": quiet muted rows; the active row gets a
+// 3px brand rail on the left plus a lavender tint fading to the right.
+const navItemBase =
+  'group relative flex items-center gap-3.5 rounded-[10px] py-2 text-sm font-bold transition-colors'
+
+function NavItem({
+  to,
+  end,
+  icon,
+  label,
+  onNavigate,
+}: {
+  to: string
+  end?: boolean
+  icon: ReactNode
+  label: string
+  onNavigate?: () => void
+}) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      onClick={onNavigate}
+      className={({ isActive }) =>
+        `${navItemBase} ${
+          isActive
+            ? 'bg-gradient-to-r from-brand-soft to-transparent pl-4 pr-3 text-brand'
+            : 'px-3 text-ink-soft hover:bg-page'
+        }`
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-brand" />
+          )}
+          <span className={isActive ? 'text-brand' : 'text-ink-faint group-hover:text-ink-soft'}>
+            {icon}
+          </span>
+          <span>{label}</span>
+        </>
+      )}
+    </NavLink>
+  )
+}
 
 function SoonItem({ icon, label }: { icon: ReactNode; label: string }) {
   return (
-    <div
-      className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-ink-faint"
-      title="Coming soon"
-    >
-      {icon}
-      {label}
-      <span className="ml-auto rounded-full bg-page px-2 py-0.5 text-[10px] font-bold lowercase">
+    <div className={`${navItemBase} px-3 text-ink-faint`} title="Coming soon">
+      <span className="text-ink-faint">{icon}</span>
+      <span>{label}</span>
+      <span className="ml-auto rounded-full border border-line px-2 py-0.5 text-[10px] font-bold lowercase text-ink-faint">
         soon
       </span>
+    </div>
+  )
+}
+
+function SectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-faint">
+      {children}
+    </p>
+  )
+}
+
+function MockStat({ num, label }: { num: string; label: string }) {
+  return (
+    <div>
+      <div className="text-[17px] font-extrabold tabular-nums leading-none text-brand">{num}</div>
+      <div className="mt-1 text-[9.5px] font-bold uppercase tracking-wide text-ink-soft">
+        {label}
+      </div>
     </div>
   )
 }
@@ -47,56 +104,53 @@ function SoonItem({ icon, label }: { icon: ReactNode; label: string }) {
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { session } = useAuth()
   return (
-    <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">
-      <div className="pt-3">
-        <Logo className="px-2" />
+    <div className="flex h-full flex-col overflow-y-auto p-4">
+      <div className="px-2 pb-4 pt-1">
+        <Logo />
       </div>
 
-      <nav className="flex flex-col gap-1.5" aria-label="Main" onClick={onNavigate}>
-        <NavLink to="/" end className={navLinkClass}>
-          <HomeIcon width={18} height={18} />
-          Home
-        </NavLink>
-        <NavLink to="/reading" className={navLinkClass}>
-          <BookIcon width={18} height={18} />
-          Reading
-        </NavLink>
-        <NavLink to="/listening" className={navLinkClass}>
-          <HeadphonesIcon width={18} height={18} />
-          Listening
-        </NavLink>
-        <SoonItem icon={<PenIcon width={18} height={18} />} label="Writing" />
-        <SoonItem icon={<MicIcon width={18} height={18} />} label="Speaking" />
+      <SectionLabel>Practice</SectionLabel>
+      <nav className="flex flex-col gap-0.5" aria-label="Main">
+        <NavItem to="/" end icon={<HomeIcon width={19} height={19} />} label="Home" onNavigate={onNavigate} />
+        <NavItem to="/reading" icon={<BookIcon width={19} height={19} />} label="Reading" onNavigate={onNavigate} />
+        <NavItem to="/listening" icon={<HeadphonesIcon width={19} height={19} />} label="Listening" onNavigate={onNavigate} />
+        <SoonItem icon={<PenIcon width={19} height={19} />} label="Writing" />
+        <SoonItem icon={<MicIcon width={19} height={19} />} label="Speaking" />
         {/* Model Writing/Speaking answers — fills the gap until those papers ship. */}
-        <NavLink to="/samples" className={navLinkClass}>
-          <StarIcon width={18} height={18} />
-          Samples
-        </NavLink>
-        {session && (
-          <div className="my-3 border-t border-line" aria-hidden />
-        )}
-        {session && (
-          <NavLink to="/dashboard" className={navLinkClass}>
-            <ChartIcon width={18} height={18} />
-            My results
-          </NavLink>
-        )}
+        <NavItem to="/samples" icon={<StarIcon width={19} height={19} />} label="Samples" onNavigate={onNavigate} />
       </nav>
 
-      <div className="mt-auto space-y-2.5 pt-2">
-        <nav className="flex flex-col" aria-label="More" onClick={onNavigate}>
-          <NavLink to="/pricing" className={navLinkClass}>
-            <DollarIcon width={18} height={18} />
-            Pricing
-          </NavLink>
+      <div className="mt-4">
+        <SectionLabel>Account</SectionLabel>
+        <nav className="flex flex-col gap-0.5" aria-label="Account">
+          {session && (
+            <NavItem
+              to="/dashboard"
+              icon={<ChartIcon width={19} height={19} />}
+              label="My results"
+              onNavigate={onNavigate}
+            />
+          )}
+          <NavItem
+            to="/pricing"
+            icon={<DollarIcon width={19} height={19} />}
+            label="Pricing"
+            onNavigate={onNavigate}
+          />
         </nav>
-        {/* Reference layout: text on top, sleeping cat INSIDE the card below it,
-            cushion resting on the card's bottom edge. */}
-        <div className="overflow-hidden rounded-2xl bg-brand-soft px-4 pb-0 pt-3.5">
+      </div>
+
+      <div className="mt-auto space-y-2.5 pt-4">
+        {/* Full mock test card: the WHOLE 4-skill CEFR exam (Reading ·
+            Listening · Writing · Speaking), not just Reading. Stats describe
+            the full test; sleeping cat rests on the card's bottom edge. */}
+        <div className="overflow-hidden rounded-2xl bg-brand-soft px-4 pb-0 pt-3">
           <p className="text-sm font-extrabold text-brand-deep">Full mock test</p>
-          <p className="mt-0.5 text-xs font-bold text-brand">
-            35 questions · 5 parts · 60 minutes
-          </p>
+          <div className="mt-2 flex gap-6">
+            <MockStat num="4" label="Sections" />
+            <MockStat num="3h" label="Duration" />
+            <MockStat num="B1–C1" label="Levels" />
+          </div>
           <img
             src="/cat-cushion.png"
             alt=""
@@ -110,7 +164,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={onNavigate}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
         >
           <UsersIcon width={17} height={17} />
           Join CEFR Community
