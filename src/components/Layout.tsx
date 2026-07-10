@@ -149,7 +149,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <div className="mt-2 flex gap-6">
             <MockStat num="4" label="Sections" />
             <MockStat num="3h" label="Duration" />
-            <MockStat num="B1–C1" label="Levels" />
+            <MockStat num="B1–C2" label="Levels" />
           </div>
           <img
             src="/cat-cushion.png"
@@ -338,7 +338,10 @@ export function Layout() {
 
         <main
           key={location.pathname}
-          className="page-enter mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-10"
+          // Less top padding than bottom: the sticky header already gives the
+          // page its top breathing room, so a big pt just wasted space above
+          // every page's heading (pushed content out of view).
+          className="page-enter mx-auto max-w-5xl px-4 pb-10 pt-3 sm:px-8 sm:pb-12 sm:pt-4"
         >
           <Outlet />
         </main>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { saveOnboarding } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -9,11 +9,12 @@ import type {
   HeardFrom,
   OnboardingAnswers,
   SelfLevel,
+  StudyTimeframe,
   WeakArea,
 } from '../types/profile'
 import type { TargetBand } from '../types/profile'
 import { BandCat, QuipBubble } from '../components/BandCat'
-import { Chip, MonthGrid, OptionCard } from '../components/choice'
+import { Chip, OptionCard } from '../components/choice'
 import { GoalBandPicker } from '../components/GoalBandPicker'
 import { Logo } from '../components/Logo'
 
@@ -23,21 +24,28 @@ import { Logo } from '../components/Logo'
 // personalize the dashboard today and feed the study-roadmap feature later.
 
 const DRAFT_KEY = 'cefrly-onboarding-draft'
-const STEP_COUNT = 7
+const STEP_COUNT = 8
 
 type Draft = {
+  firstName: string
+  lastName: string
   firstExam?: FirstExam
   selfLevel?: SelfLevel
   targetBand: TargetBand
-  /** undefined = not answered yet; null = "haven't decided". */
-  examMonth?: string | null
+  studyTimeframe?: StudyTimeframe
   weakAreas: WeakArea[]
   dailyMinutes?: DailyMinutes
   heardFrom?: HeardFrom
   heardFromNote: string
 }
 
-const EMPTY_DRAFT: Draft = { targetBand: 'B2', weakAreas: [], heardFromNote: '' }
+const EMPTY_DRAFT: Draft = {
+  firstName: '',
+  lastName: '',
+  targetBand: 'B2',
+  weakAreas: [],
+  heardFromNote: '',
+}
 
 const FIRST_EXAM_OPTIONS: { value: FirstExam; title: string; sub: string }[] = [
   { value: 'first_time', title: 'First time', sub: 'The format is new to me — I want it to feel predictable.' },
@@ -51,6 +59,14 @@ const LEVEL_OPTIONS: { value: SelfLevel; title: string; sub: string }[] = [
   { value: 'B1', title: 'Around B1', sub: 'I manage familiar topics and everyday situations.' },
   { value: 'B2', title: 'Around B2', sub: 'I’m confident in most conversations and texts.' },
   { value: 'C1', title: 'Around C1', sub: 'I handle complex language comfortably.' },
+  { value: 'C2', title: 'Around C2', sub: 'Near-native — I rarely struggle with anything.' },
+]
+
+const TIMEFRAME_OPTIONS: { value: StudyTimeframe; title: string; sub: string }[] = [
+  { value: 'lt_1_month', title: 'Less than a month', sub: 'Focus on full tests and high-impact fixes.' },
+  { value: '1_3_months', title: '1–3 months', sub: 'Build accuracy, timing, and review habits.' },
+  { value: '3_6_months', title: '3–6 months', sub: 'Grow your score with steady practice.' },
+  { value: 'no_date', title: 'No date yet', sub: 'Keep the plan flexible.' },
 ]
 
 const WEAK_OPTIONS: { value: WeakArea; label: string }[] = [
@@ -82,6 +98,11 @@ const SOURCE_OPTIONS: { value: HeardFrom; label: string }[] = [
 
 const STEP_META: { title: string; sub: string; quip?: string }[] = [
   {
+    title: 'What should we call you?',
+    sub: 'Your name is how the cat greets you around here.',
+    quip: 'First things first.',
+  },
+  {
     title: 'Is this your first CEFR exam?',
     sub: 'This shapes how we pace your prep.',
     quip: 'Be honest. I won’t judge.',
@@ -97,8 +118,8 @@ const STEP_META: { title: string; sub: string; quip?: string }[] = [
     sub: 'Slide the cat to the level you’re aiming for.',
   },
   {
-    title: 'When do you plan to take the real exam?',
-    sub: 'You can change this later in Settings.',
+    title: 'How long until your exam?',
+    sub: 'This helps us build your plan.',
     quip: 'A deadline focuses the whiskers.',
   },
   {
@@ -151,19 +172,32 @@ export function WelcomePage() {
     setState((s) => ({ ...s, draft: { ...s.draft, ...patch } }))
   const goTo = (next: number) => setState((s) => ({ ...s, step: next }))
 
-  const rawName =
-    (session?.user.user_metadata?.full_name as string | undefined) ||
-    (session?.user.user_metadata?.name as string | undefined) ||
-    session?.user.email?.split('@')[0] ||
-    ''
-  const firstName = rawName.split(/[ ._-]/)[0]
-  const name = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1) : ''
+  // Prefill the name from Google metadata once, only while it's untouched, so
+  // OAuth users don't retype what we already know.
+  const prefilledName = useRef(false)
+  useEffect(() => {
+    if (prefilledName.current) return
+    if (draft.firstName || draft.lastName) {
+      prefilledName.current = true
+      return
+    }
+    const meta = session?.user.user_metadata as Record<string, unknown> | undefined
+    const full = ((meta?.full_name as string) || (meta?.name as string) || '').trim()
+    if (!full) return
+    prefilledName.current = true
+    const parts = full.split(/\s+/)
+    setDraft({ firstName: parts[0] ?? '', lastName: parts.slice(1).join(' ') })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session])
+
+  const greetName = draft.firstName.trim()
 
   const canContinue = [
+    !!draft.firstName.trim(),
     !!draft.firstExam,
     !!draft.selfLevel,
     true, // goal has a default
-    draft.examMonth !== undefined,
+    !!draft.studyTimeframe,
     true, // struggles may be empty
     !!draft.dailyMinutes,
     !!draft.heardFrom,
@@ -174,10 +208,12 @@ export function WelcomePage() {
     setError(null)
     const note = draft.heardFromNote.trim()
     const answers: OnboardingAnswers = {
+      firstName: draft.firstName.trim(),
+      lastName: draft.lastName.trim() || null,
       firstExam: draft.firstExam!,
       selfLevel: draft.selfLevel!,
       targetBand: draft.targetBand,
-      examMonth: draft.examMonth ?? null,
+      studyTimeframe: draft.studyTimeframe!,
       weakAreas: draft.weakAreas,
       dailyMinutes: draft.dailyMinutes!,
       heardFrom: draft.heardFrom!,
@@ -203,7 +239,7 @@ export function WelcomePage() {
           <Logo />
         </div>
         <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center text-center">
-          <QuipBubble>{name ? `Nice to meet you, ${name}.` : 'Nice to meet you.'}</QuipBubble>
+          <QuipBubble>{greetName ? `Nice to meet you, ${greetName}.` : 'Nice to meet you.'}</QuipBubble>
           <div className="mt-3">
             <BandCat band={draft.targetBand} height={110} />
           </div>
@@ -270,6 +306,41 @@ export function WelcomePage() {
 
           <div className="mt-6">
             {step === 0 && (
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="ob-first" className="mb-1.5 block text-sm font-bold text-ink">
+                    First name
+                  </label>
+                  <input
+                    id="ob-first"
+                    type="text"
+                    value={draft.firstName}
+                    onChange={(e) => setDraft({ firstName: e.target.value })}
+                    maxLength={60}
+                    autoComplete="given-name"
+                    placeholder="e.g. Aziz"
+                    className="w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-brand"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="ob-last" className="mb-1.5 block text-sm font-bold text-ink">
+                    Surname <span className="font-semibold text-ink-faint">(optional)</span>
+                  </label>
+                  <input
+                    id="ob-last"
+                    type="text"
+                    value={draft.lastName}
+                    onChange={(e) => setDraft({ lastName: e.target.value })}
+                    maxLength={60}
+                    autoComplete="family-name"
+                    placeholder="e.g. Karimov"
+                    className="w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-brand"
+                  />
+                </div>
+              </div>
+            )}
+
+            {step === 1 && (
               <div className="space-y-3">
                 {FIRST_EXAM_OPTIONS.map((o) => (
                   <OptionCard
@@ -283,7 +354,7 @@ export function WelcomePage() {
               </div>
             )}
 
-            {step === 1 && (
+            {step === 2 && (
               <div className="space-y-3">
                 {LEVEL_OPTIONS.map((o) => (
                   <OptionCard
@@ -297,21 +368,28 @@ export function WelcomePage() {
               </div>
             )}
 
-            {step === 2 && (
+            {step === 3 && (
               <GoalBandPicker
                 value={draft.targetBand}
                 onChange={(band) => setDraft({ targetBand: band })}
               />
             )}
 
-            {step === 3 && (
-              <MonthGrid
-                value={draft.examMonth}
-                onChange={(examMonth) => setDraft({ examMonth })}
-              />
+            {step === 4 && (
+              <div className="space-y-3">
+                {TIMEFRAME_OPTIONS.map((o) => (
+                  <OptionCard
+                    key={o.value}
+                    selected={draft.studyTimeframe === o.value}
+                    onClick={() => setDraft({ studyTimeframe: o.value })}
+                    title={o.title}
+                    sub={o.sub}
+                  />
+                ))}
+              </div>
             )}
 
-            {step === 4 && (
+            {step === 5 && (
               <div className="grid grid-cols-2 gap-2.5">
                 {WEAK_OPTIONS.map((o) => (
                   <Chip
@@ -330,7 +408,7 @@ export function WelcomePage() {
               </div>
             )}
 
-            {step === 5 && (
+            {step === 6 && (
               <div className="space-y-3">
                 {TIME_OPTIONS.map((o) => (
                   <OptionCard
@@ -344,7 +422,7 @@ export function WelcomePage() {
               </div>
             )}
 
-            {step === 6 && (
+            {step === 7 && (
               <div>
                 <div className="grid grid-cols-2 gap-2.5">
                   {SOURCE_OPTIONS.map((o) => (

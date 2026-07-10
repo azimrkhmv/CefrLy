@@ -294,19 +294,22 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
   }
 
   const inputClass =
-    'w-full box-border rounded-xl border-2 border-[#ECE7F8] bg-[#FAF8FE] px-4 py-3.5 text-[15px] font-bold text-[#2E2A47] outline-none transition-[border-color,box-shadow] duration-150 placeholder:font-semibold placeholder:text-[#B0A9CE] focus:border-[#8A63E8] focus:bg-white focus:shadow-[0_0_0_4px_rgba(138,99,232,0.13)]'
+    'w-full box-border rounded-xl border-2 border-line bg-page px-4 py-3.5 text-[15px] font-bold text-ink outline-none transition-[border-color,box-shadow] duration-150 placeholder:font-semibold placeholder:text-ink-faint focus:border-accent focus:bg-white focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--color-accent)_13%,transparent)]'
 
   return (
-    <div className="grid min-h-screen grid-cols-[repeat(auto-fit,minmax(min(480px,100%),1fr))] bg-white font-sans text-[#2E2A47]">
+    <div className="grid min-h-screen grid-cols-[repeat(auto-fit,minmax(min(480px,100%),1fr))] bg-white font-sans text-ink">
       {/* Brand panel with the interactive mascot */}
-      <section className="relative flex flex-col overflow-hidden bg-[#F6F4FB] px-8 pb-10 pt-11 sm:px-14">
+      <section className="relative flex flex-col overflow-hidden bg-page px-8 pb-10 pt-11 sm:px-14">
         <Link to="/" className="flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-[13px] bg-[#3B2C86] text-xl font-black text-white shadow-[0_6px_14px_rgba(59,44,134,0.22)]">
-            C
-          </span>
+          <img
+            src="/logo-cat.png"
+            alt=""
+            aria-hidden="true"
+            className="h-11 w-11 shrink-0 object-contain"
+          />
           <span className="flex flex-col gap-px">
-            <span className="text-xl font-black leading-[1.1] text-[#2E2A47]">Cefrly</span>
-            <span className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#918BAD]">
+            <span className="text-xl font-black leading-[1.1] text-ink">Cefrly</span>
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-ink-soft">
               CEFR Exams
             </span>
           </span>
@@ -314,10 +317,10 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
 
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="mt-[clamp(36px,11vh,150px)]">
-            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#6F6890]">
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-ink-soft">
               CEFR · Reading paper
             </p>
-            <h1 className="mt-2 text-balance text-[34px] font-black leading-[1.18] text-[#2E2A47]">
+            <h1 className="mt-2 text-balance text-[34px] font-black leading-[1.18] text-ink">
               The official reading format,
               <br />
               timed and scored.
@@ -332,7 +335,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             <div className="relative h-[52px]">
               <div
                 key={bubbleText}
-                className="bubble-pop absolute left-3.5 top-0 z-[3] whitespace-nowrap rounded-[14px] bg-white px-[15px] py-[9px] text-sm font-extrabold text-[#453A72] shadow-[0_4px_16px_rgba(59,44,134,0.10)]"
+                className="bubble-pop absolute left-3.5 top-0 z-[3] whitespace-nowrap rounded-[14px] bg-white px-[15px] py-[9px] text-sm font-extrabold text-ink shadow-[0_4px_16px_color-mix(in_srgb,var(--color-brand)_10%,transparent)]"
                 aria-live="polite"
               >
                 {bubbleText}
@@ -348,7 +351,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
                 only "zzz" now) */}
             {showZzz && (
               <div
-                className={`pointer-events-none absolute z-[2] font-black italic text-[#C1AEF0] ${
+                className={`pointer-events-none absolute z-[2] font-black italic text-ink-faint ${
                   cat.zzzPos ?? 'left-[46%] top-[34px]'
                 }`}
                 aria-hidden
@@ -378,18 +381,18 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
       </section>
 
       {/* Form panel */}
-      <section className="grid place-items-center border-l border-[#EFEBF8] bg-white px-6 py-12 sm:px-[72px]">
+      <section className="grid place-items-center border-l border-line bg-white px-6 py-12 sm:px-[72px]">
         <form onSubmit={handleSubmit} className="flex w-full max-w-[420px] flex-col">
-          <h2 className="m-0 text-[32px] font-black text-[#2E2A47]">
+          <h2 className="m-0 text-[32px] font-black text-ink">
             {isLogin ? 'Welcome back' : 'Create an account'}
           </h2>
-          <p className="mb-[30px] mt-2 text-[15px] font-semibold text-[#8D87A8]">
+          <p className="mb-[30px] mt-2 text-[15px] font-semibold text-ink-soft">
             {isLogin
               ? 'Sign in to continue your practice.'
               : 'One free account for all your CEFR practice.'}
           </p>
 
-          <label htmlFor="cef-email" className="mb-2 text-sm font-extrabold text-[#4A4468]">
+          <label htmlFor="cef-email" className="mb-2 text-sm font-extrabold text-ink">
             Email
           </label>
           <input
@@ -406,7 +409,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
 
           <div className="h-[18px]" />
 
-          <label htmlFor="cef-pass" className="mb-2 text-sm font-extrabold text-[#4A4468]">
+          <label htmlFor="cef-pass" className="mb-2 text-sm font-extrabold text-ink">
             Password
           </label>
           <div className="relative w-full">
@@ -427,13 +430,13 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
               type="button"
               onClick={() => setShowPw((v) => !v)}
               aria-label={showPw ? 'Hide password' : 'Show password'}
-              className="absolute right-1.5 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center border-0 bg-transparent p-0 text-[#8D87A8] transition-colors hover:text-[#5A5280]"
+              className="absolute right-1.5 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center border-0 bg-transparent p-0 text-ink-soft transition-colors hover:text-ink"
             >
               {showPw ? <EyeOffIcon /> : <EyeIcon />}
             </button>
           </div>
           {!isLogin && (
-            <span className="mt-2 text-xs font-semibold text-[#8D87A8]">At least 6 characters.</span>
+            <span className="mt-2 text-xs font-semibold text-ink-soft">At least 6 characters.</span>
           )}
 
           {error && (
@@ -456,7 +459,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
           <button
             type="submit"
             disabled={busy}
-            className="mt-7 w-full rounded-xl border-0 bg-[#3B2C86] px-4 py-[15px] text-base font-extrabold text-white shadow-[0_8px_20px_rgba(59,44,134,0.22)] transition-[background,transform] duration-150 hover:bg-[#4A39A3] active:translate-y-px disabled:opacity-60"
+            className="mt-7 w-full rounded-xl border-0 bg-brand px-4 py-[15px] text-base font-extrabold text-white shadow-[0_8px_20px_color-mix(in_srgb,var(--color-brand)_22%,transparent)] transition-[background,transform] duration-150 hover:bg-brand-deep active:translate-y-px disabled:opacity-60"
           >
             {busy ? 'Please wait…' : isLogin ? 'Sign in' : 'Create account'}
           </button>
@@ -466,15 +469,15 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             type="button"
             onClick={handleGoogle}
             disabled={busy}
-            className="mt-3 flex w-full items-center justify-center gap-2.5 rounded-xl border-2 border-[#ECE7F8] bg-white px-4 py-[13px] text-[15px] font-bold text-[#2E2A47] transition-colors hover:border-[#D9D0F2] hover:bg-[#FAF8FE] disabled:opacity-60"
+            className="mt-3 flex w-full items-center justify-center gap-2.5 rounded-xl border-2 border-line bg-white px-4 py-[13px] text-[15px] font-bold text-ink transition-colors hover:border-ink-faint hover:bg-page disabled:opacity-60"
           >
             <GoogleIcon />
             Continue with Google
           </button>
 
           {/* mode toggle, styled as a divider */}
-          <div className="mt-6 flex items-center gap-3 text-[15px] font-semibold text-[#8D87A8]">
-            <span className="h-px flex-1 bg-[#ECE7F8]" />
+          <div className="mt-6 flex items-center gap-3 text-[15px] font-semibold text-ink-soft">
+            <span className="h-px flex-1 bg-line" />
             <span className="whitespace-nowrap">
               {isLogin ? (
                 <>
@@ -482,7 +485,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
                   <Link
                     to="/signup"
                     state={{ from }}
-                    className="font-extrabold text-[#6D4FE0] no-underline hover:underline"
+                    className="font-extrabold text-brand no-underline hover:underline"
                   >
                     Sign up
                   </Link>
@@ -493,26 +496,26 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
                   <Link
                     to="/login"
                     state={{ from }}
-                    className="font-extrabold text-[#6D4FE0] no-underline hover:underline"
+                    className="font-extrabold text-brand no-underline hover:underline"
                   >
                     Log in
                   </Link>
                 </>
               )}
             </span>
-            <span className="h-px flex-1 bg-[#ECE7F8]" />
+            <span className="h-px flex-1 bg-line" />
           </div>
 
           {/* reassurance card */}
-          <div className="mt-6 flex items-center gap-3.5 rounded-2xl bg-[#F6F4FB] px-4 py-3.5">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#EEE9FB] text-[#6D4FE0]">
+          <div className="mt-6 flex items-center gap-3.5 rounded-2xl bg-page px-4 py-3.5">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
               <ShieldIcon />
             </span>
             <span className="flex flex-col">
-              <span className="text-sm font-extrabold text-[#2E2A47]">
+              <span className="text-sm font-extrabold text-ink">
                 Your progress is safe with us.
               </span>
-              <span className="text-[13px] font-semibold text-[#8D87A8]">
+              <span className="text-[13px] font-semibold text-ink-soft">
                 We never share your data.
               </span>
             </span>

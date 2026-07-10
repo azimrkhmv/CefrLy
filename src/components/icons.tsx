@@ -124,6 +124,14 @@ export function ArrowRightIcon(props: IconProps) {
   )
 }
 
+export function PlusIcon(props: IconProps) {
+  return (
+    <svg {...base({ strokeWidth: 2, ...props })}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  )
+}
+
 export function LogoutIcon(props: IconProps) {
   return (
     <svg {...base(props)}>
@@ -223,6 +231,14 @@ export function CheckIcon(props: IconProps) {
   return (
     <svg {...base(props)}>
       <path d="m4.5 12.5 5 5L19.5 7" />
+    </svg>
+  )
+}
+
+export function MinusIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M6 12h12" />
     </svg>
   )
 }

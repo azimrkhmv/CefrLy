@@ -45,8 +45,10 @@ export function PassageQuestions({ part, numbering }: PartProps) {
     <GapInput itemId={itemId} number={numbering[itemId]} />
   )
 
+  // Passage gets the wider column (~58%) — reading is the hard part; the T/F +
+  // short-MCQ controls on the right need far less room.
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid gap-6 lg:grid-cols-[7fr_5fr]">
       <div className="self-start rounded-2xl border border-line bg-white p-5 shadow-card lg:sticky lg:top-4 lg:max-h-[75vh] lg:overflow-y-auto">
         {part.passage?.title && (
           <h3 className="mb-3 text-base font-extrabold text-heading">{part.passage.title}</h3>

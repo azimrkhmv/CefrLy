@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchMyProfile, updateStudyPrefs } from '../lib/api'
+import { fetchMyProfile, updateNames, updateStudyPrefs } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import type { DailyMinutes, HeardFrom, StudyPrefs, WeakArea } from '../types/profile'
-import { Chip, MonthGrid, OptionCard } from '../components/choice'
+import type { DailyMinutes, HeardFrom, StudyPrefs, StudyTimeframe, WeakArea } from '../types/profile'
+import { Chip, OptionCard } from '../components/choice'
 import { GoalBandPicker } from '../components/GoalBandPicker'
 
 // Study preferences from onboarding, editable any time. Attribution
@@ -25,6 +25,13 @@ const TIME_OPTIONS: { value: DailyMinutes; title: string; sub: string }[] = [
   { value: 120, title: '2+ hours', sub: 'Intensive prep.' },
 ]
 
+const TIMEFRAME_OPTIONS: { value: StudyTimeframe; title: string; sub: string }[] = [
+  { value: 'lt_1_month', title: 'Less than a month', sub: 'Focus on full tests and high-impact fixes.' },
+  { value: '1_3_months', title: '1–3 months', sub: 'Build accuracy, timing, and review habits.' },
+  { value: '3_6_months', title: '3–6 months', sub: 'Grow your score with steady practice.' },
+  { value: 'no_date', title: 'No date yet', sub: 'Keep the plan flexible.' },
+]
+
 const HEARD_LABEL: Record<HeardFrom, string> = {
   telegram: 'Telegram',
   instagram: 'Instagram',
@@ -38,13 +45,13 @@ const HEARD_LABEL: Record<HeardFrom, string> = {
 
 function prefsOf(p: {
   targetBand: StudyPrefs['targetBand'] | null
-  examMonth: string | null
+  studyTimeframe: StudyTimeframe | null
   weakAreas: WeakArea[]
   dailyMinutes: DailyMinutes | null
 }): StudyPrefs {
   return {
     targetBand: p.targetBand ?? 'B2',
-    examMonth: p.examMonth,
+    studyTimeframe: p.studyTimeframe ?? 'no_date',
     weakAreas: [...p.weakAreas].sort(),
     dailyMinutes: p.dailyMinutes ?? 30,
   }
@@ -60,8 +67,15 @@ export function SettingsPage() {
   } = useQuery({ queryKey: ['my-profile'], queryFn: fetchMyProfile, enabled: !!session })
 
   const [prefs, setPrefs] = useState<StudyPrefs | null>(null)
+  const [names, setNames] = useState<{ firstName: string; lastName: string } | null>(null)
   useEffect(() => {
-    if (profile) setPrefs((current) => current ?? prefsOf(profile))
+    if (profile) {
+      setPrefs((current) => current ?? prefsOf(profile))
+      setNames(
+        (current) =>
+          current ?? { firstName: profile.firstName ?? '', lastName: profile.lastName ?? '' },
+      )
+    }
   }, [profile])
 
   const save = useMutation({
@@ -72,8 +86,21 @@ export function SettingsPage() {
     },
   })
 
+  const saveNames = useMutation({
+    mutationFn: () => updateNames(names!.firstName, names!.lastName),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['my-profile'], updated)
+      setNames({ firstName: updated.firstName ?? '', lastName: updated.lastName ?? '' })
+    },
+  })
+
   const dirty =
     !!profile && !!prefs && JSON.stringify(prefs) !== JSON.stringify(prefsOf(profile))
+  const nameDirty =
+    !!profile &&
+    !!names &&
+    (names.firstName.trim() !== (profile.firstName ?? '').trim() ||
+      names.lastName.trim() !== (profile.lastName ?? '').trim())
 
   if (isLoading || (!profile && !error)) {
     return (
@@ -91,7 +118,7 @@ export function SettingsPage() {
       </p>
     )
   }
-  if (!prefs) return null
+  if (!prefs || !names) return null
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -101,6 +128,61 @@ export function SettingsPage() {
       </p>
 
       <div className="mt-6 space-y-5">
+        <section className="rounded-2xl bg-white p-6 shadow-soft ring-1 ring-line/50 sm:p-7">
+          <h2 className="font-extrabold text-heading">Your name</h2>
+          <p className="mt-0.5 text-sm text-ink-soft">How Cefrly greets you across the app.</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="set-first" className="mb-1.5 block text-sm font-bold text-ink">
+                First name
+              </label>
+              <input
+                id="set-first"
+                type="text"
+                value={names.firstName}
+                onChange={(e) => setNames({ ...names, firstName: e.target.value })}
+                maxLength={60}
+                autoComplete="given-name"
+                placeholder="e.g. Aziz"
+                className="w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-brand"
+              />
+            </div>
+            <div>
+              <label htmlFor="set-last" className="mb-1.5 block text-sm font-bold text-ink">
+                Surname <span className="font-semibold text-ink-faint">(optional)</span>
+              </label>
+              <input
+                id="set-last"
+                type="text"
+                value={names.lastName}
+                onChange={(e) => setNames({ ...names, lastName: e.target.value })}
+                maxLength={60}
+                autoComplete="family-name"
+                placeholder="e.g. Karimov"
+                className="w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-brand"
+              />
+            </div>
+          </div>
+          {saveNames.error && (
+            <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-800">
+              Could not save your name: {(saveNames.error as Error).message}
+            </p>
+          )}
+          <div className="mt-4 flex items-center justify-end gap-3">
+            {saveNames.isSuccess && !nameDirty && (
+              <span className="text-sm font-bold text-ok">Saved ✓</span>
+            )}
+            <button
+              type="button"
+              disabled={!nameDirty || !names.firstName.trim() || saveNames.isPending}
+              onClick={() => saveNames.mutate()}
+              className="rounded-xl bg-brand px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {saveNames.isPending ? 'Saving…' : 'Save name'}
+            </button>
+          </div>
+        </section>
+
         <section className="rounded-2xl bg-white p-6 shadow-soft ring-1 ring-line/50 sm:p-7">
           <h2 className="font-extrabold text-heading">Your goal</h2>
           <p className="mt-0.5 text-sm text-ink-soft">The level you’re working towards.</p>
@@ -114,15 +196,20 @@ export function SettingsPage() {
         </section>
 
         <section className="rounded-2xl bg-white p-6 shadow-soft ring-1 ring-line/50 sm:p-7">
-          <h2 className="font-extrabold text-heading">Exam month</h2>
+          <h2 className="font-extrabold text-heading">Exam timeframe</h2>
           <p className="mt-0.5 text-sm text-ink-soft">
-            When you plan to take the real exam — drives the countdown on your dashboard.
+            How far off your exam is — drives the countdown on your dashboard.
           </p>
-          <div className="mt-4">
-            <MonthGrid
-              value={prefs.examMonth}
-              onChange={(examMonth) => setPrefs({ ...prefs, examMonth })}
-            />
+          <div className="mt-4 space-y-3">
+            {TIMEFRAME_OPTIONS.map((o) => (
+              <OptionCard
+                key={o.value}
+                selected={prefs.studyTimeframe === o.value}
+                onClick={() => setPrefs({ ...prefs, studyTimeframe: o.value })}
+                title={o.title}
+                sub={o.sub}
+              />
+            ))}
           </div>
         </section>
 

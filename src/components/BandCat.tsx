@@ -24,10 +24,12 @@ export const BAND_QUIP: Record<Band, string> = {
   C1: 'Top of the scale.',
 }
 
-/** The mascot at a given band (base cat when band is omitted). Decorative —
- *  callers keep the accessible copy elsewhere. */
-export function BandCat({ band, height = 52 }: { band?: Band; height?: number }) {
-  const cat = band ? BAND_CAT[band] : BASE_CAT
+/** The mascot at a given band (base cat when band is omitted). C2 is
+ *  aspirational (no scorable band), so it reuses the blissful C1 chonk.
+ *  Decorative — callers keep the accessible copy elsewhere. */
+export function BandCat({ band, height = 52 }: { band?: Band | 'C2'; height?: number }) {
+  const key = band === 'C2' ? 'C1' : band
+  const cat = key ? BAND_CAT[key] : BASE_CAT
   return (
     <img
       src={cat.src}

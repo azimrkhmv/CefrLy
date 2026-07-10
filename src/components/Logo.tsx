@@ -4,9 +4,12 @@ import { Link } from 'react-router-dom'
 export function Logo({ compact = false, className = '' }: { compact?: boolean; className?: string }) {
   return (
     <Link to="/" className={`flex items-center gap-2.5 ${className}`}>
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-base font-extrabold text-white">
-        C
-      </span>
+      <img
+        src="/logo-cat.png"
+        alt=""
+        aria-hidden="true"
+        className="h-9 w-9 shrink-0 object-contain"
+      />
       {compact ? (
         <span className="text-base font-extrabold tracking-tight text-heading">Cefrly</span>
       ) : (

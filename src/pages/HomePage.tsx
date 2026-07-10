@@ -6,8 +6,9 @@ import { BAND_INFO, BAND_ORDER, BAND_THRESHOLDS } from '../lib/bands'
 import { skillMeta } from '../lib/skills'
 import type { AttemptSummary } from '../types/attempt'
 import type { Band } from '../types/test'
-import type { SelfLevel, TargetBand, WeakArea } from '../types/profile'
+import type { SelfLevel, StudyTimeframe, TargetBand, WeakArea } from '../types/profile'
 import { BandRuler } from '../components/BandRuler'
+import { Sparkline } from '../components/Sparkline'
 import { BAND_CAT, BAND_QUIP, BandCat, QuipBubble } from '../components/BandCat'
 import { useCountUp } from '../lib/motion'
 import {
@@ -37,19 +38,15 @@ type BandedAttempt = AttemptSummary & { band: Band }
 // Mid-band scores used by the ?band= preview when no &score= is given.
 const PREVIEW_SCORE: Record<Band, number> = { below_B1: 5, B1: 14, B2: 23, C1: 32 }
 
-// The exam-countdown chip label, from the onboarding exam month (YYYY-MM-01).
-function examCountdown(examMonth: string): { label: string; past: boolean } {
-  const [y, m] = examMonth.split('-').map(Number)
-  const now = new Date()
-  const monthsAway = (y - now.getFullYear()) * 12 + (m - 1 - now.getMonth())
-  if (monthsAway < 0) return { label: 'Exam month passed — update it', past: true }
-  if (monthsAway === 0) return { label: 'Exam this month', past: false }
-  const days = Math.max(1, Math.round((new Date(y, m - 1, 1).getTime() - now.getTime()) / 86400000))
-  if (days <= 70) {
-    const weeks = Math.max(1, Math.round(days / 7))
-    return { label: `Exam in ~${weeks} week${weeks > 1 ? 's' : ''}`, past: false }
-  }
-  return { label: `Exam in ~${monthsAway} months`, past: false }
+// C2-aware ordering (C2 is aspirational, above the exam's C1 ceiling) for the
+// "is my goal above my level?" comparison.
+const LEVEL_RANK: Record<Band | 'C2', number> = { below_B1: 0, B1: 1, B2: 2, C1: 3, C2: 4 }
+
+// The exam-countdown chip label, from the onboarding study timeframe.
+const TIMEFRAME_CHIP: Record<Exclude<StudyTimeframe, 'no_date'>, string> = {
+  lt_1_month: 'Exam under a month away',
+  '1_3_months': 'Exam in 1–3 months',
+  '3_6_months': 'Exam in 3–6 months',
 }
 
 function greetingName(email?: string, meta?: Record<string, unknown>): string {
@@ -95,55 +92,6 @@ function StatTile({
   )
 }
 
-// Sparkline of raw scores over time with faint band-threshold guides and an
-// HTML "you are here" dot on the last point (stays round despite the stretch).
-function Sparkline({ scores }: { scores: number[] }) {
-  const W = 600
-  const H = 76
-  const pad = 8
-  const x = (i: number) => pad + (i / Math.max(1, scores.length - 1)) * (W - 2 * pad)
-  const y = (s: number) => H - pad - (s / MAX) * (H - 2 * pad)
-  const line = scores.map((s, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(s).toFixed(1)}`).join(' ')
-  const area = `${line} L${x(scores.length - 1).toFixed(1)} ${H - pad} L${x(0).toFixed(1)} ${H - pad} Z`
-  const lastPct = { left: (x(scores.length - 1) / W) * 100, top: (y(scores[scores.length - 1]) / H) * 100 }
-  return (
-    <div className="relative">
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-[76px] w-full" aria-hidden>
-        {[10, 18, 28].map((t) => (
-          <line
-            key={t}
-            x1={0}
-            x2={W}
-            y1={y(t)}
-            y2={y(t)}
-            className="text-line"
-            stroke="currentColor"
-            strokeWidth={1}
-            strokeDasharray="3 4"
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-        <path d={area} className="text-brand" fill="currentColor" opacity={0.09} />
-        <path
-          d={line}
-          className="text-brand"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
-      <span
-        className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand ring-2 ring-white"
-        style={{ left: `${lastPct.left}%`, top: `${lastPct.top}%` }}
-        aria-hidden
-      />
-    </div>
-  )
-}
-
 function LevelSnapshot({
   best,
   selfLevel,
@@ -157,20 +105,25 @@ function LevelSnapshot({
   // only take over when there is nothing to fall back on ("Not sure yet", or
   // a profile predating the wizard).
   const selfBand = selfLevel && selfLevel !== 'unknown' ? selfLevel : null
-  const band = selfBand ?? best.band
+  // The claimed/earned level may be C2 (aspirational); the ruler + cat visuals
+  // top out at C1, so clamp there for display while keeping the C2 label.
+  const actualLevel: Band | 'C2' = selfBand ?? best.band
+  const displayBand: Band = actualLevel === 'C2' ? 'C1' : actualLevel
+  const displayLabel = actualLevel === 'C2' ? 'C2' : BAND_INFO[displayBand].label
   // Self-assessed: no real marks, so seat the cat exactly on the band's own
   // mark (its threshold) — right above the band label, never mid-band.
-  const rulerScore = selfBand ? BAND_THRESHOLDS[selfBand] : best.rawScore
+  const rulerScore = selfBand ? BAND_THRESHOLDS[displayBand] : best.rawScore
   const score = useCountUp(best.rawScore)
-  const idx = BAND_ORDER.indexOf(band)
+  const idx = BAND_ORDER.indexOf(displayBand)
   const nextBand = idx < BAND_ORDER.length - 1 ? BAND_ORDER[idx + 1] : null
   const toNext = nextBand ? Math.max(0, BAND_THRESHOLDS[nextBand] - best.rawScore) : 0
   // The student's own goal (from onboarding) takes over the "N more marks"
   // sentence and plants a flag on the ruler; without one we fall back to the
-  // next band up the scale.
-  const goalScore = targetBand ? BAND_THRESHOLDS[targetBand] : null
+  // next band up the scale. C2 has no score threshold (above the ceiling).
+  const goalIsC2 = targetBand === 'C2'
+  const goalScore = targetBand && targetBand !== 'C2' ? BAND_THRESHOLDS[targetBand] : null
   const toGoal = goalScore !== null ? Math.max(0, goalScore - best.rawScore) : 0
-  const goalAbove = targetBand ? BAND_ORDER.indexOf(targetBand) > idx : false
+  const goalAbove = targetBand ? LEVEL_RANK[targetBand] > LEVEL_RANK[actualLevel] : false
   const meta = skillMeta(best.skill)
   return (
     <section className={`${CARD_HERO} p-7 sm:p-9`}>
@@ -181,7 +134,7 @@ function LevelSnapshot({
           </p>
           <div className="mt-2 flex items-end gap-3">
             <span className="text-[40px] font-extrabold leading-none text-heading">
-              {BAND_INFO[band].label}
+              {displayLabel}
             </span>
             {selfBand ? (
               <span className="mb-1.5 rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-bold text-brand">
@@ -193,7 +146,7 @@ function LevelSnapshot({
               </span>
             )}
           </div>
-          <p className="mt-2 max-w-md text-sm text-ink-soft">{BAND_INFO[band].blurb}</p>
+          <p className="mt-2 max-w-md text-sm text-ink-soft">{BAND_INFO[displayBand].blurb}</p>
         </div>
         {/* the reading-book cat from the first-test hero keeps its seat here
             once attempts exist — it must never disappear from Home */}
@@ -210,12 +163,12 @@ function LevelSnapshot({
 
       <div className="mt-6 pt-20 sm:pt-24">
         <BandRuler
-          band={band}
+          band={displayBand}
           score={rulerScore}
           animate
-          topper={<BandCat band={band} />}
-          topperHalfWidth={Math.ceil(BAND_CAT[band].w / 2)}
-          topperBubble={<QuipBubble>{BAND_QUIP[band]}</QuipBubble>}
+          topper={<BandCat band={displayBand} />}
+          topperHalfWidth={Math.ceil(BAND_CAT[displayBand].w / 2)}
+          topperBubble={<QuipBubble>{BAND_QUIP[displayBand]}</QuipBubble>}
         />
       </div>
 
@@ -233,8 +186,8 @@ function LevelSnapshot({
             </>
           ) : targetBand ? (
             <>
-              You’re {BAND_ORDER.indexOf(targetBand) < idx ? 'already past' : 'at'} your goal level
-              ({targetBand}) — prove it in a test.{' '}
+              You’re {LEVEL_RANK[targetBand] < LEVEL_RANK[actualLevel] ? 'already past' : 'at'} your
+              goal level ({targetBand}) — prove it in a test.{' '}
               <Link to={meta.to} className="font-bold text-brand hover:underline">
                 Start →
               </Link>
@@ -247,6 +200,14 @@ function LevelSnapshot({
               </Link>
             </>
           )
+        ) : goalIsC2 ? (
+          <>
+            Your goal is <span className="font-extrabold text-brand">C2</span> — beyond this exam’s
+            C1 ceiling. Every mark sharpens it.{' '}
+            <Link to={meta.to} className="font-bold text-brand hover:underline">
+              Practice →
+            </Link>
+          </>
         ) : targetBand && goalScore !== null ? (
           toGoal > 0 ? (
             <>
@@ -501,12 +462,17 @@ export function HomePage() {
     queryFn: fetchMyProfile,
     enabled: !!session,
   })
-  const exam = profile?.examMonth ? examCountdown(profile.examMonth) : null
+  const exam =
+    profile?.studyTimeframe && profile.studyTimeframe !== 'no_date'
+      ? { label: TIMEFRAME_CHIP[profile.studyTimeframe], past: false }
+      : null
 
-  const name = greetingName(
-    session?.user.email,
-    session?.user.user_metadata as Record<string, unknown> | undefined,
-  )
+  const name =
+    profile?.firstName?.trim() ||
+    greetingName(
+      session?.user.email,
+      session?.user.user_metadata as Record<string, unknown> | undefined,
+    )
   // The CEFR surfaces (level snapshot, stat tiles, sparkline) speak in
   // full-mock terms — a part drill has no band and its small score can't sit
   // on the /35 axis. Recent activity still lists every attempt.
@@ -562,7 +528,7 @@ export function HomePage() {
           {exam && (
             <Link
               to="/settings"
-              title="Change your exam month in Settings"
+              title="Change your timeframe in Settings"
               className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
                 exam.past
                   ? 'bg-white text-ink-soft ring-1 ring-line hover:text-ink'

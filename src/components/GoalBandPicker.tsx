@@ -1,15 +1,17 @@
 import type { TargetBand } from '../types/profile'
-import { BAND_QUIP, BandCat, QuipBubble } from './BandCat'
+import { BandCat, QuipBubble } from './BandCat'
 
-// The goal picker: three stops (B1 / B2 / C1) on a ruler-style track, with the
-// band cat sliding to the selection — the wizard's signature moment, reused in
-// /settings. Implemented as a real radio group (sr-only inputs), so clicks,
-// tab focus and arrow keys all work natively.
+// The goal picker: four stops (B1 / B2 / C1 / C2) on a ruler-style track, with
+// the band cat sliding to the selection — the wizard's signature moment, reused
+// in /settings. C2 is aspirational (above the exam's C1 ceiling). Implemented as
+// a real radio group (sr-only inputs), so clicks, tab focus and arrow keys all
+// work natively.
 
-const STOPS: { band: TargetBand; pct: number; meaning: string }[] = [
-  { band: 'B1', pct: 16.666, meaning: 'A solid working foundation.' },
-  { band: 'B2', pct: 50, meaning: 'What universities and most jobs ask for.' },
-  { band: 'C1', pct: 83.333, meaning: 'Top of the scale — scholarships love it.' },
+const STOPS: { band: TargetBand; pct: number; meaning: string; quip: string }[] = [
+  { band: 'B1', pct: 12.5, meaning: 'A solid working foundation.', quip: 'Climbing nicely.' },
+  { band: 'B2', pct: 37.5, meaning: 'What universities and most jobs ask for.', quip: 'Look at you go.' },
+  { band: 'C1', pct: 62.5, meaning: 'Top of the scale — scholarships love it.', quip: 'Top of the scale.' },
+  { band: 'C2', pct: 87.5, meaning: 'Near-native mastery — above the exam ceiling.', quip: 'Sky-high goal!' },
 ]
 
 // Vertical anchor of the track inside the component (px from the top);
@@ -45,7 +47,7 @@ export function GoalBandPicker({
             transform: 'translate(-50%, -100%)',
           }}
         >
-          <QuipBubble>{BAND_QUIP[sel.band]}</QuipBubble>
+          <QuipBubble>{sel.quip}</QuipBubble>
         </span>
         <span
           aria-hidden
@@ -59,7 +61,7 @@ export function GoalBandPicker({
         <span
           aria-hidden
           className="absolute h-0.5 bg-line"
-          style={{ left: `${STOPS[0].pct}%`, right: `${100 - STOPS[2].pct}%`, top: TRACK_Y }}
+          style={{ left: `${STOPS[0].pct}%`, right: `${100 - STOPS[3].pct}%`, top: TRACK_Y }}
         />
         <span
           aria-hidden
@@ -76,7 +78,7 @@ export function GoalBandPicker({
           return (
             <label
               key={stop.band}
-              className="absolute flex w-24 -translate-x-1/2 cursor-pointer flex-col items-center"
+              className="absolute flex w-16 -translate-x-1/2 cursor-pointer flex-col items-center"
               style={{ left: `${stop.pct}%`, top: TRACK_Y - 21, paddingTop: 15 }}
             >
               <input

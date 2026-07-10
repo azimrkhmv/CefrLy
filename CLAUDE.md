@@ -213,15 +213,22 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   router; dual audio upload + map image upload; server validator validate-listening.ts
   (admin-tests v3). Catalog split /reading + /listening (shared TestCatalog); dashboard
   + home carry per-attempt skill (src/lib/skills.ts). MY RESULTS (/dashboard,
-  reworked 2026-07-06 to the user's reference design): an ALWAYS-visible section
-  tab strip (Reading · Listening + greyed Writing/Speaking "soon" chips — NO
-  "All" tab, user cut it 2026-07-06; default tab = Reading,
-  standard pill strip) and attempts as a CARD GRID (sm:2/xl:3 cols) — each card
-  has a skill-colored top bar (reading bg-brand, listening bg-sun), icon tile,
-  title+datetime, skill/band chips + score, and a bottom-bordered "Review →"
-  footer (lesson-card pattern). Stat tiles (tests taken / best) follow the
-  active tab; per-tab EmptyState (bored cat) with a "Go to <skill>" CTA. NOT
-  single-row lists — the user explicitly rejected those. Verified end-to-end 2026-07-06:
+  REDESIGNED 2026-07-10 from the user's "My Results" claude.ai Design import,
+  superseding the 2026-07-06 layout): shared `<TabStrip>` section strip (Reading
+  · Listening + inert Writing/Speaking "soon" — NO "All" tab, default Reading) →
+  then, for the active skill: a lavender `ProgressPanel` (bg-brand-soft) shown
+  only when there are FULL-MOCK banded attempts — "<Skill> · Your progress"
+  eyebrow, big best score + band pill, the shared `BandRuler`, and (from the 2nd
+  mock on) a white score-trend card with the shared `<Sparkline>` (+N pts · month
+  range) → an "All attempts · newest first" subheader → a 2-col CARD GRID.
+  Each card (NO top bar now; quiet lesson-card that lifts on hover): icon tile +
+  title + datetime, then score `/total` + band pill + a DELTA CHIP (▲/▼ vs the
+  previous full mock; first mock = "First attempt"). The single best mock gets a
+  brand-filled icon tile + brand border + "BEST" badge. Part drills show a
+  "Part N" chip and NO delta/band (a /6 drill isn't comparable on the /35 axis).
+  Colors are all @theme tokens (the design's raw hexes were mapped over). Sparkline
+  was extracted from HomePage to src/components/Sparkline.tsx (shared). Per-tab
+  EmptyState (bored cat) with a "Go to <skill>" CTA. Verified end-to-end 2026-07-06:
   sanitization (no answers/transcripts pre-submit), grading (gap multi-spellings +
   grouped Part 5), history skill, public asset URLs 200. Writing/Speaking still NOT built.
 
@@ -242,9 +249,16 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   text-ink hover:border-ink-faint`; accent CTA (sidebar) `bg-accent
   hover:bg-accent-deep`; text links `font-bold text-brand hover:underline`.
 - Shapes: cards `rounded-2xl border border-line bg-white shadow-card`; controls
-  rounded-xl; chips/badges rounded-full. Tab strips: white pill container
-  (rounded-xl border-line p-1), active tab `rounded-lg bg-brand text-white
-  font-bold`. Headings font-extrabold; interactive text font-bold. Selected
+  rounded-xl; chips/badges rounded-full. Tab strips: ALWAYS use the shared
+  `<TabStrip>` (src/components/TabStrip.tsx) — a white pill container
+  (rounded-2xl border-line p-1.5 shadow-card), brand-filled active pill
+  (rounded-xl bg-brand text-white), dark legible inactive tabs (text-ink
+  hover:text-brand), and faint inert `soon` markers. Generic over key type,
+  a11y tablist roles, horizontal-scroll on overflow. This refined strip
+  (2026-07-10, from the My Results design) REPLACED the old ad-hoc
+  `rounded-xl border-line p-1 / text-ink-soft` strips on My results, Samples
+  (both tiers) and the test catalogs; new tab UIs must reuse it, not re-roll.
+  Headings font-extrabold; interactive text font-bold. Selected
   answer states = brand-soft wash + brand border + font-bold. ink-faint is
   decorative-only (fails WCAG AA); informational muted text uses ink-soft.
 - MASCOT (in-app): src/components/Cat.tsx — original flat violet cat, poses per
@@ -261,11 +275,17 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   <EmptyState pose title hint action>, not plain text panels. (The SVG `welcome`
   pose exists in Cat.tsx but is unused now that login owns its own design.)
 - LOGIN / SIGNUP (src/pages/AuthPage.tsx) is a user-owned imported design from
-  the claude.ai Design tool ("Cefrly Welcome"). It deliberately uses its OWN
-  exact palette (brand #3B2C86, page #F6F4FB, link #6D4FE0, focus #8A63E8, ink
-  #2E2A47, input bg #FAF8FE, borders #ECE7F8/#EFEBF8) via Tailwind arbitrary
-  values — slightly off the app tokens ON PURPOSE; do not "normalize" it to the
-  tokens.
+  the claude.ai Design tool ("Cefrly Welcome"). It ORIGINALLY used its own
+  slightly-off palette (brand #3B2C86, page #F6F4FB, link #6D4FE0, focus #8A63E8,
+  ink #2E2A47, input bg #FAF8FE, borders #ECE7F8/#EFEBF8) via Tailwind arbitrary
+  values. UNIFIED 2026-07-10 (user call): those one-off hexes were mapped onto
+  the shared @theme tokens — brand→bg-brand (hover→brand-deep), page→bg-page,
+  ink/#2E2A47→text-ink, secondary greys→ink-soft, placeholder/#B0A9CE + zzz→
+  ink-faint, borders/dividers→border-line/bg-line, link→text-brand, focus ring→
+  accent (color-mix), shield fill→brand-soft; brand-derived shadows use
+  color-mix(var(--color-brand)/--color-accent). The ONLY raw hexes left are
+  Google's four official brand colors inside GoogleIcon (must stay). Do NOT
+  reintroduce the separate palette — the whole app now shares one purple.
 - AUTH ADDITIONS (beyond the original import): (1) src/components/CozyScene.tsx
   — a decorative "study nook" SVG vignette (wall clock, steaming mug, potted
   plant on books, book stack) in soft monochrome lavender, absolutely positioned
@@ -365,8 +385,28 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   fill below. No dark panels anywhere.
 - <BandRuler band score animate demo tone> (src/components/BandRuler.tsx): ruled
   CEFR scale (thresholds 10/18/28) with a fill that rises to the student's level;
-  `demo` fills to the C1 boundary (signed-out hero, auth). Brand lockup:
+  `demo` fills to the C1 boundary (signed-out hero, auth). C2 CAP (added
+  2026-07-10): the scored /35 axis (below_B1…C1) occupies SCORED_FRACTION (0.82)
+  of the ruler; a faded "C2 / beyond" cap fills the rest as an aspiration.
+  Positions go through xPct() so the fill + mascot NEVER enter the C2 zone
+  (nothing scores C2 — the exam tops out at C1); C2 is never "lit". The sidebar
+  "Full mock test" card's Levels stat also reads B1–C2 (Layout.tsx, owner call —
+  aspirational; the exam itself certifies to C1). Brand lockup:
   src/components/Logo.tsx.
+- LOGO MARK (added 2026-07-10): the brand lockup + AuthPage lockup + favicon
+  render public/logo-cat.png — a circular cat whose curled body + tail form a
+  "C". The art was REPLACED 2026-07-10 (user call) with a new ChatGPT-generated
+  cat-in-a-C (fuller body, line-art face/whiskers/paws); the earlier plain-"C"
+  tile and the first hand-supplied #383053 cat are both gone. Pipeline (scratchpad
+  process_logo_cat2.py, Pillow+numpy+scipy): the source is 2-tone (purple #383057
+  body + white) — recolour body→brand #3f2682 via a per-pixel luminance lerp
+  brand→white (so the INNER white line-art stays white), flood the border-connected
+  white (bg + the C's negative space) to transparent via scipy.ndimage.label
+  (enclosed white islands = eyes/whiskers/paws kept opaque), set bg rgb=brand so
+  LANCZOS downscaling to 512²/180² doesn't halo. Assets: logo-cat.png (512²) for
+  lockups, logo-cat-180.png (180²) for the favicon + apple-touch-icon in index.html
+  (the old favicon.svg "C" is unused). Re-run the script if the mark changes; keep
+  the body fill == --color-brand (it vanishes on a brand bg — that's correct).
 - Confirm dialogs: src/components/ConfirmDialog.tsx — Cefrly's OWN alert (the
   startled cat-surprised.png + calm copy; safe action autofocused; Escape/
   backdrop cancel; confirm tone 'brand' for commits, 'rose' for leaving).
@@ -388,10 +428,29 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   ACCOUNT DROPDOWN (LifebuoyIcon, under Settings), NOT the sidebar — the user
   cut it from there. Sidebar is compact (gap-4) + overflow-y-auto so the
   bottom card/CTA never clip on short laptops (they did once). /pricing
-  (PricingPage) honestly says early access is FREE — no invented price tiers
-  until real billing exists. /support (SupportPage) = Telegram community CTA
+  (PricingPage) — REDESIGNED 2026-07-10 from the owner's "Pricing" claude.ai
+  Design import (superseding the old "everything free during early access" page):
+  a free-first lavender banner (→ /reading) + a 3-tier card grid — Free (Free
+  forever; live "Continue free" secondary CTA → /reading), Pro (75 000 so'm/mo,
+  the "Recommended" plan = brand ring + pill) and Premium (100 000 so'm/mo) —
+  each with a 6-row all-checks feature list, then a 3-col FAQ. Cards are
+  COMPACT (p-5, gap-2.5, my-4 divider, 34px price) so all three CTAs sit above
+  the fold with no scroll (user call 2026-07-10, ref screenshot). The "Priority
+  human feedback" row + the excluded/dash (MinusIcon) treatment were REMOVED from
+  every card (user call — "delete this from all"); FeatureRow now always renders a
+  check. The prices/limits are the OWNER's numbers
+  (not invented). The paid CTAs are REAL buttons now (Pro = brand-filled
+  'Upgrade to Pro', Premium = dark bg-heading 'Get Premium', helper 'Billed
+  monthly · cancel anytime') — the "coming soon" disabled state was DROPPED (user
+  call 2026-07-10: "just make it button, we'll connect the link later"). No
+  checkout exists yet, so each paid plan carries an EMPTY cta.checkoutUrl; while
+  empty the CTA renders as a plain <button> placeholder, and pasting a URL
+  (Payme/Click/Stripe/Telegram bot) into that plan's checkoutUrl flips it to a
+  real <a href> — that's the one spot to wire payment. Free's CTA links to
+  /reading. Tiers live in PLANS[] in PricingPage.tsx; all colors are @theme
+  tokens. /support (SupportPage) = Telegram community CTA
   (COMMUNITY_URL, exported from Layout.tsx) + a 4-item FAQ grounded in real
-  app behavior. Icons DollarIcon/LifebuoyIcon/CheckIcon added.
+  app behavior. Icons DollarIcon/LifebuoyIcon/CheckIcon/MinusIcon added.
 
 ## Single-part tests ("practice by part" — built 2026-07-06)
 - A test is now scope 'full' (the rigid mock) or 'part' (EXACTLY ONE canonical
@@ -541,23 +600,31 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   exercise (auth-gated). NOTE: NumberField lives in SampleEditors (fields.tsx
   has none).
 
-## Onboarding (asked ONCE per account — built 2026-07-06)
-- profiles carries the wizard answers (migration 0009: onboarded_at, first_exam
-  first_time/took_mock/took_real, self_level unknown/below_B1..C1, target_band
-  B1/B2/C1, exam_month date = first of month or null, weak_areas text[] ⊆
+## Onboarding (asked ONCE per account — built 2026-07-06, extended 2026-07-10)
+- profiles carries the wizard answers (migration 0009 + 0014: onboarded_at,
+  first_name/last_name (0014, ≤60 chars), first_exam first_time/took_mock/
+  took_real, self_level unknown/below_B1..C1/C2 (C2 added 0014), target_band
+  B1/B2/C1/C2 (C2 added 0014), study_timeframe lt_1_month/1_3_months/3_6_months/
+  no_date (0014 — REPLACED the exam_month picker; the exam_month date column is
+  left in place but no longer written), weak_areas text[] ⊆
   {reading,listening,writing,speaking,vocabulary,timing}, daily_minutes
   15/30/60/120, heard_from telegram/instagram/youtube/friend_teacher/
-  learning_centre/milliymock/google/other + heard_from_note). CHECK constraints
-  + column-level UPDATE grants (same security model as roles: users can write
-  only name + these columns; role stays locked). Data is deliberately collected
-  now to feed the future STUDY-ROADMAP feature + attribution analytics.
-- /welcome = full-screen 7-step wizard (WelcomePage, outside the app shell):
-  first-exam → self-level → goal (GoalBandPicker: B1/B2/C1 stops on a
-  ruler-style radio track, the band cat slides to the selection) → exam month
-  (MonthGrid: next 12 months + "Haven't decided" = null) → weak-area chips →
-  daily time → heard-from (+free text for Other) → finale with the target-band
-  cat. Draft survives refresh via localStorage 'cefrly-onboarding-draft'; cat
-  quip per step; Continue gated per step.
+  learning_centre/milliymock/google/other + heard_from_note). C2 is ASPIRATIONAL
+  (the exam only grades to C1 — thresholds 28/18/10); it's a valid self/goal
+  value but nothing is scored C2. CHECK constraints + column-level UPDATE grants
+  (same security model as roles: users can write only name/first_name/last_name
+  + these columns; role stays locked). 0014 was applied to the live DB 2026-07-10
+  (additive, non-destructive; widened the self_level/target_band CHECKs).
+- /welcome = full-screen 8-step wizard (WelcomePage, outside the app shell):
+  name+surname (first_name required, last_name optional; prefilled once from
+  Google full_name) → first-exam → self-level (incl. Around C2) → goal
+  (GoalBandPicker: B1/B2/C1/C2 stops on a ruler-style radio track, the band cat
+  slides to the selection; C2 reuses the C1 chonk) → exam timeframe (4 duration
+  buckets, OptionCard list — REPLACED the MonthGrid) → weak-area chips → daily
+  time → heard-from (+free text for Other) → finale with the target-band cat.
+  Draft survives refresh via localStorage 'cefrly-onboarding-draft'; cat quip per
+  step; Continue gated per step. saveOnboarding also syncs profiles.name =
+  "first last" so greetings work everywhere.
 - ASKED-ONCE GATE: auth context fetches onboarded_at together with role;
   ProtectedRoute holds rendering until the profile row arrives (role===null),
   then: no stamp → funnel everything to /welcome; stamped → /welcome redirects
@@ -565,11 +632,16 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   reload + direct /welcome nav). markOnboarded() lifts the gate ONLY on the
   finale CTA — flipping it right after save would bounce the finale screen.
   Existing accounts (incl. owners) meet the wizard once on their next login.
-- API: fetchMyProfile/saveOnboarding/updateStudyPrefs in src/lib/api.ts
-  (update scoped by own id; returns the updated row). Study prefs (goal/month/
-  weak areas/time) are editable at /settings (SettingsPage; Save enables on
-  dirty, "Saved ✓" on success); attribution is shown read-only there
-  (write-once by convention, not constraint).
+- API: fetchMyProfile/saveOnboarding/updateNames/updateStudyPrefs in
+  src/lib/api.ts (update scoped by own id; returns the updated row). /settings
+  (SettingsPage) has its OWN "Your name" card at the top (first_name + surname
+  inputs, its own "Save name" button → updateNames, which also syncs
+  profiles.name; real DB write under the "own profile update" RLS policy +
+  name/first_name/last_name column grants) ABOVE the study prefs (goal/timeframe/
+  weak areas/time; the old "Exam month" section is now "Exam timeframe" — same 4
+  buckets). Each block saves independently (dirty-gated, "Saved ✓" on success);
+  attribution is shown read-only there (write-once by convention, not
+  constraint).
 - Dashboard personalization: the on-ruler "Goal" marker is GONE (user call
   2026-07-06, "I don't need that goal" — BandRuler no longer has a `goal`
   prop; don't reintroduce it). The target band now personalizes only the
@@ -579,9 +651,14 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   (same user call); PREVIEW_SCORE remains only for the ?band= URL preview.
   LevelSnapshot swaps the
   "N more marks" line to "…to reach your goal (B2)" / "Goal reached — aim
-  higher?" (falls back to next-band copy without a goal); exam-countdown chip
-  (sun-soft, ClockIcon, links to /settings; "Exam in ~N weeks/months", past →
-  "update it") in the greeting row; weak skills get a "Your focus" badge on
-  the skills roadmap. Shared controls: src/components/choice.tsx (OptionCard/
-  Chip/MonthGrid) and src/components/BandCat.tsx (BAND_CAT/BAND_QUIP/BandCat/
+  higher?" (falls back to next-band copy without a goal). A C2 goal has no score
+  threshold (above the C1 ceiling) → LevelSnapshot shows dedicated "beyond this
+  exam's C1 ceiling" copy and uses a C2-aware LEVEL_RANK for the goal-vs-level
+  compare; a self-assessed C2 clamps the ruler/cat visuals to C1 but keeps the
+  "C2" label. Greeting name prefers profiles.first_name. The exam-countdown chip
+  (sun-soft, ClockIcon, links to /settings) now reads study_timeframe
+  ("Exam under a month away" / "Exam in 1–3 / 3–6 months"; hidden for no_date).
+  Weak skills get a "Your focus" badge on the skills roadmap. Shared controls:
+  src/components/choice.tsx (OptionCard/Chip — MonthGrid removed 2026-07-10) and
+  src/components/BandCat.tsx (BAND_CAT/BAND_QUIP/BandCat which maps C2→C1 art/
   QuipBubble — moved out of HomePage; GoalBandPicker reuses them).

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchSamples } from '../lib/api'
 import { imageUrl } from '../lib/storage'
 import { EmptyState } from '../components/EmptyState'
+import { TabStrip } from '../components/TabStrip'
 import { TestGridSkeleton } from '../components/Skeleton'
 import { ArrowRightIcon, MicIcon, PenIcon } from '../components/icons'
 import type { Sample, SampleCategory, SampleImage, SampleSkill, SpeakingTurn, VocabItem } from '../types/sample'
@@ -69,43 +70,18 @@ export function SamplesPage() {
 
       {/* Two-tier tabs: skill toggle (Writing / Speaking), then part sub-tabs. */}
       <div className="space-y-3">
-        <nav
-          className="inline-flex rounded-xl border border-line bg-white p-1"
-          aria-label="Skill"
-        >
-          {SAMPLE_SKILLS.map((s) => (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => selectSkill(s.key)}
-              className={`rounded-lg px-5 py-2 text-sm font-bold transition-colors ${
-                skill === s.key ? 'bg-brand text-white' : 'text-ink-soft hover:text-ink'
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </nav>
-
-        <div className="max-w-full overflow-x-auto">
-          <nav
-            className="inline-flex whitespace-nowrap rounded-xl border border-line bg-white p-1"
-            aria-label={`${skill} parts`}
-          >
-            {subTabs.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => selectTab(t.key)}
-                className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
-                  tab === t.key ? 'bg-brand text-white' : 'text-ink-soft hover:text-ink'
-                }`}
-              >
-                {t.partLabel}
-              </button>
-            ))}
-          </nav>
-        </div>
+        <TabStrip
+          ariaLabel="Skill"
+          tabs={SAMPLE_SKILLS.map((s) => ({ key: s.key, label: s.label }))}
+          value={skill}
+          onChange={selectSkill}
+        />
+        <TabStrip
+          ariaLabel={`${skill} parts`}
+          tabs={subTabs.map((t) => ({ key: t.key, label: t.partLabel }))}
+          value={tab}
+          onChange={selectTab}
+        />
       </div>
 
       {isLoading ? (

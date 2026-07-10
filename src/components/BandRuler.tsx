@@ -3,6 +3,13 @@ import type { Band } from '../types/test'
 import { BAND_INFO, BAND_ORDER, BAND_THRESHOLDS } from '../lib/bands'
 
 const MAX_SCORE = 35
+// The scored /35 axis (below_B1…C1) fills this fraction of the ruler; the
+// remainder is an aspirational C2 "cap". C2 is ABOVE this exam's ceiling — no
+// raw score maps to it — so it sits OFF the scored axis and the fill/mascot can
+// never land there.
+const SCORED_FRACTION = 0.82
+/** Position (in % of the full ruler) of a raw mark on the scored portion. */
+const xPct = (mark: number) => (Math.min(mark, MAX_SCORE) / MAX_SCORE) * SCORED_FRACTION * 100
 
 // [start, end) in raw marks; the last band closes at 35.
 function bandSpan(band: Band): [number, number] {
@@ -15,11 +22,13 @@ function bandSpan(band: Band): [number, number] {
 /**
  * The CEFR band ruler: a ruled scale of the real scoring thresholds
  * (0 · 10 · 18 · 28 · 35 raw marks) with a fill that rises to the
- * student's level. With `band`/`score` the fill sweeps to the exact score
- * and that band lights up; with `demo` (signed-out surfaces) it sweeps to
- * the C1 boundary as an aspiration. With `animate`, segments draw in and
- * the fill glides (CSS-driven, so prefers-reduced-motion disables it).
- * `tone="dark"` re-cuts the palette for dark panels (statement of results).
+ * student's level, plus a faded C2 cap beyond the exam's C1 ceiling. With
+ * `band`/`score` the fill sweeps to the exact score and that band lights up;
+ * with `demo` (signed-out surfaces) it sweeps to the C1 boundary as an
+ * aspiration. The fill never enters the C2 cap (nothing scores C2). With
+ * `animate`, segments draw in and the fill glides (CSS-driven, so
+ * prefers-reduced-motion disables it). `tone="dark"` re-cuts the palette for
+ * dark panels (statement of results).
  */
 export function BandRuler({
   band,
@@ -59,11 +68,7 @@ export function BandRuler({
   }
 
   const targetPct =
-    typeof score === 'number'
-      ? (Math.min(score, MAX_SCORE) / MAX_SCORE) * 100
-      : demo
-        ? (BAND_THRESHOLDS.C1 / MAX_SCORE) * 100
-        : null
+    typeof score === 'number' ? xPct(score) : demo ? xPct(BAND_THRESHOLDS.C1) : null
   const litBand = band ?? (demo ? 'C1' : undefined)
   const [fillPct, setFillPct] = useState(targetPct === null ? null : animate ? 0 : targetPct)
 
@@ -92,7 +97,7 @@ export function BandRuler({
             <div
               key={b}
               className="pr-2"
-              style={{ width: `${((end - start) / MAX_SCORE) * 100}%` }}
+              style={{ width: `${((end - start) / MAX_SCORE) * SCORED_FRACTION * 100}%` }}
             >
               <span
                 className={`ruler-track block h-0.5 w-full ${palette.track} ${
@@ -117,20 +122,38 @@ export function BandRuler({
             </div>
           )
         })}
+
+        {/* Aspirational C2 cap — above this exam's C1 ceiling: just a label
+            beyond the ruled scale, with NO track line or terminal tick (an
+            invisible spacer keeps the label aligned with the scored bands). */}
+        <div className="pr-2" style={{ width: `${(1 - SCORED_FRACTION) * 100}%` }}>
+          <span className="block h-0.5 w-full" aria-hidden />
+          <div
+            className={animate ? 'reveal' : undefined}
+            style={animate ? { animationDelay: `${0.5 + BAND_ORDER.length * 0.12}s` } : undefined}
+          >
+            <p className={`pt-2 text-[11px] uppercase tracking-[0.08em] ${palette.label}`}>C2</p>
+            <p className={`mt-0.5 text-[11px] italic ${palette.range}`}>beyond</p>
+          </div>
+        </div>
       </div>
 
-      {/* boundary ticks crossing the rule */}
-      {[0, ...BAND_ORDER.slice(1).map((b) => BAND_THRESHOLDS[b]), MAX_SCORE].map((mark, i) => (
-        <span
-          key={mark}
-          className={`absolute top-0 h-3 w-px ${palette.tick} ${animate ? 'reveal' : ''}`}
-          style={{
-            left: `calc(${(mark / MAX_SCORE) * 100}% - ${mark === MAX_SCORE ? 1 : 0}px)`,
-            ...(animate ? { animationDelay: `${0.45 + i * 0.08}s` } : undefined),
-          }}
-          aria-hidden
-        />
-      ))}
+      {/* boundary ticks crossing the rule — the scored thresholds mapped onto
+          the /35 portion. The line ends at the C1/35 mark; C2 is a label beyond
+          it with no track or terminal tick. */}
+      {[0, BAND_THRESHOLDS.B1, BAND_THRESHOLDS.B2, BAND_THRESHOLDS.C1, MAX_SCORE]
+        .map((mark) => xPct(mark))
+        .map((posPct, i) => (
+          <span
+            key={i}
+            className={`absolute top-0 h-3 w-px ${palette.tick} ${animate ? 'reveal' : ''}`}
+            style={{
+              left: `${posPct}%`,
+              ...(animate ? { animationDelay: `${0.45 + i * 0.08}s` } : undefined),
+            }}
+            aria-hidden
+          />
+        ))}
 
       {/* the level fill: rises from 0 to the score (or the C1 aspiration) */}
       {fillPct !== null && (

@@ -7,6 +7,7 @@ import { skillMeta } from '../lib/skills'
 import type { Skill } from '../types/test'
 import type { AttemptSummary } from '../types/attempt'
 import { EmptyState } from './EmptyState'
+import { TabStrip } from './TabStrip'
 import { TestCard, type TestAttemptInfo } from './TestCard'
 import { TestGridSkeleton } from './Skeleton'
 
@@ -52,29 +53,15 @@ export function TestCatalog({ skill }: { skill: Skill }) {
   return (
     <div className="rounded-2xl border border-line bg-white p-6 shadow-card sm:p-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
-        <div className="max-w-full overflow-x-auto">
-          <div className="inline-flex whitespace-nowrap rounded-xl border border-line bg-white p-1">
-            <button
-              onClick={() => setTab('mock')}
-              className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
-                tab === 'mock' ? 'bg-brand text-white' : 'text-ink-soft hover:text-ink'
-              }`}
-            >
-              Mock test
-            </button>
-            {partTabs.map((part) => (
-              <button
-                key={part}
-                onClick={() => setTab(part)}
-                className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
-                  tab === part ? 'bg-brand text-white' : 'text-ink-soft hover:text-ink'
-                }`}
-              >
-                Part {part}
-              </button>
-            ))}
-          </div>
-        </div>
+        <TabStrip
+          ariaLabel={`${meta.label} test type`}
+          tabs={[
+            { key: 'mock' as const, label: 'Mock test' },
+            ...partTabs.map((part) => ({ key: part, label: `Part ${part}` })),
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
         {tests && (
           <span className="text-sm text-ink-soft">
             {tests.length} {meta.label.toLowerCase()} {tabLabel}

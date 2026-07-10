@@ -155,17 +155,19 @@ export async function fetchMyAttempts(): Promise<AttemptSummary[]> {
 }
 
 const PROFILE_COLUMNS =
-  'id, name, onboarded_at, first_exam, self_level, target_band, exam_month, weak_areas, daily_minutes, heard_from, heard_from_note'
+  'id, name, first_name, last_name, onboarded_at, first_exam, self_level, target_band, study_timeframe, weak_areas, daily_minutes, heard_from, heard_from_note'
 
 function mapProfile(row: Record<string, unknown>): StudentProfile {
   return {
     id: row.id as string,
     name: (row.name as string | null) ?? null,
+    firstName: (row.first_name as string | null) ?? null,
+    lastName: (row.last_name as string | null) ?? null,
     onboardedAt: (row.onboarded_at as string | null) ?? null,
     firstExam: (row.first_exam as FirstExam | null) ?? null,
     selfLevel: (row.self_level as SelfLevel | null) ?? null,
     targetBand: (row.target_band as TargetBand | null) ?? null,
-    examMonth: (row.exam_month as string | null) ?? null,
+    studyTimeframe: (row.study_timeframe as StudentProfile['studyTimeframe']) ?? null,
     weakAreas: (row.weak_areas as WeakArea[] | null) ?? [],
     dailyMinutes: (row.daily_minutes as DailyMinutes | null) ?? null,
     heardFrom: (row.heard_from as HeardFrom | null) ?? null,
@@ -195,19 +197,46 @@ export async function fetchMyProfile(): Promise<StudentProfile> {
  *  never shows again. Column grants limit the writable fields; CHECK
  *  constraints re-validate every value server-side. */
 export async function saveOnboarding(answers: OnboardingAnswers): Promise<StudentProfile> {
+  const firstName = answers.firstName.trim()
+  const lastName = answers.lastName?.trim() || null
+  // Keep the display `name` in sync so greetings work everywhere it's read.
+  const fullName = [firstName, lastName].filter(Boolean).join(' ') || null
   const { data, error } = await supabase
     .from('profiles')
     .update({
+      name: fullName,
+      first_name: firstName || null,
+      last_name: lastName,
       first_exam: answers.firstExam,
       self_level: answers.selfLevel,
       target_band: answers.targetBand,
-      exam_month: answers.examMonth,
+      study_timeframe: answers.studyTimeframe,
       weak_areas: answers.weakAreas,
       daily_minutes: answers.dailyMinutes,
       heard_from: answers.heardFrom,
       heard_from_note: answers.heardFrom === 'other' ? answers.heardFromNote : null,
       onboarded_at: new Date().toISOString(),
     })
+    .eq('id', await ownUserId())
+    .select(PROFILE_COLUMNS)
+    .single()
+  if (error) throw new Error(error.message)
+  return mapProfile(data as Record<string, unknown>)
+}
+
+/** Update the student's display name (first name + surname) from /settings.
+ *  Column grants allow name/first_name/last_name; scoped to the caller's own
+ *  row. Keeps `name` in sync so greetings work everywhere it's read. */
+export async function updateNames(
+  firstName: string,
+  lastName: string | null,
+): Promise<StudentProfile> {
+  const fn = firstName.trim()
+  const ln = lastName?.trim() || null
+  const fullName = [fn, ln].filter(Boolean).join(' ') || null
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ name: fullName, first_name: fn || null, last_name: ln })
     .eq('id', await ownUserId())
     .select(PROFILE_COLUMNS)
     .single()
@@ -222,7 +251,7 @@ export async function updateStudyPrefs(prefs: StudyPrefs): Promise<StudentProfil
     .from('profiles')
     .update({
       target_band: prefs.targetBand,
-      exam_month: prefs.examMonth,
+      study_timeframe: prefs.studyTimeframe,
       weak_areas: prefs.weakAreas,
       daily_minutes: prefs.dailyMinutes,
     })
