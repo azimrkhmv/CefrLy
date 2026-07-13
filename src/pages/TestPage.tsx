@@ -108,7 +108,11 @@ export function TestPage() {
   // Single-part drills have no mode choice: they auto-start (or auto-resume)
   // in practice with the author-set duration, so the picker never shows.
   const isPartTest = status?.scope === 'part'
-  const showPicker = !!status && !started && !isPartTest
+  // The mode picker is the landing ONLY for a FRESH full attempt (no open
+  // session). If a session is already open — the common case being a page
+  // refresh mid-test — we resume straight into the paper instead of bouncing
+  // through the picker (see the auto-resume effect below).
+  const showPicker = !!status && !started && !isPartTest && !hasOpenSession
   const readyToLoad = !!status && started
   const catalogPath = status?.skill === 'listening' ? '/listening' : '/reading'
 
@@ -139,14 +143,16 @@ export function TestPage() {
     },
   })
 
-  // Part drills skip the picker: resume the open session if there is one,
-  // otherwise start a fresh practice session (the server pins the duration to
-  // the test's own; the client-sent value is ignored for part tests).
+  // Auto-resume an OPEN attempt so a page refresh (or any re-entry) mid-test
+  // goes straight back into the paper — no detour through the mode picker. This
+  // covers BOTH full tests and part drills. A part drill with no open session
+  // additionally auto-STARTS a fresh practice session (it has no picker); a full
+  // test with no open session falls through to the picker below.
   useEffect(() => {
-    if (!isPartTest || started || !status) return
+    if (started || !status) return
     if (status.session) {
       setStarted(true)
-    } else if (!start.isPending && !start.isError) {
+    } else if (isPartTest && !start.isPending && !start.isError) {
       start.mutate({ mode: 'practice', durationSec: status.durationSec })
     }
     // `start` is stable per mount (useMutation); depending on status/started is enough.
