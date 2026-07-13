@@ -12,6 +12,8 @@ import {
 } from '../lib/api'
 import { useAnswersStore } from '../store/answers'
 import { useAudioStore } from '../store/audio'
+import { useHighlightsStore } from '../store/highlights'
+import { highlightsSupported } from '../lib/textHighlight'
 import {
   partItems,
   type SanitizedListeningPart,
@@ -26,9 +28,17 @@ import { QuestionNavigator } from '../components/test/QuestionNavigator'
 import { Timer } from '../components/test/Timer'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ModePicker } from '../components/test/ModePicker'
-import { CloseIcon } from '../components/icons'
+import { CloseIcon, PenIcon } from '../components/icons'
 
 const draftKey = (sessionId: string) => `cefrly-draft-${sessionId}`
+
+// What we persist per session so a refresh/resume loses nothing: typed answers,
+// marked-for-review flags, and passage highlights (offset ranges per container).
+interface DraftShape {
+  answers?: Record<string, string>
+  marked?: Record<string, boolean>
+  marks?: Record<string, { start: number; end: number }[]>
+}
 
 // The exam takes over the whole viewport — no app sidebar/header — so students
 // can concentrate on the paper. It renders through a portal to <body> because
@@ -61,6 +71,15 @@ export function TestPage() {
   // Which recordings have played out — listening simulation's "clock" (see
   // submitLocked below).
   const audioDone = useAudioStore((s) => s.done)
+
+  // Reading passage highlighter (marker mode + a running count of marks so the
+  // "Clear" affordance only shows when there is something to clear).
+  const markerMode = useHighlightsStore((s) => s.markerMode)
+  const toggleMarkerMode = useHighlightsStore((s) => s.toggleMarkerMode)
+  const clearMarks = useHighlightsStore((s) => s.clearAll)
+  const markCount = useHighlightsStore((s) =>
+    Object.values(s.marks).reduce((n, arr) => n + arr.length, 0),
+  )
 
   // Step 1 — a read-only peek: does the student already have an open session,
   // and what skill is this? This never starts a clock, so the "Choose a mode"
@@ -160,6 +179,7 @@ export function TestPage() {
     if (!sessionId) return
     reset()
     useAudioStore.getState().reset()
+    useHighlightsStore.getState().reset()
     try {
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const key = localStorage.key(i)
@@ -169,12 +189,11 @@ export function TestPage() {
       }
       const saved = localStorage.getItem(draftKey(sessionId))
       if (saved) {
-        const parsed = JSON.parse(saved) as
-          | { answers?: Record<string, string>; marked?: Record<string, boolean> }
-          | Record<string, string>
+        const parsed = JSON.parse(saved) as DraftShape | Record<string, string>
         if (parsed && typeof parsed === 'object' && 'answers' in parsed) {
-          const draft = parsed as { answers?: Record<string, string>; marked?: Record<string, boolean> }
+          const draft = parsed as DraftShape
           useAnswersStore.getState().hydrate(draft.answers ?? {}, draft.marked ?? {})
+          useHighlightsStore.getState().hydrate(draft.marks ?? {})
         } else {
           useAnswersStore.getState().hydrate(parsed as Record<string, string>)
         }
@@ -189,24 +208,35 @@ export function TestPage() {
     }
   }, [sessionId, reset])
 
-  // Save every answer/mark change so nothing is lost on refresh.
+  // Save every answer/mark/highlight change so nothing is lost on refresh. Both
+  // stores write the SAME combined draft (answers + marked-for-review + passage
+  // highlights) through one persist().
   useEffect(() => {
     if (!sessionId) return
-    const unsubscribe = useAnswersStore.subscribe((state) => {
+    const persist = () => {
       try {
+        const answers = useAnswersStore.getState()
         localStorage.setItem(
           draftKey(sessionId),
-          JSON.stringify({ answers: state.answers, marked: state.marked }),
+          JSON.stringify({
+            answers: answers.answers,
+            marked: answers.marked,
+            marks: useHighlightsStore.getState().marks,
+          } satisfies DraftShape),
         )
       } catch {
-        // Storage full/blocked: answers stay in memory; submitting still works.
+        // Storage full/blocked: state stays in memory; submitting still works.
       }
-    })
+    }
+    const unsubAnswers = useAnswersStore.subscribe(persist)
+    const unsubMarks = useHighlightsStore.subscribe(persist)
     return () => {
-      // ORDER MATTERS: stop persisting BEFORE clearing the store, so leaving
-      // the exam can never write an empty draft over the student's answers.
-      unsubscribe()
+      // ORDER MATTERS: stop persisting BEFORE clearing the stores, so leaving
+      // the exam can never write an empty draft over the student's work.
+      unsubAnswers()
+      unsubMarks()
       reset()
+      useHighlightsStore.getState().reset()
     }
   }, [sessionId, reset])
 
@@ -226,6 +256,7 @@ export function TestPage() {
       // the reset by writing {} — deleting afterwards leaves no orphan key.
       reset()
       useAudioStore.getState().reset()
+      useHighlightsStore.getState().reset()
       if (sessionId) localStorage.removeItem(draftKey(sessionId))
       queryClient.removeQueries({ queryKey: ['test', testId] })
       queryClient.removeQueries({ queryKey: ['session-status', testId] })
@@ -260,6 +291,7 @@ export function TestPage() {
       setStarted(false)
       reset()
       useAudioStore.getState().reset()
+      useHighlightsStore.getState().reset()
       try {
         if (sessionId) localStorage.removeItem(draftKey(sessionId))
       } catch {
@@ -434,6 +466,9 @@ export function TestPage() {
 
   const part = test.parts[partIndex]
   const isListening = test.skill === 'listening'
+  // The passage highlighter is a reading aid; listening has no passage. Hidden
+  // when the browser can't paint custom highlights, so there's no dead button.
+  const canHighlight = !isListening && highlightsSupported()
   const skillLabel = isListening ? 'Listening' : 'Reading'
   const backTo = catalogPath
   const isPractice = test.session.mode === 'practice'
@@ -485,6 +520,38 @@ export function TestPage() {
             <span className="tnum hidden text-sm text-ink-soft sm:inline">
               {answeredCount}/{totalItems} answered
             </span>
+            {/* Reading highlighter: toggle marker mode, then select passage text
+                to mark it (click a mark to remove it). Brand-violet wash. */}
+            {canHighlight && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => toggleMarkerMode()}
+                  aria-pressed={markerMode}
+                  title={
+                    markerMode
+                      ? 'Highlighter on — select passage text to mark it, click a mark to remove it'
+                      : 'Highlighter — select passage text to mark it'
+                  }
+                  className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-bold transition-colors ${
+                    markerMode
+                      ? 'border-brand bg-brand-soft text-brand'
+                      : 'border-line bg-white text-ink hover:border-ink-faint'
+                  }`}
+                >
+                  <PenIcon width={16} height={16} />
+                  <span className="hidden sm:inline">Highlight</span>
+                </button>
+                {markerMode && markCount > 0 && (
+                  <button
+                    onClick={() => clearMarks()}
+                    title="Remove all highlights"
+                    className="rounded-xl border border-line bg-white px-2.5 py-2 text-xs font-bold text-ink-soft transition-colors hover:border-rose-200 hover:text-rose-700"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
             {/* Listening shows no countdown in either mode — audio is the clock.
                 Practice gets a reassurance chip in the timer's place. */}
             {isListening ? (

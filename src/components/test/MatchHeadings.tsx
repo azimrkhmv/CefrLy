@@ -1,6 +1,7 @@
 import { useAnswersStore } from '../../store/answers'
 import type { PartProps } from './PartRenderer'
 import { PassageHtml } from './PassageHtml'
+import { HighlightablePassage } from './HighlightablePassage'
 import { MarkButton } from './items/MarkButton'
 
 // Part 3: paragraphs I–VI each get a heading dropdown from the optionPool.
@@ -62,9 +63,9 @@ export function MatchHeadings({ part, numbering }: PartProps) {
                   </>
                 )}
               </div>
-              <div className="passage">
+              <HighlightablePassage markKey={`${part.id}:${paragraph.label}`} className="passage">
                 <PassageHtml html={paragraph.html} />
-              </div>
+              </HighlightablePassage>
             </div>
           )
         })}

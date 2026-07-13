@@ -1,5 +1,6 @@
 import { useAnswersStore } from '../../store/answers'
 import type { PartProps } from './PartRenderer'
+import { HighlightablePassage } from './HighlightablePassage'
 import { MarkButton } from './items/MarkButton'
 
 // Part 2: each item.prompt is a short text; the shared optionPool (A–J) holds
@@ -36,7 +37,12 @@ export function MatchTexts({ part, numbering }: PartProps) {
               >
                 <div className="mb-3 flex items-start gap-2">
                   <span className="q-badge">{numbering[item.id]}</span>
-                  <p className="flex-1 text-sm leading-relaxed">{item.prompt}</p>
+                  <HighlightablePassage
+                    markKey={`${part.id}:${item.id}`}
+                    className="flex-1 text-sm leading-relaxed"
+                  >
+                    {item.prompt}
+                  </HighlightablePassage>
                   <MarkButton itemId={item.id} />
                 </div>
                 <select

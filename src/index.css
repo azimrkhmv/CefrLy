@@ -203,6 +203,19 @@ body {
   white-space: nowrap;
 }
 
+/* Student passage highlighter (in-test marker mode). Painted via the CSS
+   Custom Highlight API — a translucent brand-violet wash so the marked words
+   stay fully legible. Highlight pseudo-elements only accept a few properties
+   (background-color / color), so no radius here. */
+::highlight(cefrly-mark) {
+  background-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  color: var(--color-heading);
+}
+/* While marker mode is on, the passage reads as "selectable to mark". */
+.cefrly-marking {
+  cursor: text;
+}
+
 /* Question number: a friendly lavender chip. */
 .q-badge {
   display: inline-flex;

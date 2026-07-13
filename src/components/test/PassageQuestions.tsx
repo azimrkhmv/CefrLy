@@ -1,6 +1,7 @@
 import type { SanitizedItem } from '../../types/test'
 import type { PartProps } from './PartRenderer'
 import { PassageHtml } from './PassageHtml'
+import { HighlightablePassage } from './HighlightablePassage'
 import { GAP_MARKER_RE } from './gapMarkers'
 import { GapInput } from './items/GapInput'
 import { McqQuestion } from './items/McqQuestion'
@@ -53,17 +54,17 @@ export function PassageQuestions({ part, numbering }: PartProps) {
         {part.passage?.title && (
           <h3 className="mb-3 text-base font-extrabold text-heading">{part.passage.title}</h3>
         )}
-        <div className="passage">
+        <HighlightablePassage markKey={`${part.id}:main`} className="passage">
           <PassageHtml html={main} renderGap={renderGap} />
-        </div>
+        </HighlightablePassage>
       </div>
 
       <div className="space-y-4">
         {summary.trim() && (
           <div className="rounded-2xl border border-line bg-white p-5 shadow-card">
-            <div className="passage">
+            <HighlightablePassage markKey={`${part.id}:summary`} className="passage">
               <PassageHtml html={summary} renderGap={renderGap} />
-            </div>
+            </HighlightablePassage>
           </div>
         )}
         {sideItems.map((item) => (
