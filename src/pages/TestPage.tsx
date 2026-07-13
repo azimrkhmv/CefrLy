@@ -5,8 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   cancelSession,
   controlSession,
-  fetchSanitizedTest,
-  fetchSessionStatus,
+  fetchTestState,
   startSession,
   submitTest,
 } from '../lib/api'
@@ -20,6 +19,7 @@ import {
   type SanitizedPart,
   type SanitizedTest,
   type TestMode,
+  type TestState,
 } from '../types/test'
 import { PartRenderer } from '../components/test/PartRenderer'
 import { ListeningPartRenderer } from '../components/test/listening/ListeningPartRenderer'
@@ -28,6 +28,7 @@ import { QuestionNavigator } from '../components/test/QuestionNavigator'
 import { Timer } from '../components/test/Timer'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ModePicker } from '../components/test/ModePicker'
+import { ExamSkeleton } from '../components/test/ExamSkeleton'
 import { CloseIcon, PenIcon } from '../components/icons'
 
 const draftKey = (sessionId: string) => `cefrly-draft-${sessionId}`
@@ -63,7 +64,6 @@ export function TestPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [partIndex, setPartIndex] = useState(0)
-  const [started, setStarted] = useState(false)
   const reset = useAnswersStore((s) => s.reset)
   const answeredCount = useAnswersStore(
     (s) => Object.values(s.answers).filter((v) => v.trim() !== '').length,
@@ -81,83 +81,58 @@ export function TestPage() {
     Object.values(s.marks).reduce((n, arr) => n + arr.length, 0),
   )
 
-  // Step 1 — a read-only peek: does the student already have an open session,
-  // and what skill is this? This never starts a clock, so the "Choose a mode"
-  // picker can appear first for a fresh reading attempt.
+  // ONE call per page load: get-test returns the sanitized paper when an attempt
+  // is open (resume straight in — the common refresh case), or the picker
+  // metadata with `session:null` when none is. No session is ever created here,
+  // so this doubles as the old read-only peek without a second round-trip.
   const {
-    data: status,
-    isLoading: statusLoading,
-    error: statusError,
-  } = useQuery({
-    queryKey: ['session-status', testId],
-    queryFn: () => fetchSessionStatus(testId!),
-    enabled: !!testId,
-    // Always re-peek on mount: a cached "no session" / "session open" answer
-    // goes stale the moment an attempt starts, ends or is abandoned.
-    staleTime: 0,
-    retry: 1,
-  })
-
-  // The picker is the landing screen for EVERY attempt: it always shows until
-  // the student picks a mode or hits Resume (`started`). It never silently drops
-  // into a stale leftover session — that was the bug. If an attempt is already
-  // open, the picker offers a Resume button (see below); get-test then reuses
-  // that session. Both Reading and Listening use the picker; Practice unlocks
-  // audio controls (ListeningAudio).
-  const hasOpenSession = !!status?.session
-  // Single-part drills have no mode choice: they auto-start (or auto-resume)
-  // in practice with the author-set duration, so the picker never shows.
-  const isPartTest = status?.scope === 'part'
-  // The mode picker is the landing ONLY for a FRESH full attempt (no open
-  // session). If a session is already open — the common case being a page
-  // refresh mid-test — we resume straight into the paper instead of bouncing
-  // through the picker (see the auto-resume effect below).
-  const showPicker = !!status && !started && !isPartTest && !hasOpenSession
-  const readyToLoad = !!status && started
-  const catalogPath = status?.skill === 'listening' ? '/listening' : '/reading'
-
-  const {
-    data: test,
-    isLoading: testLoading,
-    error: testError,
+    data: attempt,
+    isLoading: attemptLoading,
+    error: attemptError,
   } = useQuery({
     queryKey: ['test', testId],
-    queryFn: () => fetchSanitizedTest(testId!),
-    enabled: !!testId && readyToLoad,
+    queryFn: () => fetchTestState(testId!),
+    enabled: !!testId,
+    // A fresh page load has an empty cache so it always fetches; within a live
+    // attempt we never want a spontaneous refetch (it would disrupt the timer),
+    // so keep it fresh. start-session / abandon invalidate explicitly.
     staleTime: Infinity,
     retry: 1,
   })
 
+  // An open attempt carries the paper (session present); no session => picker.
+  const hasPaper = !!attempt && attempt.session !== null
+  const test = hasPaper ? (attempt as SanitizedTest) : undefined
+  // Single-part drills have no mode choice: they auto-start practice with the
+  // author-set duration, so the picker never shows for them.
+  const isPartTest = (attempt?.scope ?? 'full') === 'part'
+  const catalogPath = attempt?.skill === 'listening' ? '/listening' : '/reading'
   const sessionId = test?.session.id
 
-  // Begin a session in the chosen mode, then load the paper. start-session
+  // Begin a session in the chosen mode, then reload the paper. start-session
   // closes any session still open for this test first, so choosing a mode is a
-  // REAL restart — the picker's "start over" promise is true. (Resume bypasses
-  // this and goes straight to get-test, which reuses the open session.)
+  // REAL restart. Invalidating ['test'] refetches get-test, which now returns
+  // the freshly-started paper.
   const start = useMutation({
     mutationFn: ({ mode, durationSec }: { mode: TestMode; durationSec: number }) =>
       startSession(testId!, mode, durationSec),
     onSuccess: () => {
-      setStarted(true)
-      queryClient.invalidateQueries({ queryKey: ['session-status', testId] })
+      queryClient.invalidateQueries({ queryKey: ['test', testId] })
     },
   })
 
-  // Auto-resume an OPEN attempt so a page refresh (or any re-entry) mid-test
-  // goes straight back into the paper — no detour through the mode picker. This
-  // covers BOTH full tests and part drills. A part drill with no open session
-  // additionally auto-STARTS a fresh practice session (it has no picker); a full
-  // test with no open session falls through to the picker below.
+  // Part drills have no picker: when none is open, auto-start a fresh practice
+  // session (the server pins the duration to the test's own). Full tests with no
+  // open session fall through to the mode picker below; an open attempt (either
+  // scope) already rendered its paper, so this effect no-ops there.
   useEffect(() => {
-    if (started || !status) return
-    if (status.session) {
-      setStarted(true)
-    } else if (isPartTest && !start.isPending && !start.isError) {
-      start.mutate({ mode: 'practice', durationSec: status.durationSec })
+    if (!attempt || attempt.session !== null) return
+    if (isPartTest && !start.isPending && !start.isError) {
+      start.mutate({ mode: 'practice', durationSec: attempt.durationSec })
     }
-    // `start` is stable per mount (useMutation); depending on status/started is enough.
+    // `start` is stable per mount (useMutation); depending on attempt is enough.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPartTest, started, status])
+  }, [attempt, isPartTest])
 
   // Pause / resume the practice timer (server-authoritative). The response
   // carries the fresh session (shifted deadline, cleared/set pausedAt) which we
@@ -166,8 +141,8 @@ export function TestPage() {
   const control = useMutation({
     mutationFn: (action: 'pause' | 'resume') => controlSession(test!.session.id, action),
     onSuccess: ({ session }) => {
-      queryClient.setQueryData<SanitizedTest>(['test', testId], (old) =>
-        old ? { ...old, session } : old,
+      queryClient.setQueryData<TestState>(['test', testId], (old) =>
+        old && old.session !== null ? { ...old, session } : old,
       )
     },
   })
@@ -265,7 +240,6 @@ export function TestPage() {
       useHighlightsStore.getState().reset()
       if (sessionId) localStorage.removeItem(draftKey(sessionId))
       queryClient.removeQueries({ queryKey: ['test', testId] })
-      queryClient.removeQueries({ queryKey: ['session-status', testId] })
       // Reading opens its Analysis page directly; listening keeps the score
       // page (which carries the audio/transcript review link).
       navigate(
@@ -290,11 +264,10 @@ export function TestPage() {
   const abandon = useMutation({
     mutationFn: () => cancelSession(sessionId!),
     onSettled: () => {
-      // Disable the get-test query BEFORE removing it from the cache — with an
-      // active observer, removal triggers an instant refetch, and get-test used
-      // to auto-create a fresh session on that refetch, resurrecting the very
-      // attempt we just cancelled.
-      setStarted(false)
+      // Navigate away FIRST so TestPage unmounts and drops its ['test'] observer;
+      // removing the query then can't trigger a stray refetch. (Even if one did,
+      // get-test no longer auto-creates a session — it returns session:null — so
+      // the just-cancelled attempt can't be resurrected.)
       reset()
       useAudioStore.getState().reset()
       useHighlightsStore.getState().reset()
@@ -303,9 +276,8 @@ export function TestPage() {
       } catch {
         /* storage unavailable */
       }
-      queryClient.removeQueries({ queryKey: ['test', testId] })
-      queryClient.invalidateQueries({ queryKey: ['session-status', testId] })
       navigate(catalogPath)
+      queryClient.removeQueries({ queryKey: ['test', testId] })
     },
   })
 
@@ -351,19 +323,12 @@ export function TestPage() {
 
   // ---- Pre-exam states ------------------------------------------------------
 
-  if (statusLoading)
-    return (
-      <ExamScreen center>
-        <p className="text-ink-soft">Loading test…</p>
-      </ExamScreen>
-    )
-
-  if (statusError) {
+  if (attemptError) {
     return (
       <ExamScreen center>
         <div className="space-y-4">
           <p className="text-sm text-rose-700">
-            Could not load the test. {statusError instanceof Error ? statusError.message : ''}
+            Could not load the test. {attemptError instanceof Error ? attemptError.message : ''}
           </p>
           <Link
             to={catalogPath}
@@ -376,8 +341,53 @@ export function TestPage() {
     )
   }
 
-  // "Choose a mode" — shown on Start (and whenever there's no open session).
-  if (showPicker && status) {
+  // Initial load — the exam skeleton reads as the paper arriving.
+  if (attemptLoading || !attempt)
+    return (
+      <ExamScreen>
+        <ExamSkeleton />
+      </ExamScreen>
+    )
+
+  // No open attempt: part drills auto-start (skeleton while starting, error if
+  // that fails); full tests show the "Choose a mode" picker.
+  if (attempt.session === null) {
+    if (isPartTest) {
+      if (start.isError) {
+        return (
+          <ExamScreen center>
+            <div className="space-y-4">
+              <p className="text-sm text-rose-700">
+                Could not start the practice.{' '}
+                {start.error instanceof Error ? start.error.message : ''}
+              </p>
+              <Link
+                to={catalogPath}
+                className="inline-block rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+              >
+                Back to tests
+              </Link>
+            </div>
+          </ExamScreen>
+        )
+      }
+      return (
+        <ExamScreen>
+          <ExamSkeleton />
+        </ExamScreen>
+      )
+    }
+
+    // A mode was picked — show the skeleton while start-session swaps in the
+    // fresh paper, rather than flashing the picker again mid-transition.
+    if (start.isPending || start.isSuccess) {
+      return (
+        <ExamScreen>
+          <ExamSkeleton />
+        </ExamScreen>
+      )
+    }
+
     return (
       <ExamScreen>
         <header className="shrink-0 border-b border-line bg-white">
@@ -393,30 +403,10 @@ export function TestPage() {
         </header>
         <div className="flex flex-1 items-center justify-center overflow-y-auto px-4 py-8 sm:px-8">
           <div className="w-full max-w-4xl space-y-6">
-            {/* An attempt is still open — offer to resume it rather than lose it. */}
-            {hasOpenSession && (
-              <div className="flex flex-col gap-4 rounded-2xl border border-brand/30 bg-brand-soft p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-                <div>
-                  <p className="text-base font-extrabold text-heading">
-                    You have an attempt in progress
-                  </p>
-                  <p className="mt-0.5 text-sm text-ink-soft">
-                    Pick up where you left off — or start over below (your current progress will
-                    be cleared).
-                  </p>
-                </div>
-                <button
-                  onClick={() => setStarted(true)}
-                  className="shrink-0 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
-                >
-                  Resume attempt
-                </button>
-              </div>
-            )}
             <ModePicker
-              title={status.title}
-              skill={status.skill}
-              simulationDurationSec={status.durationSec}
+              title={attempt.title}
+              skill={attempt.skill}
+              simulationDurationSec={attempt.durationSec}
               onStart={(mode, durationSec) => start.mutate({ mode, durationSec })}
               starting={start.isPending}
               error={start.error instanceof Error ? start.error.message : null}
@@ -427,44 +417,11 @@ export function TestPage() {
     )
   }
 
-  // A part drill that failed to auto-start needs a way out (no picker exists).
-  if (isPartTest && start.isError) {
+  // Open attempt: the paper is loaded (narrows `test` for the exam below).
+  if (!test)
     return (
-      <ExamScreen center>
-        <div className="space-y-4">
-          <p className="text-sm text-rose-700">
-            Could not start the practice.{' '}
-            {start.error instanceof Error ? start.error.message : ''}
-          </p>
-          <Link
-            to={catalogPath}
-            className="inline-block rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
-          >
-            Back to tests
-          </Link>
-        </div>
-      </ExamScreen>
-    )
-  }
-
-  if (testLoading || !test)
-    return (
-      <ExamScreen center>
-        {testError ? (
-          <div className="space-y-4">
-            <p className="text-sm text-rose-700">
-              Could not load the test. {testError instanceof Error ? testError.message : ''}
-            </p>
-            <Link
-              to={catalogPath}
-              className="inline-block rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
-            >
-              Back to tests
-            </Link>
-          </div>
-        ) : (
-          <p className="text-ink-soft">Loading test…</p>
-        )}
+      <ExamScreen>
+        <ExamSkeleton />
       </ExamScreen>
     )
 

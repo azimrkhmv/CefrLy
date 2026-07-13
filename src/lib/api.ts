@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Band, SanitizedTest, SessionStatus, Skill, TestMode, TestSession } from '../types/test'
+import type { Band, Skill, TestMode, TestSession, TestState } from '../types/test'
 import type {
   AttemptResult,
   AttemptReview,
@@ -61,16 +61,12 @@ export async function fetchSamples(): Promise<Sample[]> {
   return (data ?? []) as Sample[]
 }
 
-/** Sanitized test (no answers, explanations or transcripts) via the get-test
- *  edge function — reading OR listening, discriminated by `skill`. */
-export function fetchSanitizedTest(testId: string): Promise<SanitizedTest> {
-  return invokeFunction<SanitizedTest>('get-test', { testId })
-}
-
-/** READ-ONLY peek: test metadata + the user's open session (no session is
- *  created). The reading exam uses this to decide picker vs. resume. */
-export function fetchSessionStatus(testId: string): Promise<SessionStatus> {
-  return invokeFunction<SessionStatus>('session-status', { testId })
+/** Single-call attempt state via get-test: the sanitized paper (no answers,
+ *  explanations or transcripts) when a session is open, OR — with `picker:true`
+ *  — the picker metadata with `session:null` when none is (no session created).
+ *  Replaces the separate session-status peek so a page load is ONE round-trip. */
+export function fetchTestState(testId: string): Promise<TestState> {
+  return invokeFunction<TestState>('get-test', { testId, picker: true })
 }
 
 /** Begin a session in the chosen mode (or resume the one already open).

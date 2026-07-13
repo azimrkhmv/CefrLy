@@ -15,8 +15,13 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
   let testId: unknown
+  // `picker`: single-call clients opt in to receive the picker metadata (with a
+  // null session) instead of a 409 when no attempt is open — see below.
+  let picker = false
   try {
-    ;({ testId } = await req.json())
+    const body = await req.json()
+    testId = body?.testId
+    picker = body?.picker === true
   } catch {
     return json({ error: 'Invalid JSON body' }, 400)
   }
@@ -50,13 +55,6 @@ Deno.serve(async (req) => {
   if (testError) return json({ error: testError.message }, 500)
   if (!test || test.status !== 'published') return json({ error: 'Test not found' }, 404)
 
-  const { data: contentRow, error: contentError } = await admin
-    .from('test_content')
-    .select('content')
-    .eq('test_id', testId)
-    .single()
-  if (contentError || !contentRow) return json({ error: 'Test content missing' }, 500)
-
   // Reuse the newest OPEN session (created by the mode picker's start-session,
   // or resumed on refresh). A paused practice session still counts as open.
   // NO auto-create fallback: sessions start ONLY via start-session (the mode
@@ -66,8 +64,33 @@ Deno.serve(async (req) => {
   // 2026-07-06). With no open session the client shows the picker.
   const session = await findActiveSession(admin, user.id, testId)
   if (!session) {
+    // Single-call clients (picker:true) get the picker METADATA with a null
+    // session — NO session is created — so a page load makes ONE round-trip
+    // (this endpoint doubles as the old read-only session-status peek). Legacy
+    // clients (no flag) still get the 409 they expect, so deploying this is
+    // backward compatible with the currently-shipped frontend.
+    if (picker) {
+      return json({
+        skill: test.skill,
+        title: test.title,
+        durationSec: test.duration_sec,
+        scope: test.scope ?? 'full',
+        partNumber: test.part_number ?? null,
+        serverNow: new Date().toISOString(),
+        session: null,
+      })
+    }
     return json({ error: 'No active test session — choose a mode to start.' }, 409)
   }
+
+  // Only load the (large) content row once we know there IS a paper to render —
+  // the picker path above skips this read entirely.
+  const { data: contentRow, error: contentError } = await admin
+    .from('test_content')
+    .select('content')
+    .eq('test_id', testId)
+    .single()
+  if (contentError || !contentRow) return json({ error: 'Test content missing' }, 500)
 
   return json({
     ...sanitize(contentRow.content, test),

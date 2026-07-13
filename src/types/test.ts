@@ -295,6 +295,24 @@ export interface SanitizedListeningTest extends Omit<ListeningTest, 'parts'> {
 /** What the browser receives from get-test — discriminated by `skill`. */
 export type SanitizedTest = SanitizedReadingTest | SanitizedListeningTest
 
+/** get-test's response when the user has NO open attempt: the picker metadata
+ *  only (no paper, and — critically — no session is created). Lets get-test
+ *  double as the old read-only session peek so a page load is ONE round-trip. */
+export interface NoOpenAttempt {
+  session: null
+  skill: Skill
+  title: string
+  durationSec: number
+  /** Older payloads omit these; treat missing as a full mock. */
+  scope?: TestScope
+  partNumber?: number | null
+  serverNow: string
+}
+
+/** The full get-test result: the sanitized paper when an attempt is open, or
+ *  the picker metadata when none is. Discriminate on `session === null`. */
+export type TestState = SanitizedTest | NoOpenAttempt
+
 /** Ordered items of a part, flattening multi_extract_mcq groups (listening
  *  Part 5). Works on full and sanitized parts, reading or listening. */
 export function partItems(part: SanitizedPart | SanitizedListeningPart): SanitizedItem[]
