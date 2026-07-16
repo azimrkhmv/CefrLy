@@ -19,6 +19,7 @@ import type {
   WeakArea,
 } from '../types/profile'
 import type { Sample } from '../types/sample'
+import { abandonDeadSession } from './sessionExpiry'
 
 async function invokeFunction<T>(name: string, body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(name, { body })
@@ -26,6 +27,7 @@ async function invokeFunction<T>(name: string, body: Record<string, unknown>): P
     let message = `Request to "${name}" failed. Check that the edge function is deployed.`
     const ctx = (error as { context?: Response }).context
     if (ctx) {
+      if (ctx.status === 401) await abandonDeadSession()
       try {
         const parsed = (await ctx.json()) as { error?: string }
         if (parsed.error) message = parsed.error

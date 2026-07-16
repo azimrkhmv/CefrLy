@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { abandonDeadSession } from './sessionExpiry'
 import type { AnyTest, CefrLevel } from '../types/test'
 import type { SampleCategory, SampleContent } from '../types/sample'
 
@@ -39,6 +40,9 @@ async function invokeAdmin<T>(body: Record<string, unknown>): Promise<T> {
     let message = 'Admin request failed.'
     const ctx = (error as { context?: Response }).context
     if (ctx) {
+      // A dead session (401) reads as a confusing admin error otherwise; the
+      // function 403s — not 401s — a signed-in non-admin, so this is safe.
+      if (ctx.status === 401) await abandonDeadSession()
       try {
         const parsed = (await ctx.json()) as { error?: string; errors?: string[] }
         if (Array.isArray(parsed.errors) && parsed.errors.length > 0) {
@@ -98,6 +102,7 @@ async function invokeUsers<T>(body: Record<string, unknown>): Promise<T> {
     let message = 'User management request failed.'
     const ctx = (error as { context?: Response }).context
     if (ctx) {
+      if (ctx.status === 401) await abandonDeadSession()
       try {
         const parsed = (await ctx.json()) as { error?: string }
         if (parsed.error) message = parsed.error
@@ -159,6 +164,7 @@ async function invokeSamples<T>(body: Record<string, unknown>): Promise<T> {
     let message = 'Samples request failed.'
     const ctx = (error as { context?: Response }).context
     if (ctx) {
+      if (ctx.status === 401) await abandonDeadSession()
       try {
         const parsed = (await ctx.json()) as { error?: string; errors?: string[] }
         if (Array.isArray(parsed.errors) && parsed.errors.length > 0) {

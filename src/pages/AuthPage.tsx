@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
+import { consumeSessionExpired } from '../lib/sessionExpiry'
 import { CozyScene } from '../components/CozyScene'
 
 // Mascot alternatives — one picked at random per page load, so different
@@ -188,12 +189,22 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
   const [info, setInfo] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [showPw, setShowPw] = useState(false)
+  const [expired, setExpired] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const { session } = useAuth()
 
   const from = (location.state as { from?: string } | null)?.from ?? '/'
   const isLogin = mode === 'login'
+
+  // We were signed out because the server refused the stored token (see
+  // SessionExpiredError) — say so, otherwise arriving here looks like a bug.
+  // Read in an effect, not a state initializer: consuming the flag is a side
+  // effect, and StrictMode double-invokes initializers. Only ever set true, so
+  // the re-run that finds the flag already cleared leaves the notice standing.
+  useEffect(() => {
+    if (consumeSessionExpired()) setExpired(true)
+  }, [])
 
   // Mascot state — mirrors the design's little state machine. Random per load,
   // but ?cat=<key> (or an index) forces a specific alternative for previewing.
@@ -439,6 +450,15 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             <span className="mt-2 text-xs font-semibold text-ink-soft">At least 6 characters.</span>
           )}
 
+          {expired && !error && (
+            <p
+              role="status"
+              className="mt-4 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800"
+            >
+              Your session expired, so we signed you out. Please sign in again — your
+              progress is saved.
+            </p>
+          )}
           {error && (
             <p
               role="alert"
