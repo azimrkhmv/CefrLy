@@ -344,7 +344,7 @@ export function Layout() {
           // Less top padding than bottom: the sticky header already gives the
           // page its top breathing room, so a big pt just wasted space above
           // every page's heading (pushed content out of view).
-          className="page-enter mx-auto max-w-5xl px-4 pb-10 pt-3 sm:px-8 sm:pb-12 sm:pt-4"
+          className="page-enter mx-auto max-w-6xl px-4 pb-10 pt-3 sm:px-8 sm:pb-12 sm:pt-4"
         >
           <Outlet />
         </main>
