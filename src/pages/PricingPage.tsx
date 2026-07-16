@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRightIcon, CheckIcon } from '../components/icons'
+import { CheckIcon } from '../components/icons'
 
 // Owner-set tiers (from the Pricing design, 2026-07-10). Prices are in so'm.
 // The paid plans are real buttons; the checkout link isn't wired yet — set
@@ -188,25 +188,6 @@ export function PricingPage() {
           Start free. Upgrade when you’re ready for full exam prep — cancel anytime.
         </p>
       </div>
-
-      {/* Free-first banner */}
-      <section className="flex flex-col items-start justify-between gap-4 rounded-2xl bg-brand-soft p-5 sm:flex-row sm:items-center sm:p-6">
-        <div>
-          <p className="text-lg font-extrabold text-brand">
-            Not sure yet? Try your first mock test free
-          </p>
-          <p className="mt-1 text-sm font-bold text-brand/70">
-            Full exam structure, instant CEFR band — no card needed.
-          </p>
-        </div>
-        <Link
-          to="/reading"
-          className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
-        >
-          Start a free mock test
-          <ArrowRightIcon width={16} height={16} />
-        </Link>
-      </section>
 
       {/* Plans */}
       <div className="grid gap-5 md:grid-cols-3 md:items-stretch">
