@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckIcon } from '../components/icons'
 
@@ -134,12 +135,32 @@ function PlanCta({ cta }: { cta: Plan['cta'] }) {
   )
 }
 
-function PlanCard({ plan }: { plan: Plan }) {
+function PlanCard({
+  plan,
+  selected,
+  onSelect,
+}: {
+  plan: Plan
+  selected: boolean
+  onSelect: () => void
+}) {
   const isFree = plan.id === 'free'
   return (
     <div
-      className={`relative flex h-full flex-col rounded-2xl border border-line bg-white p-6 shadow-card ${
-        plan.recommended ? 'ring-2 ring-inset ring-brand' : ''
+      role="radio"
+      aria-checked={selected}
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onSelect()
+        }
+      }}
+      className={`relative flex h-full cursor-pointer flex-col rounded-2xl border bg-white p-6 shadow-card transition-colors ${
+        selected
+          ? 'border-brand ring-2 ring-inset ring-brand'
+          : 'border-line hover:border-ink-faint'
       }`}
     >
       <div className="flex h-7 items-center justify-between">
@@ -180,6 +201,10 @@ function PlanCard({ plan }: { plan: Plan }) {
 }
 
 export function PricingPage() {
+  // The ring follows the student's pick rather than being nailed to Pro. Pro
+  // starts selected because it's the recommended plan; the "Recommended" pill
+  // is a property of the plan, so it stays put as the ring moves.
+  const [selected, setSelected] = useState<Plan['id']>('pro')
   return (
     <div className="space-y-6">
       <div>
@@ -190,9 +215,18 @@ export function PricingPage() {
       </div>
 
       {/* Plans */}
-      <div className="grid gap-6 md:grid-cols-3 md:items-stretch">
+      <div
+        role="radiogroup"
+        aria-label="Plans"
+        className="grid gap-6 md:grid-cols-3 md:items-stretch"
+      >
         {PLANS.map((plan) => (
-          <PlanCard key={plan.id} plan={plan} />
+          <PlanCard
+            key={plan.id}
+            plan={plan}
+            selected={selected === plan.id}
+            onSelect={() => setSelected(plan.id)}
+          />
         ))}
       </div>
     </div>
