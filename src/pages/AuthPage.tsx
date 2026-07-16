@@ -223,6 +223,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
   const [customText, setCustomText] = useState<string | null>(null)
   const [quipIndex, setQuipIndex] = useState(0)
   const wakeTimer = useRef<number | null>(null)
+  const catImgRef = useRef<HTMLImageElement | null>(null)
 
   useEffect(() => {
     return () => {
@@ -238,6 +239,26 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
       ? cat.peek
       : helloText
   const showZzz = cat.sleepy && !awake
+
+  // A one-shot squash-&-stretch when the cat is poked — reads as a startled
+  // little hop. It composites over the CSS idle breathing (same transform-origin
+  // from the .cat-sleep/.cat-idle class), then releases back to it. Skipped for
+  // reduced-motion and where the Web Animations API is unavailable.
+  function pokeBounce() {
+    const el = catImgRef.current
+    if (!el || typeof el.animate !== 'function') return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    el.animate(
+      [
+        { transform: 'scale(1, 1)' },
+        { transform: 'scale(1.06, 0.9)', offset: 0.2 },
+        { transform: 'scale(0.95, 1.07)', offset: 0.45 },
+        { transform: 'scale(1.02, 0.98)', offset: 0.7 },
+        { transform: 'scale(1, 1)' },
+      ],
+      { duration: 640, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' },
+    )
+  }
 
   // Wake the cat (optionally with a specific line), then doze off again.
   function say(text?: string) {
@@ -376,15 +397,21 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             {/* the cat — click to poke it awake */}
             <button
               type="button"
-              onClick={() => say()}
+              onClick={() => {
+                pokeBounce()
+                say()
+              }}
               aria-label="Poke the cat"
               className={`relative z-[2] block w-full cursor-pointer select-none border-0 bg-transparent p-0 ${cat.frame}`}
             >
               <img
+                ref={catImgRef}
                 src={cat.src}
                 alt={cat.alt}
                 draggable={false}
-                className="cat-breathe block h-full w-full object-contain object-[left_bottom]"
+                className={`${
+                  cat.sleepy ? 'cat-sleep' : 'cat-idle'
+                } block h-full w-full object-contain object-[left_bottom]`}
               />
             </button>
           </div>

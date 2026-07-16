@@ -8,7 +8,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   }`
 
 export function AdminLayout() {
-  const { session, role } = useAuth()
+  const { session } = useAuth()
 
   return (
     <div className="min-h-screen bg-page text-ink">
@@ -27,11 +27,9 @@ export function AdminLayout() {
             <NavLink to="/admin/samples" className={navLinkClass}>
               Samples
             </NavLink>
-            {role === 'super_admin' && (
-              <NavLink to="/admin/admins" className={navLinkClass}>
-                Admins
-              </NavLink>
-            )}
+            <NavLink to="/admin/users" className={navLinkClass}>
+              Users
+            </NavLink>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">
             <Link to="/" className="font-bold text-brand hover:underline">

@@ -144,8 +144,30 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   updates), tests has slug + status (draft/published/archived), /admin area with
   role guards, admin-tests edge function (list/get/upsert with full schema-v2
   validation/setStatus/archive), fixed-template Reading form at /admin/tests/new
-  and /admin/tests/:slug, /admin/admins for the super admin. Owner accounts
-  (azimrkhmv@gmail.com, ysharpist@gmail.com) are super_admin.
+  and /admin/tests/:slug. Owner accounts (azimrkhmv@gmail.com, ysharpist@gmail.com)
+  are super_admin; azim@gmail.com was ALSO made super_admin 2026-07-16 (the owner
+  lost the azimrkhmv password — that account is still locked, and password reset
+  needs SMTP which isn't set up; see the auto_confirm note below).
+- USER DIRECTORY (/admin/users, rebuilt 2026-07-16): REPLACED the old
+  /admin/admins page, which was titled "Admins" but listed every account in a
+  role-management table with no result data. /admin/admins now redirects to
+  /admin/users. AdminUsersPage = stat tiles (accounts/students/admins/have-
+  attempted) + shared <TabStrip> role filter (All·Students·Admins) + search
+  (email/name) + a table (user, role, attempts, last band, best, last active,
+  joined). Row → /admin/users/:id (AdminUserDetailPage): Level/Activity/Account
+  cards, every onboarding answer, and the full attempt history; promote/demote
+  lives here (super_admin only, hidden for super_admin targets + your own row to
+  match what the API allows). Shared chips/labels/date helpers in
+  src/components/admin/userDisplay.tsx — the onboarding enum label maps mirror the
+  profiles CHECK constraints, keep them in lockstep.
+  admin-users v2 (deployed): listUsers/getUser now require admin OR super_admin
+  (any admin may read the directory); setUserRole is still super_admin-only with
+  the same guardrails (super_admin never assignable/removable, no self-changes).
+  listUsers rolls up attempts per user; BANDS ARE FULL-MOCK-ONLY (drills store
+  band NULL) so last_band/best_* summarise only banded attempts while
+  attempts_count/last_attempt_at count drills too. Verified e2e 2026-07-16 with a
+  throwaway admin account (since deleted): student→403, plain admin→200 on
+  listUsers/getUser, plain admin→403 on setUserRole, both pages driven in-browser.
 - DEV ONLY: an `auto_confirm_on_signup` trigger on auth.users confirms new accounts
   instantly (Supabase email confirmation is effectively bypassed). REMOVE before
   launch and set up real SMTP + confirmations.
@@ -330,8 +352,13 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   (greet → peek on password focus → farewell on submit → click cat for random
   quips), the cat floats zzz's (animated overlay) and breathes. Password has a
   show/hide eye toggle. Supabase auth + login/signup mode adaptation are
-  preserved under the visuals. Motion keyframes (cat-breathe, zzz-float,
-  bubble-in) live in index.css, reduced-motion gated. The grey "surprised" cat
+  preserved under the visuals. Motion keyframes live in index.css, reduced-motion
+  gated: cat-breathe was REPLACED 2026-07-11 by cat-sleep (sleepy cats — organic
+  inhale/hold/exhale scaling up from the cushion, origin 33% 95%) and cat-idle
+  (the awake cat — lighter/quicker breath); the img picks its class by cat.sleepy.
+  Poking the cat also fires a one-shot squash-&-stretch hop (AuthPage.pokeBounce,
+  Web Animations API, gated by prefers-reduced-motion) that composites over the
+  CSS breathing then releases. Plus zzz-float + bubble-in. The grey "surprised" cat
   (public/cat-surprised.png) is the FULL-BODY 1180x1119 RGBA asset, restored
   from the design project — resized to 738x700 and palette-quantized to ~51 KiB
   (looks identical; flat cartoon). HOW IT WAS PULLED past the 256 KiB read cap:

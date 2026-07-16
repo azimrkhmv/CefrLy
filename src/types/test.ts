@@ -13,7 +13,7 @@
 
 export type CefrLevel = 'B1' | 'B2' | 'C1'
 export type Band = 'C1' | 'B2' | 'B1' | 'below_B1'
-export type Skill = 'reading' | 'listening'
+export type Skill = 'reading' | 'listening' | 'writing'
 /** 'full' = the whole rigid mock paper; 'part' = exactly ONE canonical part of
  *  it (same layout/count rules), powering practice-by-part. */
 export type TestScope = 'full' | 'part'
@@ -210,6 +210,66 @@ export interface ListeningTest {
   /** REQUIRED iff audioMode === 'single'. */
   singleAudio?: AudioAsset
   parts: ListeningPart[]
+}
+
+// ---------------------------------------------------------------------------
+// Writing test (Phase 4) — the Multilevel writing paper: two emails + a forum
+// post. Unlike Reading/Listening there are NO gradable items and no answer key;
+// a task carries a prompt (+ an OPTIONAL image) the student writes against. The
+// `rubric` / `modelAnswer` are SERVER-ONLY (for a later grader) and get stripped
+// before the browser sees the task — same isolation rule as answers/transcripts.
+// NOTE: Writing is deliberately kept OUT of AnyTest / SanitizedTest — it does not
+// route through the graded get-test / submit-test spine (see Phase 4 PRD).
+// ---------------------------------------------------------------------------
+
+/** 1.1 = informal email (B1) · 1.2 = formal email (B2) · Part 2 = forum post (C1). */
+export type WritingTaskType = 'task_1_1' | 'task_1_2' | 'part_2'
+
+export interface WritingTaskPrompt {
+  title?: string
+  /** The writing instruction; may hold rich prose (rendered in a .passage). */
+  html: string
+}
+
+export interface WritingTaskImage {
+  /** A directly-usable image URL (public path, storage URL, or object URL).
+   *  Optional context art only — the Multilevel writing format has no charts. */
+  src: string
+  alt: string
+  caption?: string
+}
+
+export interface WritingTask {
+  id: string
+  taskType: WritingTaskType
+  /** Short display label, e.g. "Task 1.1", "Part 2". */
+  label: string
+  /** Drives the "Write at least N words" guidance + the word-count colour. */
+  minWords: number
+  maxWords?: number
+  prompt: WritingTaskPrompt
+  /** OPTIONAL — never required (no IELTS-style chart to describe). */
+  image?: WritingTaskImage
+  /** Author pick — renders the brand "Recommended" badge on the card. */
+  recommended?: boolean
+  /** SERVER-ONLY (future grader) — never delivered to the browser. */
+  rubric?: string
+  modelAnswer?: string[]
+}
+
+export interface WritingTest {
+  id: string
+  skill: 'writing'
+  title: string
+  targetLevels: CefrLevel[]
+  /** Author-set; drives the countdown on the writing screen. */
+  durationSec: number
+  /** 'full' = the Mock Test (up to 3 tasks); 'part' = a single-task drill. */
+  scope?: TestScope
+  /** iff scope='part': 1→Task 1.1, 2→Task 1.2, 3→Part 2. */
+  partNumber?: 1 | 2 | 3 | null
+  /** full = ordered tasks (1.1, 1.2, Part 2); part = exactly one. */
+  tasks: WritingTask[]
 }
 
 /** Either skill's full test (server-side). */

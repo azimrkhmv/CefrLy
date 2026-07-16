@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { abandonDeadSession } from './sessionExpiry'
-import type { AnyTest, CefrLevel } from '../types/test'
+import type { AnyTest, Band, CefrLevel } from '../types/test'
 import type { SampleCategory, SampleContent } from '../types/sample'
 
 // Client for the admin-tests edge function. The browser NEVER touches the
@@ -86,14 +86,67 @@ export function adminArchiveTest(slug: string): Promise<{ ok: true; slug: string
   return invokeAdmin({ action: 'delete', slug })
 }
 
-// --- admin-users (super admin only) ----------------------------------------
+// --- admin-users (directory reads: admin+; role changes: super admin) -------
+
+export type UserRole = 'student' | 'admin' | 'super_admin'
 
 export interface AdminUserRow {
   id: string
   email: string
   name: string | null
-  role: 'student' | 'admin' | 'super_admin'
+  first_name: string | null
+  last_name: string | null
+  role: UserRole
   created_at: string
+  last_sign_in_at: string | null
+  onboarded_at: string | null
+  self_level: string | null
+  target_band: string | null
+  /** Every attempt, drills included. */
+  attempts_count: number
+  /** Full mocks only — the subset that carries a band. */
+  mocks_count: number
+  last_attempt_at: string | null
+  last_band: Band | null
+  last_score: number | null
+  last_total: number | null
+  last_skill: string | null
+  last_test_title: string | null
+  last_mock_at: string | null
+  best_band: Band | null
+  best_score: number | null
+  best_total: number | null
+}
+
+export interface AdminAttemptRow {
+  id: string
+  created_at: string
+  raw_score: number
+  total: number
+  band: Band | null
+  test_slug: string | null
+  test_title: string | null
+  skill: string | null
+  scope: 'full' | 'part'
+  part_number: number | null
+}
+
+export interface AdminUserOnboarding {
+  first_exam: string | null
+  self_level: string | null
+  target_band: string | null
+  study_timeframe: string | null
+  weak_areas: string[] | null
+  daily_minutes: number | null
+  heard_from: string | null
+  heard_from_note: string | null
+  source: string | null
+}
+
+export interface AdminUserDetail {
+  user: AdminUserRow
+  onboarding: AdminUserOnboarding
+  attempts: AdminAttemptRow[]
 }
 
 async function invokeUsers<T>(body: Record<string, unknown>): Promise<T> {
@@ -118,6 +171,10 @@ async function invokeUsers<T>(body: Record<string, unknown>): Promise<T> {
 export async function adminListUsers(): Promise<AdminUserRow[]> {
   const { users } = await invokeUsers<{ users: AdminUserRow[] }>({ action: 'listUsers' })
   return users
+}
+
+export function adminGetUser(userId: string): Promise<AdminUserDetail> {
+  return invokeUsers({ action: 'getUser', userId })
 }
 
 export function adminSetUserRole(

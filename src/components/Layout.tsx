@@ -114,7 +114,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to="/" end icon={<HomeIcon width={19} height={19} />} label="Home" onNavigate={onNavigate} />
         <NavItem to="/reading" icon={<BookIcon width={19} height={19} />} label="Reading" onNavigate={onNavigate} />
         <NavItem to="/listening" icon={<HeadphonesIcon width={19} height={19} />} label="Listening" onNavigate={onNavigate} />
-        <SoonItem icon={<PenIcon width={19} height={19} />} label="Writing" />
+        <NavItem to="/writing" icon={<PenIcon width={19} height={19} />} label="Writing" onNavigate={onNavigate} />
         <SoonItem icon={<MicIcon width={19} height={19} />} label="Speaking" />
         {/* Model Writing/Speaking answers — fills the gap until those papers ship. */}
         <NavItem to="/samples" icon={<StarIcon width={19} height={19} />} label="Samples" onNavigate={onNavigate} />
@@ -177,6 +177,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 const PAGE_TITLES: [string, string][] = [
   ['/reading', 'Reading'],
   ['/listening', 'Listening'],
+  ['/writing', 'Writing'],
   ['/dashboard', 'My results'],
   ['/settings', 'Settings'],
   ['/pricing', 'Pricing'],
@@ -199,7 +200,9 @@ export function Layout() {
     ? BookIcon
     : p.startsWith('/listening')
       ? HeadphonesIcon
-      : p.startsWith('/dashboard')
+      : p.startsWith('/writing')
+        ? PenIcon
+        : p.startsWith('/dashboard')
         ? ChartIcon
         : p.startsWith('/settings')
           ? GearIcon

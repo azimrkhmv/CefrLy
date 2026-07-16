@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchMyAttempts } from '../lib/api'
+import { useWritingAttempts, type WritingAttempt } from '../lib/writingAttempts'
+import { TASK_LABEL } from '../lib/writingFixtures'
 import { BAND_INFO } from '../lib/bands'
 import { skillMeta } from '../lib/skills'
 import { BandRuler } from '../components/BandRuler'
@@ -9,7 +11,7 @@ import { Sparkline } from '../components/Sparkline'
 import { TabStrip, type Tab } from '../components/TabStrip'
 import { AttemptListSkeleton } from '../components/Skeleton'
 import { EmptyState } from '../components/EmptyState'
-import { ArrowRightIcon, BookIcon, HeadphonesIcon, PlusIcon } from '../components/icons'
+import { ArrowRightIcon, BookIcon, HeadphonesIcon, PenIcon, PlusIcon } from '../components/icons'
 import type { AttemptSummary } from '../types/attempt'
 import type { Band, Skill } from '../types/test'
 
@@ -28,6 +30,7 @@ const SKILL_CARD: Record<
 > = {
   reading: { tile: 'bg-brand-soft text-brand', Icon: BookIcon },
   listening: { tile: 'bg-sun-soft text-sun-ink', Icon: HeadphonesIcon },
+  writing: { tile: 'bg-emerald-50 text-emerald-800', Icon: PenIcon },
 }
 
 const shortMonth = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short' })
@@ -202,13 +205,82 @@ function AttemptCard({
   )
 }
 
+// Writing attempts are scoreless this phase (no grader): a completed card just
+// records what was written. Kept OUT of the graded AttemptCard / CEFR surfaces —
+// no rawScore, band, delta or results link (there is no writing report yet).
+function WritingAttemptCard({ attempt }: { attempt: WritingAttempt }) {
+  const totalWords = attempt.answers.reduce((n, a) => n + a.wordCount, 0)
+  const chip =
+    attempt.scope === 'full'
+      ? 'Full mock'
+      : attempt.taskType
+        ? TASK_LABEL[attempt.taskType]
+        : 'Writing'
+  return (
+    <li className="flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-card">
+      <div className="flex items-center gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-800">
+          <PenIcon width={20} height={20} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-extrabold leading-snug text-heading">{attempt.title}</p>
+          <p className="mt-0.5 text-xs font-semibold text-ink-soft">
+            {new Date(attempt.submittedAt).toLocaleString(undefined, {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            })}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3.5 flex items-center justify-between border-t border-line pt-3.5">
+        <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-bold text-brand">
+          {chip}
+        </span>
+        <span className="tnum text-sm font-bold text-emerald-700">
+          Completed · {totalWords} {totalWords === 1 ? 'word' : 'words'}
+        </span>
+      </div>
+    </li>
+  )
+}
+
+function WritingResults({ attempts }: { attempts: WritingAttempt[] }) {
+  const sorted = [...attempts].sort(
+    (a, b) => +new Date(b.submittedAt) - +new Date(a.submittedAt),
+  )
+  return (
+    <>
+      <div className="rounded-2xl bg-brand-soft p-5 sm:p-6">
+        <p className="text-sm font-extrabold text-heading">Writing feedback is coming soon</p>
+        <p className="mt-1 text-sm text-ink-soft">
+          Your submitted tasks are saved here. Detailed scoring and feedback arrive in a later
+          update.
+        </p>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base font-extrabold text-heading">All attempts</h2>
+        <span className="text-[13px] font-semibold text-ink-soft">
+          {sorted.length} {sorted.length === 1 ? 'attempt' : 'attempts'} · newest first
+        </span>
+      </div>
+      <ul className="grid gap-4 sm:grid-cols-2">
+        {sorted.map((a) => (
+          <WritingAttemptCard key={a.id} attempt={a} />
+        ))}
+      </ul>
+    </>
+  )
+}
+
 export function DashboardPage() {
   const {
     data: attempts,
     isLoading,
     error,
   } = useQuery({ queryKey: ['my-attempts'], queryFn: fetchMyAttempts })
+  const writingAttempts = useWritingAttempts()
   const [filter, setFilter] = useState<Filter>('reading')
+  const isWriting = filter === 'writing'
 
   if (isLoading) return <AttemptListSkeleton />
   if (error) {
@@ -242,7 +314,7 @@ export function DashboardPage() {
   const TABS: Tab<string>[] = [
     { key: 'reading', label: 'Reading' },
     { key: 'listening', label: 'Listening' },
-    { key: 'writing', label: 'Writing', soon: true },
+    { key: 'writing', label: 'Writing' },
     { key: 'speaking', label: 'Speaking', soon: true },
   ]
   const activeLabel = `${skillMeta(filter).label.toLowerCase()} `
@@ -265,7 +337,7 @@ export function DashboardPage() {
         </Link>
       </div>
 
-      {all.length === 0 ? (
+      {all.length === 0 && writingAttempts.length === 0 ? (
         <EmptyState
           pose="nap"
           title="No attempts yet"
@@ -289,7 +361,7 @@ export function DashboardPage() {
             onChange={(key) => setFilter(key as Filter)}
           />
 
-          {shown.length === 0 ? (
+          {(isWriting ? writingAttempts.length === 0 : shown.length === 0) ? (
             <EmptyState
               pose="nap"
               title={`No ${activeLabel}attempts yet`}
@@ -303,6 +375,8 @@ export function DashboardPage() {
                 </Link>
               }
             />
+          ) : isWriting ? (
+            <WritingResults attempts={writingAttempts} />
           ) : (
             <>
               {mocks.length > 0 && <ProgressPanel skill={filter} mocks={mocks} />}

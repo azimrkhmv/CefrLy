@@ -30,3 +30,13 @@ listening sample/
 
 .vercel
 .env*
+
+# writing reference material + official criteria (source docs, not app code)
+writing example/
+Writing criteria multilevel.pdf
+Chet tili (multilevel) baholash mezonlari - yangi.pdf
+
+# agent tooling / nested tool repos (not part of the app)
+caveman/
+.agents/
+skills-lock.json

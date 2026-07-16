@@ -132,8 +132,9 @@ export async function fetchMyAttempts(): Promise<AttemptSummary[]> {
       | null
     const testRow = Array.isArray(test) ? test[0] : test
     const stored = (row.result ?? {}) as Partial<StoredAttemptResult>
+    const rawSkill = testRow?.skill ?? stored.skill
     const skill: Skill =
-      testRow?.skill === 'listening' || stored.skill === 'listening' ? 'listening' : 'reading'
+      rawSkill === 'listening' ? 'listening' : rawSkill === 'writing' ? 'writing' : 'reading'
     // Part drills score out of their own count and carry no CEFR band; the
     // joined test row is the source, the stored result the fallback.
     const scope = testRow?.scope === 'part' || stored.scope === 'part' ? 'part' : 'full'

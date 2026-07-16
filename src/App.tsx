@@ -1,11 +1,13 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
-import { AdminRoute, SuperAdminRoute } from './components/admin/AdminRoute'
+import { AdminRoute } from './components/admin/AdminRoute'
 import { AdminLayout } from './components/admin/AdminLayout'
 import { HomePage } from './pages/HomePage'
 import { ReadingPage } from './pages/ReadingPage'
 import { ListeningPage } from './pages/ListeningPage'
+import { WritingPage } from './pages/WritingPage'
+import { WritingTaskPage } from './pages/WritingTaskPage'
 import { AuthPage } from './pages/AuthPage'
 import { TestPage } from './pages/TestPage'
 import { ResultsPage } from './pages/ResultsPage'
@@ -26,6 +28,7 @@ import { TestFormRouter } from './pages/admin/TestFormRouter'
 import { AdminSamplesPage } from './pages/admin/AdminSamplesPage'
 import { SampleFormPage } from './pages/admin/SampleFormPage'
 import { AdminUsersPage } from './pages/admin/AdminUsersPage'
+import { AdminUserDetailPage } from './pages/admin/AdminUserDetailPage'
 import { Cat } from './components/Cat'
 
 // DEV ONLY: mascot pose sheet for design review. Remove before launch.
@@ -65,6 +68,8 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/reading" element={<ReadingPage />} />
           <Route path="/listening" element={<ListeningPage />} />
+          <Route path="/writing" element={<WritingPage />} />
+          <Route path="/writing/task/:id" element={<WritingTaskPage />} />
           <Route path="/samples" element={<SamplesPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/support" element={<SupportPage />} />
@@ -88,9 +93,10 @@ export default function App() {
           <Route path="/admin/samples" element={<AdminSamplesPage />} />
           <Route path="/admin/samples/new" element={<SampleFormPage />} />
           <Route path="/admin/samples/:slug" element={<SampleFormPage />} />
-          <Route element={<SuperAdminRoute />}>
-            <Route path="/admin/admins" element={<AdminUsersPage />} />
-          </Route>
+          <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/users/:id" element={<AdminUserDetailPage />} />
+          {/* The directory absorbed the old admins-only page; keep the link alive. */}
+          <Route path="/admin/admins" element={<Navigate to="/admin/users" replace />} />
         </Route>
       </Route>
     </Routes>

@@ -64,6 +64,9 @@ const PART_LABELS: Record<Skill, string[]> = {
     'Three extracts',
     'Note completion',
   ],
+  // Writing part drills aren't authored through this form yet (Phase 4 is
+  // UI-first); the labels keep the Record<Skill> exhaustive.
+  writing: ['Informal email (Task 1.1)', 'Formal email (Task 1.2)', 'Forum post (Task 2)'],
 }
 
 // Single-part test authoring (create at /admin/tests/new/part, edit via

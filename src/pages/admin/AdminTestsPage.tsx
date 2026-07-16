@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -7,6 +8,7 @@ import {
   type AdminTestRow,
 } from '../../lib/adminApi'
 import { EmptyState } from '../../components/EmptyState'
+import { TabStrip } from '../../components/TabStrip'
 
 // Spec rule-8 chips — keep identical to the consts in TestFormPage.
 const STATUS_BADGE: Record<string, string> = {
@@ -18,13 +20,54 @@ const STATUS_BADGE: Record<string, string> = {
 const NEUTRAL_BADGE =
   'rounded-full border border-line bg-white px-2.5 py-0.5 text-xs font-bold text-ink-soft'
 
+// The tabs mirror the "New test ▾" menu, so the list filters by the same three
+// kinds you can create. 'part' cuts across skills (a reading drill is both
+// Reading and a drill) — that overlap is intended: the tabs are views, not a
+// partition.
+type TypeFilter = 'all' | 'reading' | 'listening' | 'part'
+type StatusFilter = 'all' | 'published' | 'draft'
+
+const TYPE_TABS: { key: TypeFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'reading', label: 'Reading' },
+  { key: 'listening', label: 'Listening' },
+  { key: 'part', label: 'Part drills' },
+]
+
+function matchesType(test: AdminTestRow, filter: TypeFilter) {
+  if (filter === 'all') return true
+  if (filter === 'part') return test.scope === 'part'
+  return test.skill === filter
+}
+
+function matchesSearch(test: AdminTestRow, q: string) {
+  if (!q) return true
+  const needle = q.toLowerCase()
+  return test.title.toLowerCase().includes(needle) || test.slug.toLowerCase().includes(needle)
+}
+
 export function AdminTestsPage() {
   const queryClient = useQueryClient()
+  const [type, setType] = useState<TypeFilter>('all')
+  const [status, setStatus] = useState<StatusFilter>('all')
+  const [search, setSearch] = useState('')
   const {
     data: tests,
     isLoading,
     error,
   } = useQuery({ queryKey: ['admin-tests'], queryFn: adminListTests })
+
+  const rows = useMemo(
+    () =>
+      (tests ?? []).filter(
+        (t) =>
+          matchesType(t, type) &&
+          (status === 'all' || t.status === status) &&
+          matchesSearch(t, search),
+      ),
+    [tests, type, status, search],
+  )
+  const filtered = rows.length !== (tests?.length ?? 0)
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['admin-tests'] })
 
@@ -67,6 +110,38 @@ export function AdminTestsPage() {
         </details>
       </div>
 
+      {tests && tests.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TabStrip tabs={TYPE_TABS} value={type} onChange={setType} ariaLabel="Filter by test type" />
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as StatusFilter)}
+              aria-label="Filter by status"
+              className="rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm font-bold text-ink outline-none transition-colors focus:border-brand"
+            >
+              <option value="all">All statuses</option>
+              <option value="published">Published</option>
+              <option value="draft">Draft</option>
+            </select>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search title or slug…"
+              aria-label="Search tests"
+              className="w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-brand sm:w-56"
+            />
+          </div>
+        </div>
+      )}
+
+      {filtered && (
+        <p className="text-sm text-ink-soft">
+          Showing <span className="font-bold text-ink">{rows.length}</span> of {tests?.length} tests.
+        </p>
+      )}
+
       {isLoading && <p className="text-ink-soft">Loading tests…</p>}
       {error && (
         <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-800">
@@ -103,7 +178,23 @@ export function AdminTestsPage() {
         />
       )}
 
-      {tests && tests.length > 0 && (
+      {tests && tests.length > 0 && rows.length === 0 && (
+        <p className="rounded-2xl border border-line bg-white px-4 py-10 text-center text-sm text-ink-soft shadow-card">
+          No tests match this filter.{' '}
+          <button
+            onClick={() => {
+              setType('all')
+              setStatus('all')
+              setSearch('')
+            }}
+            className="font-bold text-brand hover:underline"
+          >
+            Clear filters
+          </button>
+        </p>
+      )}
+
+      {rows.length > 0 && (
         <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="border-b border-line text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft">
@@ -117,7 +208,7 @@ export function AdminTestsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {tests.map((test) => (
+              {rows.map((test) => (
                 <tr key={test.id}>
                   <td className="px-4 py-3 font-bold">{test.title}</td>
                   <td className="tnum px-4 py-3 text-xs text-ink-soft">{test.slug}</td>
