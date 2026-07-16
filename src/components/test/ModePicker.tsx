@@ -46,11 +46,13 @@ export function ModePicker({
     onStart(mode, durationSec)
   }
 
+  // One fact per tick: a reader scanning two cards side by side compares rows,
+  // so anything joined with a '·' has to be split out to be comparable.
   const practiceBullets = [
     `Full test — ${totalParts} parts, ${totalQuestions} questions`,
     ...(listening
       ? ['No time limit — go at your own pace', 'Play, pause, rewind and replay the recordings']
-      : ['Pause and resume any time']),
+      : ['Set your own time limit — 20 to 90 minutes', 'Pause and resume any time']),
   ]
   const simulationBullets = [
     `Full test — ${totalParts} parts, ${totalQuestions} questions`,
@@ -59,7 +61,7 @@ export function ModePicker({
           'Recordings start on their own, just like the exam hall',
           'No pausing or rewinding — submitting unlocks when the audio ends',
         ]
-      : [`${simMinutes} minutes · no pause · submits itself when time is up`]),
+      : [`${simMinutes} minutes on the clock`, 'No pausing', 'Submits itself when time is up']),
   ]
 
   return (
