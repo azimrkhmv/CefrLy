@@ -48,9 +48,16 @@ export function PassageQuestions({ part, numbering }: PartProps) {
 
   // Passage gets the wider column (~58%) — reading is the hard part; the T/F +
   // short-MCQ controls on the right need far less room.
+  //
+  // The pane sticks inside the exam's scroll area, which is the viewport minus
+  // the top bar (ExamScreen is fixed inset-0). A flat 75vh knew nothing about
+  // that bar and stopped short, leaving a dead strip under the passage while
+  // the text scrolled inside it. The 7rem covers the bar + the top-4 offset +
+  // breathing room — same figure the writing paper's split pane already uses
+  // (WritingTaskPage), which sits under an identical header; keep them in step.
   return (
     <div className="grid gap-6 lg:grid-cols-[7fr_5fr]">
-      <div className="self-start rounded-2xl border border-line bg-white p-5 shadow-card lg:sticky lg:top-4 lg:max-h-[75vh] lg:overflow-y-auto">
+      <div className="self-start rounded-2xl border border-line bg-white p-5 shadow-card lg:sticky lg:top-4 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto">
         {part.passage?.title && (
           <h3 className="mb-3 text-base font-extrabold text-heading">{part.passage.title}</h3>
         )}
