@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRightIcon, CheckIcon } from '../components/icons'
 
@@ -88,21 +87,6 @@ const PLANS: Plan[] = [
       // TODO: paste the Premium checkout link here to make the button go live.
       checkoutUrl: '',
     },
-  },
-]
-
-const FAQ: { q: ReactNode; a: string }[] = [
-  {
-    q: 'Can I cancel anytime?',
-    a: 'Yes. Plans are billed monthly — switch or cancel whenever, and you keep access until the end of the period.',
-  },
-  {
-    q: 'How do Writing & Speaking checks work?',
-    a: 'Submit your response and get a scored review with comments, usually within 24 hours.',
-  },
-  {
-    q: 'What if I use all my checks?',
-    a: 'Reading and Listening practice stays open, and your checks refresh at the start of the next month.',
   },
 ]
 
@@ -230,19 +214,6 @@ export function PricingPage() {
           <PlanCard key={plan.id} plan={plan} />
         ))}
       </div>
-
-      {/* FAQ */}
-      <section>
-        <h2 className="text-base font-extrabold text-heading">Questions</h2>
-        <div className="mt-4 grid gap-6 sm:grid-cols-3">
-          {FAQ.map((item, i) => (
-            <div key={i}>
-              <p className="text-sm font-extrabold text-heading">{item.q}</p>
-              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{item.a}</p>
-            </div>
-          ))}
-        </div>
-      </section>
     </div>
   )
 }
