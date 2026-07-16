@@ -98,9 +98,9 @@ const CTA_VARIANT: Record<Plan['cta']['variant'], string> = {
 
 function FeatureRow({ lead, text, note }: Feature) {
   return (
-    <div className="flex items-start gap-3">
-      <CheckIcon width={18} height={18} strokeWidth={2.4} className="mt-0.5 shrink-0 text-ok" />
-      <span className="text-sm font-bold text-ink">
+    <div className="flex items-start gap-3.5">
+      <CheckIcon width={21} height={21} strokeWidth={2.4} className="mt-0.5 shrink-0 text-ok" />
+      <span className="text-base font-bold text-ink">
         {lead && <strong className="font-extrabold text-heading">{lead} </strong>}
         {text}
         {note && <span className="font-bold text-ink-soft"> {note}</span>}
@@ -110,7 +110,7 @@ function FeatureRow({ lead, text, note }: Feature) {
 }
 
 function PlanCta({ cta }: { cta: Plan['cta'] }) {
-  const cls = `flex w-full items-center justify-center rounded-xl px-5 py-3 text-sm font-bold transition-colors ${CTA_VARIANT[cta.variant]}`
+  const cls = `flex w-full items-center justify-center rounded-xl px-6 py-3.5 text-base font-bold transition-colors ${CTA_VARIANT[cta.variant]}`
   // Internal route (Free) → Link; a wired checkout URL → external link; until a
   // paid plan's link is pasted in, it's a plain (real) button ready to connect.
   if (cta.to) {
@@ -138,42 +138,42 @@ function PlanCard({ plan }: { plan: Plan }) {
   const isFree = plan.id === 'free'
   return (
     <div
-      className={`relative flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-card ${
+      className={`relative flex h-full flex-col rounded-2xl border border-line bg-white p-6 shadow-card ${
         plan.recommended ? 'ring-2 ring-inset ring-brand' : ''
       }`}
     >
-      <div className="flex h-6 items-center justify-between">
+      <div className="flex h-7 items-center justify-between">
         <span
-          className={`text-xs font-extrabold uppercase tracking-[0.14em] ${
+          className={`text-[13px] font-extrabold uppercase tracking-[0.14em] ${
             isFree ? 'text-ink-soft' : 'text-brand'
           }`}
         >
           {plan.name}
         </span>
         {plan.recommended && (
-          <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-extrabold text-brand">
+          <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-extrabold text-brand">
             Recommended
           </span>
         )}
       </div>
 
-      <div className="mt-3 flex items-baseline gap-1.5">
-        <span className="text-[34px] font-extrabold leading-none text-heading">{plan.price}</span>
-        {plan.unit && <span className="text-sm font-extrabold text-ink-soft">{plan.unit}</span>}
+      <div className="mt-3.5 flex items-baseline gap-1.5">
+        <span className="text-[40px] font-extrabold leading-none text-heading">{plan.price}</span>
+        {plan.unit && <span className="text-base font-extrabold text-ink-soft">{plan.unit}</span>}
       </div>
-      <p className="mt-1 text-sm font-bold text-ink-soft">{plan.period}</p>
+      <p className="mt-1.5 text-base font-bold text-ink-soft">{plan.period}</p>
 
-      <div className="my-4 border-t border-line" />
+      <div className="my-5 border-t border-line" />
 
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-3">
         {plan.features.map((f) => (
           <FeatureRow key={f.text} {...f} />
         ))}
       </div>
 
-      <div className="mt-auto pt-5">
+      <div className="mt-auto pt-6">
         <PlanCta cta={plan.cta} />
-        <p className="mt-2 text-center text-xs font-semibold text-ink-soft">{plan.cta.helper}</p>
+        <p className="mt-2.5 text-center text-sm font-semibold text-ink-soft">{plan.cta.helper}</p>
       </div>
     </div>
   )
@@ -190,7 +190,7 @@ export function PricingPage() {
       </div>
 
       {/* Plans */}
-      <div className="grid gap-5 md:grid-cols-3 md:items-stretch">
+      <div className="grid gap-6 md:grid-cols-3 md:items-stretch">
         {PLANS.map((plan) => (
           <PlanCard key={plan.id} plan={plan} />
         ))}
