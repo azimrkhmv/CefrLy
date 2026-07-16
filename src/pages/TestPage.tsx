@@ -566,7 +566,7 @@ export function TestPage() {
 
       {/* Scrollable paper */}
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-8">
+        <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-8">
           {submission.isError && (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-800">
               <span className="min-w-0">
