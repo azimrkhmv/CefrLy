@@ -767,8 +767,14 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   seed reading tests: reading-sub-full (premium) + reading-sub-part1 (free).
   .env.local points at staging; prod values saved in .env.local.prod-backup.
   Delete the staging project when done (idle cost ~$0.32/day).
-- NOT DONE / on prod deploy: migrations 0015 + 0016 and the edge functions
-  (start-session, admin-users, get-entitlements new; admin-tests changed) must be
-  applied/deployed for prod — kept LOCAL per the no-push-to-prod-while-students-
-  live rule. Until then prod is unchanged. Verified: tsc (tsconfig.app.json) +
-  prod build clean; student flow verified on staging.
+- DEPLOYED TO PRODUCTION 2026-07-29 (owner approved): migrations 0015 + 0016
+  applied to prod; edge functions get-entitlements (v1 new), admin-users (v3),
+  admin-tests (v5), start-session (v5, enforcement) deployed; frontend pushed to
+  main (commit "feat: subscription plans + free/premium tests") → Vercel prod
+  build. LAUNCH ACCESS CONFIG (owner call): reading-mock-2 + listening-mock-3 =
+  free (open to all so no student was locked out); listening-mock-2 = premium.
+  All existing accounts default free (0 paid at launch). New tests still default
+  premium — mark the free ones via /admin/tests. The staging project
+  (CefrLy-staging tftkynrgkhcllnebncxm) was PAUSED after testing (owner to delete
+  from the dashboard). No checkout wired yet — activation stays manual via
+  /admin/users setUserPlan.
