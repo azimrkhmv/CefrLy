@@ -19,7 +19,25 @@ import type {
   WeakArea,
 } from '../types/profile'
 import type { Sample } from '../types/sample'
+import type { ActionType, Entitlements, PlanId } from '../types/plan'
 import { abandonDeadSession } from './sessionExpiry'
+
+/** Thrown when start-session refuses a PREMIUM test: either the plan can't open
+ *  premium tests at all ('premium_only') or a Pro plan hit its monthly cap
+ *  ('plan_limit'). The UI shows an upgrade prompt instead of a generic error. */
+export class PlanLimitError extends Error {
+  constructor(
+    message: string,
+    public code: 'plan_limit' | 'premium_only',
+    public action: ActionType,
+    public plan: PlanId,
+    /** Only set for 'plan_limit'. */
+    public limit: number | null,
+  ) {
+    super(message)
+    this.name = 'PlanLimitError'
+  }
+}
 
 async function invokeFunction<T>(name: string, body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(name, { body })
@@ -29,10 +47,26 @@ async function invokeFunction<T>(name: string, body: Record<string, unknown>): P
     if (ctx) {
       if (ctx.status === 401) await abandonDeadSession()
       try {
-        const parsed = (await ctx.json()) as { error?: string }
+        const parsed = (await ctx.json()) as {
+          error?: string
+          code?: string
+          action?: ActionType
+          plan?: PlanId
+          limit?: number
+        }
         if (parsed.error) message = parsed.error
-      } catch {
-        // keep the generic message
+        if (parsed.code === 'plan_limit' || parsed.code === 'premium_only') {
+          throw new PlanLimitError(
+            message,
+            parsed.code,
+            parsed.action ?? 'full_mock',
+            parsed.plan ?? 'free',
+            parsed.limit ?? null,
+          )
+        }
+      } catch (err) {
+        if (err instanceof PlanLimitError) throw err
+        // otherwise keep the generic message
       }
     }
     throw new Error(message)
@@ -40,11 +74,16 @@ async function invokeFunction<T>(name: string, body: Record<string, unknown>): P
   return data as T
 }
 
+/** The signed-in user's plan + this month's usage against its caps. */
+export function fetchEntitlements(): Promise<Entitlements> {
+  return invokeFunction<Entitlements>('get-entitlements', {})
+}
+
 /** Published test metadata. RLS guarantees test content/answers are unreachable here. */
 export async function listTests(): Promise<TestCatalogEntry[]> {
   const { data, error } = await supabase
     .from('tests')
-    .select('id, title, skill, target_levels, duration_sec, scope, part_number')
+    .select('id, title, skill, target_levels, duration_sec, scope, part_number, access')
     .order('created_at', { ascending: true })
   if (error) throw new Error(error.message)
   return (data ?? []) as TestCatalogEntry[]

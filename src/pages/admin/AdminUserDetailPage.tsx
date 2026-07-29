@@ -1,12 +1,20 @@
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { adminGetUser, adminSetUserRole, type AdminAttemptRow } from '../../lib/adminApi'
+import {
+  adminGetUser,
+  adminSetUserPlan,
+  adminSetUserRole,
+  type AdminAttemptRow,
+} from '../../lib/adminApi'
 import { useAuth } from '../../lib/auth'
+import type { PlanId } from '../../types/plan'
 import {
   BandPill,
   DAILY_MINUTES_LABEL,
   FIRST_EXAM_LABEL,
   HEARD_FROM_LABEL,
+  PlanChip,
   RoleChip,
   SELF_LEVEL_LABEL,
   TIMEFRAME_LABEL,
@@ -54,6 +62,33 @@ export function AdminUserDetailPage() {
 
   const roleMutation = useMutation({
     mutationFn: (role: 'student' | 'admin') => adminSetUserRole(id, role),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-user', id] })
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+    },
+  })
+
+  // Plan grant form (super_admin only). Drafts re-sync whenever the loaded user
+  // changes (incl. after a save's refetch), so the inputs always show the
+  // stored plan/expiry.
+  const [planDraft, setPlanDraft] = useState<PlanId>('free')
+  const [expiryDraft, setExpiryDraft] = useState('') // yyyy-mm-dd, '' = no expiry
+  useEffect(() => {
+    if (!data) return
+    setPlanDraft(data.user.plan)
+    setExpiryDraft(data.user.plan_expires_at ? data.user.plan_expires_at.slice(0, 10) : '')
+  }, [data?.user.plan, data?.user.plan_expires_at, id])
+
+  const planMutation = useMutation({
+    mutationFn: () =>
+      adminSetUserPlan(
+        id,
+        planDraft,
+        planDraft === 'free' || !expiryDraft
+          ? null
+          : // End of the chosen day, UTC — the grant lasts through that date.
+            new Date(`${expiryDraft}T23:59:59Z`).toISOString(),
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-user', id] })
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })
@@ -128,6 +163,77 @@ export function AdminUserDetailPage() {
           {(roleMutation.error as Error).message}
         </p>
       )}
+
+      {/* Subscription: read-only chip for admins; super_admins can grant a plan.
+          No checkout is wired yet, so this manual grant is how a paying student
+          gets Pro/Premium (they pay off-platform, then a super_admin flips it). */}
+      <Card title="Plan">
+        {myRole === 'super_admin' ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-ink-soft">Current:</span>
+              <PlanChip plan={user.plan} expiresAt={user.plan_expires_at} />
+              {user.plan !== 'free' && user.plan_expires_at && (
+                <span className="text-xs text-ink-soft">
+                  until {formatDay(user.plan_expires_at)}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="text-sm">
+                <span className="mb-1 block text-xs font-bold text-ink-soft">Plan</span>
+                <select
+                  value={planDraft}
+                  onChange={(e) => setPlanDraft(e.target.value as PlanId)}
+                  className="rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-bold text-ink outline-none focus:border-brand"
+                >
+                  <option value="free">Free</option>
+                  <option value="pro">Pro</option>
+                  <option value="premium">Premium</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block text-xs font-bold text-ink-soft">
+                  Expires {planDraft === 'free' ? '(n/a)' : '(optional)'}
+                </span>
+                <input
+                  type="date"
+                  value={expiryDraft}
+                  disabled={planDraft === 'free'}
+                  onChange={(e) => setExpiryDraft(e.target.value)}
+                  className="rounded-xl border border-line bg-white px-3.5 py-2 text-sm text-ink outline-none focus:border-brand disabled:opacity-50"
+                />
+              </label>
+              <button
+                onClick={() => planMutation.mutate()}
+                disabled={planMutation.isPending}
+                className="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-deep disabled:opacity-50"
+              >
+                {planMutation.isPending ? 'Saving…' : 'Save plan'}
+              </button>
+              {planMutation.isSuccess && !planMutation.isPending && (
+                <span className="text-sm font-bold text-ok">Saved ✓</span>
+              )}
+            </div>
+            <p className="text-xs text-ink-faint">
+              No expiry = open-ended. Leave a paid plan without a date and it never lapses.
+            </p>
+            {planMutation.error && (
+              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-sm text-rose-800">
+                {(planMutation.error as Error).message}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <PlanChip plan={user.plan} expiresAt={user.plan_expires_at} />
+            {user.plan !== 'free' && user.plan_expires_at && (
+              <span className="text-xs text-ink-soft">until {formatDay(user.plan_expires_at)}</span>
+            )}
+            <span className="text-xs text-ink-faint">Only a super admin can change plans.</span>
+          </div>
+        )}
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card title="Level">

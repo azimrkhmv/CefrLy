@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     case 'list': {
       const { data, error } = await admin
         .from('tests')
-        .select('id, slug, skill, title, status, scope, part_number, created_at')
+        .select('id, slug, skill, title, status, scope, part_number, access, created_at')
         .neq('status', 'archived')
         .order('created_at', { ascending: false })
       if (error) return json({ error: error.message }, 500)
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       }
       const { data: test, error } = await admin
         .from('tests')
-        .select('id, slug, skill, title, status, target_levels, duration_sec, scope, part_number, created_at')
+        .select('id, slug, skill, title, status, target_levels, duration_sec, scope, part_number, access, created_at')
         .eq('slug', slug)
         .maybeSingle()
       if (error) return json({ error: error.message }, 500)
@@ -113,10 +113,17 @@ Deno.serve(async (req) => {
 
       const { data: existing, error: findError } = await admin
         .from('tests')
-        .select('id, status')
+        .select('id, status, access')
         .eq('slug', slug)
         .maybeSingle()
       if (findError) return json({ ok: false, errors: [findError.message] }, 500)
+
+      // Access (free/premium) isn't part of the test-content forms, so it's
+      // preserved across edits: use body.access if the caller sent a valid one,
+      // else keep the existing value, else default to 'premium' for new tests.
+      const reqAccess =
+        body.access === 'free' ? 'free' : body.access === 'premium' ? 'premium' : undefined
+      const access = reqAccess ?? existing?.access ?? 'premium'
 
       const meta = {
         slug,
@@ -127,6 +134,7 @@ Deno.serve(async (req) => {
         status,
         scope,
         part_number: partNumber ?? null,
+        access,
       }
 
       let testId: string
@@ -175,6 +183,25 @@ Deno.serve(async (req) => {
       if (error) return json({ error: error.message }, 500)
       if (!updated || updated.length === 0) return json({ error: 'Test not found' }, 404)
       return json({ ok: true, slug, status })
+    }
+
+    case 'setAccess': {
+      // Flip a test between 'free' (open to everyone) and 'premium' (paid plans).
+      const slug = body.slug
+      const access = body.access
+      if (typeof slug !== 'string' || !slug) return json({ error: 'slug is required' }, 400)
+      if (access !== 'free' && access !== 'premium') {
+        return json({ error: "access must be 'free' or 'premium'" }, 400)
+      }
+      const { data: updated, error } = await admin
+        .from('tests')
+        .update({ access })
+        .eq('slug', slug)
+        .neq('status', 'archived')
+        .select('id')
+      if (error) return json({ error: error.message }, 500)
+      if (!updated || updated.length === 0) return json({ error: 'Test not found' }, 404)
+      return json({ ok: true, slug, access })
     }
 
     case 'delete': {

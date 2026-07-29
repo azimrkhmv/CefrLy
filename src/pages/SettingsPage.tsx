@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import type { DailyMinutes, HeardFrom, StudyPrefs, StudyTimeframe, WeakArea } from '../types/profile'
 import { Chip, OptionCard } from '../components/choice'
 import { GoalBandPicker } from '../components/GoalBandPicker'
+import { PlanSummary } from '../components/PlanSummary'
 
 // Study preferences from onboarding, editable any time. Attribution
 // (heard_from) is shown but write-once; onboarded_at is never touched here.
@@ -128,6 +129,8 @@ export function SettingsPage() {
       </p>
 
       <div className="mt-6 space-y-5">
+        <PlanSummary />
+
         <section className="rounded-2xl bg-white p-6 shadow-soft ring-1 ring-line/50 sm:p-7">
           <h2 className="font-extrabold text-heading">Your name</h2>
           <p className="mt-0.5 text-sm text-ink-soft">How Cefrly greets you across the app.</p>

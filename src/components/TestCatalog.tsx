@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { fetchMyAttempts, listTests } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { hasPremiumAccess } from '../lib/plans'
 import { skillMeta } from '../lib/skills'
 import type { Skill } from '../types/test'
 import type { AttemptSummary } from '../types/attempt'
@@ -27,8 +28,10 @@ export function buildAttemptInfo(attempts: AttemptSummary[] | undefined) {
 /** Published-test catalog for ONE skill. Reading and Listening share this shell;
  *  the sidebar's skill nav effectively filters (each page shows its skill only). */
 export function TestCatalog({ skill }: { skill: Skill }) {
-  const { session } = useAuth()
+  const { session, plan } = useAuth()
   const meta = skillMeta(skill)
+  // auth.plan resolves staff → 'premium', so this is true for admins too.
+  const canOpenPremium = hasPremiumAccess(plan)
   const {
     data: allTests,
     isLoading,
@@ -115,7 +118,11 @@ export function TestCatalog({ skill }: { skill: Skill }) {
             className="reveal"
             style={{ animationDelay: `${Math.min(i, 9) * 0.06}s` }}
           >
-            <TestCard test={test} attemptInfo={attemptInfo.get(test.id)} />
+            <TestCard
+              test={test}
+              attemptInfo={attemptInfo.get(test.id)}
+              locked={(test.access ?? 'premium') === 'premium' && !canOpenPremium}
+            />
           </div>
         ))}
       </div>

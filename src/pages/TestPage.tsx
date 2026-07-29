@@ -6,9 +6,11 @@ import {
   cancelSession,
   controlSession,
   fetchTestState,
+  PlanLimitError,
   startSession,
   submitTest,
 } from '../lib/api'
+import { ACTION_LABEL_ONE } from '../lib/plans'
 import { useAnswersStore } from '../store/answers'
 import { useAudioStore } from '../store/audio'
 import { useHighlightsStore } from '../store/highlights'
@@ -352,6 +354,52 @@ export function TestPage() {
   // No open attempt: part drills auto-start (skeleton while starting, error if
   // that fails); full tests show the "Choose a mode" picker.
   if (attempt.session === null) {
+    // Plan cap reached (either path — auto-started drill or picked mode): show a
+    // friendly upgrade prompt rather than a raw error. Takes priority over both
+    // the drill-error and picker branches below.
+    if (start.error instanceof PlanLimitError) {
+      const limitErr = start.error
+      const isPremiumOnly = limitErr.code === 'premium_only'
+      return (
+        <ExamScreen center>
+          <div className="mx-auto max-w-md space-y-5">
+            <img
+              src="/cat-surprised.png"
+              alt=""
+              aria-hidden
+              className="mx-auto h-40 w-auto object-contain"
+            />
+            <div className="space-y-2">
+              <h2 className="text-xl font-extrabold text-heading">
+                {isPremiumOnly
+                  ? 'This is a Premium test'
+                  : `You’ve used this month’s premium ${ACTION_LABEL_ONE[limitErr.action]} limit`}
+              </h2>
+              <p className="text-sm text-ink-soft">{limitErr.message}</p>
+              <p className="text-xs text-ink-faint">
+                {isPremiumOnly
+                  ? 'Free practice tests are always open — no upgrade needed for those.'
+                  : 'Your premium allowance refreshes next month, or go Premium for unlimited.'}
+              </p>
+            </div>
+            <div className="flex flex-col items-center gap-2.5 sm:flex-row sm:justify-center">
+              <Link
+                to="/pricing"
+                className="w-full rounded-xl bg-brand px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-deep sm:w-auto"
+              >
+                See plans
+              </Link>
+              <Link
+                to={catalogPath}
+                className="w-full rounded-xl border border-line bg-white px-6 py-3 text-sm font-bold text-ink transition-colors hover:border-ink-faint sm:w-auto"
+              >
+                Back to tests
+              </Link>
+            </div>
+          </div>
+        </ExamScreen>
+      )
+    }
     if (isPartTest) {
       if (start.isError) {
         return (

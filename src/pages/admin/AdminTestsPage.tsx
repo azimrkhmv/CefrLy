@@ -5,8 +5,10 @@ import {
   adminArchiveTest,
   adminListTests,
   adminSetStatus,
+  adminSetTestAccess,
   type AdminTestRow,
 } from '../../lib/adminApi'
+import type { TestAccess } from '../../types/plan'
 import { EmptyState } from '../../components/EmptyState'
 import { TabStrip } from '../../components/TabStrip'
 
@@ -80,6 +82,11 @@ export function AdminTestsPage() {
     mutationFn: (slug: string) => adminArchiveTest(slug),
     onSuccess: invalidate,
   })
+  const accessMutation = useMutation({
+    mutationFn: ({ slug, access }: { slug: string; access: TestAccess }) =>
+      adminSetTestAccess(slug, access),
+    onSuccess: invalidate,
+  })
 
   function handleArchive(test: AdminTestRow) {
     const sure = window.confirm(
@@ -148,9 +155,9 @@ export function AdminTestsPage() {
           {error instanceof Error ? error.message : 'Could not load tests.'}
         </p>
       )}
-      {(statusMutation.error || archiveMutation.error) && (
+      {(statusMutation.error || archiveMutation.error || accessMutation.error) && (
         <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-800">
-          {((statusMutation.error ?? archiveMutation.error) as Error).message}
+          {((statusMutation.error ?? archiveMutation.error ?? accessMutation.error) as Error).message}
         </p>
       )}
 
@@ -203,6 +210,7 @@ export function AdminTestsPage() {
                 <th className="px-4 py-3">Slug</th>
                 <th className="px-4 py-3">Skill</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Access</th>
                 <th className="px-4 py-3">Created</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
@@ -224,6 +232,31 @@ export function AdminTestsPage() {
                     <span className={STATUS_BADGE[test.status] ?? NEUTRAL_BADGE}>
                       {test.status}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {(() => {
+                      const access = test.access ?? 'premium'
+                      const isFree = access === 'free'
+                      return (
+                        <button
+                          onClick={() =>
+                            accessMutation.mutate({
+                              slug: test.slug,
+                              access: isFree ? 'premium' : 'free',
+                            })
+                          }
+                          disabled={accessMutation.isPending}
+                          title={isFree ? 'Open to everyone — click to lock to paid plans' : 'Paid plans only — click to open to everyone'}
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-bold transition-opacity hover:opacity-80 disabled:opacity-50 ${
+                            isFree
+                              ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+                              : 'bg-brand text-white'
+                          }`}
+                        >
+                          {isFree ? 'Free' : 'Premium'}
+                        </button>
+                      )
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-ink-soft">
                     {new Date(test.created_at).toLocaleDateString(undefined, { dateStyle: 'medium' })}

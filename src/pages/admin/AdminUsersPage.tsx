@@ -3,7 +3,13 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { adminListUsers, type AdminUserRow } from '../../lib/adminApi'
 import { TabStrip } from '../../components/TabStrip'
-import { BandPill, RoleChip, formatDay, relativeDay } from '../../components/admin/userDisplay'
+import {
+  BandPill,
+  PlanChip,
+  RoleChip,
+  formatDay,
+  relativeDay,
+} from '../../components/admin/userDisplay'
 
 type RoleFilter = 'all' | 'student' | 'admin'
 
@@ -117,6 +123,7 @@ export function AdminUsersPage() {
               <tr>
                 <th className="px-4 py-3">User</th>
                 <th className="px-4 py-3">Role</th>
+                <th className="px-4 py-3">Plan</th>
                 <th className="px-4 py-3">Attempts</th>
                 <th className="px-4 py-3">Last band</th>
                 <th className="px-4 py-3">Best</th>
@@ -139,6 +146,9 @@ export function AdminUsersPage() {
                     </td>
                     <td className="px-4 py-3">
                       <RoleChip role={user.role} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <PlanChip plan={user.plan} expiresAt={user.plan_expires_at} />
                     </td>
                     <td className="px-4 py-3 tabular-nums text-ink-soft">
                       {user.attempts_count === 0 ? (

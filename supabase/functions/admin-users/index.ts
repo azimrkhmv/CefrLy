@@ -13,10 +13,11 @@
 // attempts_count and last_attempt_at.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders, json } from './cors.ts'
+import { isPlanId } from './plans.ts'
 
 const PROFILE_FIELDS =
-  'id, name, first_name, last_name, role, created_at, onboarded_at, first_exam, ' +
-  'self_level, target_band, study_timeframe, weak_areas, daily_minutes, ' +
+  'id, name, first_name, last_name, role, plan, plan_expires_at, created_at, onboarded_at, ' +
+  'first_exam, self_level, target_band, study_timeframe, weak_areas, daily_minutes, ' +
   'heard_from, heard_from_note, source'
 
 const ATTEMPT_FIELDS =
@@ -141,6 +142,8 @@ Deno.serve(async (req) => {
             first_name: p?.first_name ?? null,
             last_name: p?.last_name ?? null,
             role: p?.role ?? 'student',
+            plan: p?.plan ?? 'free',
+            plan_expires_at: p?.plan_expires_at ?? null,
             created_at: u.created_at,
             last_sign_in_at: u.last_sign_in_at ?? null,
             onboarded_at: p?.onboarded_at ?? null,
@@ -186,6 +189,8 @@ Deno.serve(async (req) => {
           first_name: p?.first_name ?? null,
           last_name: p?.last_name ?? null,
           role: p?.role ?? 'student',
+          plan: p?.plan ?? 'free',
+          plan_expires_at: p?.plan_expires_at ?? null,
           created_at: authUser.user.created_at,
           last_sign_in_at: authUser.user.last_sign_in_at ?? null,
           onboarded_at: p?.onboarded_at ?? null,
@@ -238,6 +243,63 @@ Deno.serve(async (req) => {
         .eq('id', userId)
       if (updateError) return json({ error: updateError.message }, 500)
       return json({ ok: true, userId, role })
+    }
+
+    // Manual plan grant (no checkout wired yet): a super_admin sets a student's
+    // plan + optional expiry from /admin/users. Guarded like setUserRole
+    // (super_admin only). Every change is written to plan_changes for history.
+    case 'setUserPlan': {
+      if (callerRole !== 'super_admin') {
+        return json({ error: 'Forbidden: super admin access required' }, 403)
+      }
+      const userId = body.userId
+      const plan = body.plan
+      if (typeof userId !== 'string' || !userId) return json({ error: 'userId is required' }, 400)
+      if (!isPlanId(plan)) {
+        return json({ error: "plan must be 'free', 'pro' or 'premium'" }, 400)
+      }
+      // expiresAt: an ISO date string, or null for no expiry. Free plans never
+      // carry an expiry. Reject anything unparseable.
+      let expiresAt: string | null = null
+      if (plan !== 'free' && body.expiresAt != null) {
+        const t = new Date(body.expiresAt as string)
+        if (Number.isNaN(t.getTime())) return json({ error: 'expiresAt is not a valid date' }, 400)
+        expiresAt = t.toISOString()
+      }
+      const note = typeof body.note === 'string' && body.note.trim() ? body.note.trim() : null
+
+      const { data: target, error: targetError } = await admin
+        .from('profiles')
+        .select('plan')
+        .eq('id', userId)
+        .maybeSingle()
+      if (targetError) return json({ error: targetError.message }, 500)
+      if (!target) return json({ error: 'User not found' }, 404)
+
+      const now = new Date().toISOString()
+      const { error: updateError } = await admin
+        .from('profiles')
+        .update({
+          plan,
+          plan_expires_at: expiresAt,
+          plan_source: 'admin',
+          plan_updated_at: now,
+          plan_updated_by: user.id,
+        })
+        .eq('id', userId)
+      if (updateError) return json({ error: updateError.message }, 500)
+
+      // Best-effort audit row (don't fail the grant if the insert hiccups).
+      await admin.from('plan_changes').insert({
+        user_id: userId,
+        from_plan: target.plan ?? 'free',
+        to_plan: plan,
+        expires_at: expiresAt,
+        changed_by: user.id,
+        note,
+      })
+
+      return json({ ok: true, userId, plan, plan_expires_at: expiresAt })
     }
 
     default:

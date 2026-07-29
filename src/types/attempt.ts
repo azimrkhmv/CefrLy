@@ -8,6 +8,7 @@ import type {
   Skill,
   TestScope,
 } from './test'
+import type { TestAccess } from './plan'
 
 /** Row shape returned when listing published tests (metadata only, never content). */
 export interface TestCatalogEntry {
@@ -19,6 +20,8 @@ export interface TestCatalogEntry {
   /** Missing on rows read before migration 0010 → treat as 'full'. */
   scope?: TestScope
   part_number?: number | null
+  /** 'free' = open to everyone; 'premium' = paid plans. Missing → treat premium. */
+  access?: TestAccess
 }
 
 /** Per-item grading result, built server-side by the submit-test edge function. */

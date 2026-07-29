@@ -1,6 +1,8 @@
 import { BAND_INFO } from '../../lib/bands'
 import type { Band } from '../../types/test'
 import type { UserRole } from '../../lib/adminApi'
+import type { PlanId } from '../../types/plan'
+import { isExpired } from '../../lib/plans'
 
 // Shared presentation for the admin user directory + profile pages. Labels for
 // the onboarding enums live here so the two pages can never drift apart.
@@ -29,6 +31,29 @@ export function RoleChip({ role }: { role: UserRole }) {
       }`}
     >
       {ROLE_LABEL[role]}
+    </span>
+  )
+}
+
+export const PLAN_LABEL: Record<PlanId, string> = {
+  free: 'Free',
+  pro: 'Pro',
+  premium: 'Premium',
+}
+
+/** Plan badge: paid plans are brand-filled; an expired paid plan reads muted
+ *  with an "expired" note (it's really acting as free). */
+export function PlanChip({ plan, expiresAt }: { plan: PlanId; expiresAt?: string | null }) {
+  const expired = plan !== 'free' && isExpired(expiresAt ?? null)
+  const paid = plan !== 'free' && !expired
+  return (
+    <span
+      className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+        paid ? 'bg-brand text-white' : 'border border-line bg-white text-ink-soft'
+      }`}
+    >
+      {PLAN_LABEL[plan]}
+      {expired && ' · expired'}
     </span>
   )
 }

@@ -689,3 +689,86 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   src/components/choice.tsx (OptionCard/Chip — MonthGrid removed 2026-07-10) and
   src/components/BandCat.tsx (BAND_CAT/BAND_QUIP/BandCat which maps C2→C1 art/
   QuipBubble — moved out of HomePage; GoalBandPicker reuses them).
+
+## Subscriptions / plans (built 2026-07-28; MODEL CHANGED 2026-07-29)
+- MODEL v2 (owner call 2026-07-29) — FREE vs PREMIUM TESTS, not free-user
+  allowances: every test carries `tests.access` ('free'|'premium', migration
+  0016, DEFAULT 'premium' so all existing tests lock to paid; owner flips the
+  "free taster" set to 'free' from /admin/tests). FREE tests are open to EVERY
+  signed-in user — unlimited, forever, NO plan, NO counting, NO monthly reset.
+  PREMIUM tests need a paid plan: the free plan is blocked outright (an upgrade
+  wall), Pro is capped monthly per the pricing page, Premium + staff unlimited.
+  Free-test usage counts toward NOTHING; the only monthly-resetting thing is the
+  paid subscription (its expiry + Pro's premium caps, calendar-month UTC). This
+  SUPERSEDES the original "free users get 1 mock / 2 reading… per month" model
+  below — the free plan now has no premium allowance at all.
+- THREE plans: free (default) | pro | premium. PLAN_LIMITS now = the monthly caps
+  on PREMIUM tests only (null = unlimited): free row all 0 (never consulted — the
+  gate blocks free-plan users first), Pro (75k) = 5 full_mock / ∞ reading / ∞
+  listening / 10 writing / 10 speaking, Premium (100k) = all unlimited. Helper
+  hasPremiumAccess(plan)= pro|premium. Canonical in src/lib/plans.ts + a Deno
+  mirror in supabase/functions/_plan-source/plans.ts COPIED into each function
+  that needs it (start-session, get-entitlements, admin-users) — no shared imports,
+  same as per-function cors.ts. TestAccess type lives in both.
+- ACTION TYPES + mapping (actionForTest, identical client+server): scope 'full' →
+  full_mock (any skill); scope 'part' reading → reading_set; part listening →
+  listening_set; skill writing → writing_check; skill speaking → speaking_check.
+  Writing/Speaking checks are SCHEMA-ONLY today (those skills aren't built) —
+  their limits are stored + will enforce when the features ship; only full_mock /
+  reading_set / listening_set are live and shown in the UI.
+- SCHEMA (migration 0015, NOT yet applied to prod — see the launch rule):
+  profiles gains plan (check free/pro/premium, default 'free'), plan_expires_at,
+  plan_source, plan_updated_at, plan_updated_by. These columns are DELIBERATELY
+  not in any `grant update` → service_role-only writable, exactly like `role`; a
+  student can never upgrade themselves. plan_changes audit table (RLS on, no
+  policies = service_role only) records every admin grant. Existing accounts
+  default to Free (owner call 2026-07-28).
+- ENFORCEMENT is SERVER-SIDE only (never trust the client). start-session's
+  enforceAccess(): FREE test → allow (no counting). PREMIUM test → staff bypass;
+  effective plan (expired paid → free); free plan → 403 {code:'premium_only'} (an
+  upgrade wall); else limit=PLAN_LIMITS[plan][action], null→allow (Premium), else
+  count PREMIUM-test attempts this month + still-open PREMIUM sessions on OTHER
+  tests (premiumActionOf filters access='premium'); used>=limit → 403
+  {code:'plan_limit', action, plan, limit, used}. submit-test is NOT gated (a
+  started attempt always finishes). get-entitlements (read-only) reports plan +
+  premiumAccess + this-month PREMIUM usage; it only reports, so tampering gains
+  nothing. admin-tests gained `access` in list/get/upsert (upsert PRESERVES the
+  existing access — the content forms don't send it) + a setAccess action
+  (free/premium toggle).
+- ACTIVATION is MANUAL (no checkout wired, owner call 2026-07-28): a super_admin
+  grants a plan + optional expiry from /admin/users/:id (admin-users action
+  setUserPlan, super_admin-only like setUserRole, writes plan_changes). Pricing
+  page paid CTAs open Telegram (COMMUNITY_URL) to "Contact us on Telegram to
+  upgrade"; a plan's checkoutUrl, once pasted in PricingPage.tsx, overrides that
+  with a real checkout link. Free CTA still → /reading.
+- FRONTEND: api.ts fetchEntitlements() + PlanLimitError (invokeFunction throws it
+  on code:'plan_limit' OR 'premium_only'; carries .code); auth.tsx exposes `plan`
+  (effective, staff→premium) with role. Catalog: listTests + TestCatalogEntry gain
+  `access`; TestCard shows a green "Free" or brand "Premium" (LockIcon) badge and,
+  when premium & the user's plan can't open it, a locked "Unlock" → /pricing
+  button (TestCatalog passes locked = premium && !hasPremiumAccess(plan)). TestPage
+  catches PlanLimitError → full-screen upgrade card (cat-surprised), copy differs
+  by code (premium_only = "This is a Premium test"; plan_limit = "used this
+  month's premium … limit"). SettingsPage <PlanSummary>: free plan shows "unlimited
+  free tests, premium locked"; paid shows this-month premium usage bars. PricingPage
+  Free column REWRITTEN to "Unlimited free practice tests / Instant CEFR band /
+  Every free test any time / No card needed / ✗ Premium mock tests" (FeatureRow now
+  supports `excluded` → CloseIcon). Admin: AdminUsersPage Plan column +
+  AdminUserDetailPage plan card (super_admin grant); AdminTestsPage Access column =
+  a Free/Premium toggle chip (adminSetTestAccess). PlanChip/PLAN_LABEL in
+  userDisplay.tsx. Types in src/types/plan.ts (TestAccess, Entitlements.premiumAccess).
+- STAGING TEST ENV (2026-07-29): free Supabase project CefrLy-staging
+  (tftkynrgkhcllnebncxm) mirrors prod schema (all 14 migrations replayed from
+  prod's migration history + a reconstructed base profiles/handle_new_user
+  scaffold) + migrations 0015 & 0016. Edge fns deployed there: get-test,
+  submit-test, start-session (v2, access gate), session-status, session-control,
+  get-entitlements (v2), admin-users. NOT yet deployed there: admin-tests (its
+  two ~9KB validators make hand-transcription risky — deploy via CLI). Two compact
+  seed reading tests: reading-sub-full (premium) + reading-sub-part1 (free).
+  .env.local points at staging; prod values saved in .env.local.prod-backup.
+  Delete the staging project when done (idle cost ~$0.32/day).
+- NOT DONE / on prod deploy: migrations 0015 + 0016 and the edge functions
+  (start-session, admin-users, get-entitlements new; admin-tests changed) must be
+  applied/deployed for prod — kept LOCAL per the no-push-to-prod-while-students-
+  live rule. Until then prod is unchanged. Verified: tsc (tsconfig.app.json) +
+  prod build clean; student flow verified on staging.

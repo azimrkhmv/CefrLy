@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import { abandonDeadSession } from './sessionExpiry'
 import type { AnyTest, Band, CefrLevel } from '../types/test'
 import type { SampleCategory, SampleContent } from '../types/sample'
+import type { PlanId, TestAccess } from '../types/plan'
 
 // Client for the admin-tests edge function. The browser NEVER touches the
 // tests/test_content tables for admin work — every read and write goes
@@ -18,6 +19,8 @@ export interface AdminTestRow {
   /** 'part' = single-part drill; missing on rows read before migration 0010. */
   scope?: 'full' | 'part'
   part_number?: number | null
+  /** 'free' = open to everyone; 'premium' = paid plans only. Default premium. */
+  access?: TestAccess
   created_at: string
 }
 
@@ -86,6 +89,14 @@ export function adminArchiveTest(slug: string): Promise<{ ok: true; slug: string
   return invokeAdmin({ action: 'delete', slug })
 }
 
+/** Flip a test between 'free' (open to everyone) and 'premium' (paid plans). */
+export function adminSetTestAccess(
+  slug: string,
+  access: TestAccess,
+): Promise<{ ok: true; slug: string; access: TestAccess }> {
+  return invokeAdmin({ action: 'setAccess', slug, access })
+}
+
 // --- admin-users (directory reads: admin+; role changes: super admin) -------
 
 export type UserRole = 'student' | 'admin' | 'super_admin'
@@ -97,6 +108,9 @@ export interface AdminUserRow {
   first_name: string | null
   last_name: string | null
   role: UserRole
+  plan: PlanId
+  /** When a paid plan lapses; null = no expiry / free. */
+  plan_expires_at: string | null
   created_at: string
   last_sign_in_at: string | null
   onboarded_at: string | null
@@ -182,6 +196,17 @@ export function adminSetUserRole(
   role: 'student' | 'admin',
 ): Promise<{ ok: true; userId: string; role: string }> {
   return invokeUsers({ action: 'setUserRole', userId, role })
+}
+
+/** Manually grant a plan (super_admin only). `expiresAt` is an ISO string or
+ *  null for no expiry; ignored for the free plan. */
+export function adminSetUserPlan(
+  userId: string,
+  plan: PlanId,
+  expiresAt: string | null,
+  note?: string,
+): Promise<{ ok: true; userId: string; plan: PlanId; plan_expires_at: string | null }> {
+  return invokeUsers({ action: 'setUserPlan', userId, plan, expiresAt, note })
 }
 
 // --- admin-samples (Writing/Speaking model-answer library) -----------------
