@@ -239,8 +239,9 @@ export function PricingPage() {
       <div>
         <h1 className="text-2xl font-extrabold text-heading">Pricing</h1>
         <p className="mt-1.5 max-w-2xl text-sm text-ink-soft">
-          Start free. Upgrade when you’re ready for full exam prep — cancel anytime. Free allowances
-          refresh every month.
+          Free practice tests are unlimited and always open — no card, no limits. Upgrade to Pro or
+          Premium to unlock the premium mock tests; your subscription renews monthly and you can
+          cancel anytime.
         </p>
       </div>
 

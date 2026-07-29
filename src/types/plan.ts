@@ -1,9 +1,10 @@
 // Subscription plans — the canonical shape shared by the pricing page, the
 // entitlements display and (mirrored) the edge functions that enforce them.
 //
-// Plans mirror the pricing page: free (default) | pro | premium. Free caps
-// reset each calendar month (UTC); paid caps are monthly too. `null` in a limit
-// means UNLIMITED.
+// Plans mirror the pricing page: free (default) | pro | premium. FREE tests are
+// open to everyone, unlimited, and never metered — only PREMIUM tests draw on a
+// plan. The Pro monthly caps below (and the subscription itself) reset each
+// calendar month (UTC). `null` in a limit means UNLIMITED.
 
 export type PlanId = 'free' | 'pro' | 'premium'
 

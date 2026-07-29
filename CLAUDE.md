@@ -778,3 +778,39 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   (CefrLy-staging tftkynrgkhcllnebncxm) was PAUSED after testing (owner to delete
   from the dashboard). No checkout wired yet — activation stays manual via
   /admin/users setUserPlan.
+
+## ⚠️ DEFERRED — REVISIT WHEN THE 4-SECTION FULL MOCK SHIPS (flagged 2026-07-29)
+A subscription audit on 2026-07-29 found the usage/limit engine is only
+"good enough" while the product is single-skill papers. It MUST be reworked
+when the real 4-section mock (Reading + Listening + Writing + Speaking in ONE
+sitting) is built — that product does NOT exist yet, but Pro/Premium pricing
+already sells it as "5 full mock tests / month". A future full audit (run
+AFTER the 4-section mock exists) MUST fix all of the following together — they
+were deliberately NOT fixed in 2026-07 because the fix depends on what a
+"full mock" becomes:
+  1. WHAT COUNTS AS "1 FULL MOCK": today `actionForTest` maps ONE single-skill
+     `scope:'full'` paper (a reading OR a listening paper) to `full_mock`, so a
+     Pro user's "5 mocks/mo" is spent on individual skill papers. Once the
+     4-section mock is one bookable unit, "1 full mock" must mean the whole
+     4-section sitting, and single-skill full papers need their own action/limit
+     (or become free/practice). Decide this FIRST — everything below follows.
+  2. UNIFY THE TWO DIVERGENT "used" COUNTERS: get-entitlements counts SUBMITTED
+     attempts only; start-session counts SUBMITTED attempts + still-OPEN sessions
+     on other tests. So the meter a student sees ("3/5") can differ from what
+     actually blocks them. Extract ONE shared counting function used by both.
+  3. CLOSE THE "START BUT NEVER SUBMIT" LOOPHOLE: because consumption is only
+     recorded at submit (attempts row) and open sessions stop counting once they
+     expire, a Pro user can open a premium paper, read it all, never submit, let
+     the session expire, and repeat forever — viewing unlimited premium content
+     while the counter stays at 0. Record consumption durably at START (e.g.
+     count premium sessions created this period; add a `cancelled_at` so a real
+     Exit-cancel doesn't count while a genuine attempt does).
+  4. ALIGN THE USAGE WINDOW TO THE SUBSCRIPTION PERIOD, NOT THE UTC CALENDAR
+     MONTH: the Pro cap resets on the 1st of the month (monthStartUTC) but a plan
+     granted mid-month expires ~30 days later, so someone who pays on the 28th
+     gets two calendar-month allowances inside one paid month. Count usage within
+     the subscription period (plan_updated_at → plan_expires_at) or bill on
+     calendar months so the two windows coincide.
+Already handled in 2026-07 and NOT part of this deferral: RLS/security (no client
+bypass), expiry stored end-of-day (T23:59:59Z), admin views show effective/expired
+plan via PlanChip, stale "free allowances refresh monthly" copy removed.
