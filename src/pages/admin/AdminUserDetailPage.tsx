@@ -49,6 +49,16 @@ function attemptLabel(a: AdminAttemptRow) {
   return a.scope === 'part' && a.part_number !== null ? `${title} · Part ${a.part_number}` : title
 }
 
+/** Today + N months as a local yyyy-mm-dd (for the expiry date input). */
+function plusMonthsDate(months: number): string {
+  const d = new Date()
+  d.setMonth(d.getMonth() + months)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 export function AdminUserDetailPage() {
   const { id = '' } = useParams()
   const { session, role: myRole } = useAuth()
@@ -184,7 +194,13 @@ export function AdminUserDetailPage() {
                 <span className="mb-1 block text-xs font-bold text-ink-soft">Plan</span>
                 <select
                   value={planDraft}
-                  onChange={(e) => setPlanDraft(e.target.value as PlanId)}
+                  onChange={(e) => {
+                    const next = e.target.value as PlanId
+                    setPlanDraft(next)
+                    // Paid plans are monthly → default the expiry to 1 month from
+                    // today so a grant lapses automatically (admin can override).
+                    if (next !== 'free' && !expiryDraft) setExpiryDraft(plusMonthsDate(1))
+                  }}
                   className="rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-bold text-ink outline-none focus:border-brand"
                 >
                   <option value="free">Free</option>
@@ -192,18 +208,47 @@ export function AdminUserDetailPage() {
                   <option value="premium">Premium</option>
                 </select>
               </label>
-              <label className="text-sm">
+              <div className="text-sm">
                 <span className="mb-1 block text-xs font-bold text-ink-soft">
-                  Expires {planDraft === 'free' ? '(n/a)' : '(optional)'}
+                  Expires {planDraft === 'free' ? '(n/a)' : ''}
                 </span>
-                <input
-                  type="date"
-                  value={expiryDraft}
-                  disabled={planDraft === 'free'}
-                  onChange={(e) => setExpiryDraft(e.target.value)}
-                  className="rounded-xl border border-line bg-white px-3.5 py-2 text-sm text-ink outline-none focus:border-brand disabled:opacity-50"
-                />
-              </label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    value={expiryDraft}
+                    disabled={planDraft === 'free'}
+                    onChange={(e) => setExpiryDraft(e.target.value)}
+                    className="rounded-xl border border-line bg-white px-3.5 py-2 text-sm text-ink outline-none focus:border-brand disabled:opacity-50"
+                  />
+                  {planDraft !== 'free' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setExpiryDraft(plusMonthsDate(1))}
+                        className="rounded-lg border border-line bg-white px-2 py-2 text-xs font-bold text-ink-soft transition-colors hover:border-brand hover:text-brand"
+                      >
+                        +1 mo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setExpiryDraft(plusMonthsDate(3))}
+                        className="rounded-lg border border-line bg-white px-2 py-2 text-xs font-bold text-ink-soft transition-colors hover:border-brand hover:text-brand"
+                      >
+                        +3 mo
+                      </button>
+                      {expiryDraft && (
+                        <button
+                          type="button"
+                          onClick={() => setExpiryDraft('')}
+                          className="rounded-lg border border-line bg-white px-2 py-2 text-xs font-bold text-ink-soft transition-colors hover:border-rose-300 hover:text-rose-700"
+                        >
+                          No expiry
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
               <button
                 onClick={() => planMutation.mutate()}
                 disabled={planMutation.isPending}
@@ -216,7 +261,9 @@ export function AdminUserDetailPage() {
               )}
             </div>
             <p className="text-xs text-ink-faint">
-              No expiry = open-ended. Leave a paid plan without a date and it never lapses.
+              Paid plans default to <span className="font-bold text-ink-soft">1 month from today</span> and
+              drop back to Free automatically when the date passes. Use +1 mo / +3 mo, or clear the date
+              for an open-ended grant.
             </p>
             {planMutation.error && (
               <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-sm text-rose-800">
