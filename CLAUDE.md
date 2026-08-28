@@ -171,6 +171,12 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   skeletons repainted on the main thread every frame.
 - Verified on the prod preview build: Accessibility 100, Best Practices 100,
   SEO 100, Agentic Browsing 100 on /login; LCP 202 ms, CLS 0 on the app shell.
+- DEPLOYED TO PRODUCTION 2026-08-28 (commit 3f87462, pushed to main → Vercel).
+  Measured on cefrly.vercel.app/login: Accessibility 100, Best Practices 100,
+  SEO 100, Agentic Browsing 100; LCP 502 ms warm / 1324 ms on a cold edge cache
+  (the difference is the mascot PNG: 103 ms vs 902 ms to download), CLS 0.
+  The same commit also shipped the Speaking section — see the note at the end of
+  this file.
 - ENTRY CHUNK COMPOSITION, measured 2026-08-28 (687 KB pre-minify, 39 modules):
   react-dom 540 KB (79%), HomePage 25, AuthPage 21, Cat 18, Layout 14, App 10,
   icons 8, api 7, BandRuler 7 — everything else under 4. The floor is react-dom;
@@ -896,3 +902,15 @@ were deliberately NOT fixed in 2026-07 because the fix depends on what a
 Already handled in 2026-07 and NOT part of this deferral: RLS/security (no client
 bypass), expiry stored end-of-day (T23:59:59Z), admin views show effective/expired
 plan via PlanChip, stale "free allowances refresh monthly" copy removed.
+
+## ⚠️ SPEAKING IS LIVE BUT UNFINISHED (shipped 2026-08-28, commit 3f87462)
+The owner chose to deploy the in-progress Speaking section to production with
+the performance work. What is live: the 6-part catalog, task pages, the mic
+check, and custom questions — all FRONTEND ONLY, driven by
+src/lib/speakingFixtures.ts and localStorage (speakingAttempts/speakingDraft/
+speakingCustom). There is NO backend: no DB table, no edge function, no AI
+grading, no band score. Students can reach it from the sidebar.
+The sections above still describe Writing/Speaking as "not built" and mark them
+"soon" on the roadmap chips — that copy is STALE for Speaking. Reconcile it when
+the Speaking backend lands (grading rubric work is in the gitignored
+`Speaking band score/` and `Sample for ai/` folders).
