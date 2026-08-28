@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode, type SVGProps } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Timer } from '../components/test/Timer'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { WritingModePicker } from '../components/writing/WritingModePicker'
 import { CloseIcon } from '../components/icons'
 import { findWritingTest } from '../lib/writingCatalog'
 import { useCustomWritingTests } from '../lib/writingCustom'
@@ -13,7 +14,7 @@ import {
   type WritingDraft,
 } from '../lib/writingDraft'
 import { addWritingAttempt, type WritingAnswer } from '../lib/writingAttempts'
-import type { WritingTask, WritingTest } from '../types/test'
+import type { TestMode, WritingTask, WritingTest } from '../types/test'
 
 // The writing exam takes over the whole viewport — no app shell — so the student
 // concentrates on the paper. Portalled to <body> for the same reason TestPage is:
@@ -83,26 +84,107 @@ function WritingRunner({ test, onLeave }: { test: WritingTest; onLeave: () => vo
   const tasks = test.tasks
   const isFull = (test.scope ?? 'full') === 'full'
 
-  // Resume an in-progress draft, or start a fresh one. The draft carries the
-  // clock start, every task's text, and which task the student is on.
-  const [draft, setDraft] = useState<WritingDraft>(() => {
-    const existing = readWritingDraft(test.id)
-    return existing ?? { startedAt: Date.now(), answers: {}, taskIndex: 0 }
-  })
+  // Resume an in-progress draft, or show the mode picker (null draft). Every
+  // task AND the full mock starts at the picker — Simulation vs Practice — the
+  // same choice Reading and Listening offer. The chosen mode + deadline live in
+  // the draft, so a refresh resumes the attempt without re-asking.
+  const [draft, setDraft] = useState<WritingDraft | null>(() => readWritingDraft(test.id))
   const [confirm, setConfirm] = useState<Confirm>(null)
   const [submitted, setSubmitted] = useState(false)
 
   // Autosave every change so a refresh / accidental exit loses nothing. Guarded
   // inside saveWritingDraft — blocked/full storage must never crash the exam.
   useEffect(() => {
-    if (submitted) return
+    if (submitted || !draft) return
     saveWritingDraft(test.id, draft)
   }, [test.id, draft, submitted])
 
-  const expiresAt = useMemo(
-    () => new Date(draft.startedAt + test.durationSec * 1000).toISOString(),
-    [draft.startedAt, test.durationSec],
+  // Mode chosen → start the clock. Practice sends the student's own limit,
+  // simulation the fixed test duration.
+  const startAttempt = (mode: TestMode, durationSec: number) => {
+    const now = Date.now()
+    setDraft({
+      mode,
+      startedAt: now,
+      expiresAt: now + durationSec * 1000,
+      pausedAt: null,
+      answers: {},
+      taskIndex: 0,
+    })
+  }
+
+  if (!draft) {
+    return (
+      <ExamScreen center>
+        <button
+          type="button"
+          onClick={onLeave}
+          className="absolute left-4 top-4 flex items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-bold text-ink transition-colors hover:border-ink-faint sm:left-6 sm:top-6"
+        >
+          <BackIcon width={18} height={18} />
+          <span className="hidden sm:inline">Back to Writing</span>
+        </button>
+        <WritingModePicker test={test} onStart={startAttempt} />
+      </ExamScreen>
+    )
+  }
+
+  return (
+    <RunningWriting
+      test={test}
+      tasks={tasks}
+      isFull={isFull}
+      draft={draft}
+      setDraft={setDraft as (fn: (d: WritingDraft) => WritingDraft) => void}
+      confirm={confirm}
+      setConfirm={setConfirm}
+      submitted={submitted}
+      setSubmitted={setSubmitted}
+      onLeave={onLeave}
+    />
   )
+}
+
+// The running exam — split out so it only mounts once a mode is chosen (the
+// draft is guaranteed non-null here).
+function RunningWriting({
+  test,
+  tasks,
+  isFull,
+  draft,
+  setDraft,
+  confirm,
+  setConfirm,
+  submitted,
+  setSubmitted,
+  onLeave,
+}: {
+  test: WritingTest
+  tasks: WritingTask[]
+  isFull: boolean
+  draft: WritingDraft
+  setDraft: (fn: (d: WritingDraft) => WritingDraft) => void
+  confirm: Confirm
+  setConfirm: (c: Confirm) => void
+  submitted: boolean
+  setSubmitted: (v: boolean) => void
+  onLeave: () => void
+}) {
+  const isPractice = draft.mode === 'practice'
+
+  const expiresAt = useMemo(() => new Date(draft.expiresAt).toISOString(), [draft.expiresAt])
+  const pausedAtIso = draft.pausedAt ? new Date(draft.pausedAt).toISOString() : null
+
+  // Practice pause/resume — freezing the clock shifts the deadline forward by the
+  // paused span on resume, so no time is lost. The Timer reads pausedAt directly.
+  const togglePause = () =>
+    setDraft((d) => {
+      if (d.pausedAt) {
+        const paused = Date.now() - d.pausedAt
+        return { ...d, expiresAt: d.expiresAt + paused, pausedAt: null }
+      }
+      return { ...d, pausedAt: Date.now() }
+    })
 
   const taskIndex = Math.min(draft.taskIndex, tasks.length - 1)
   const task = tasks[taskIndex]
@@ -173,14 +255,28 @@ function WritingRunner({ test, onLeave }: { test: WritingTest; onLeave: () => vo
               <span className="hidden sm:inline">Exit</span>
             </button>
             <div className="min-w-0">
-              <h1 className="truncate text-base font-extrabold text-heading">{test.title}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-base font-extrabold text-heading">{test.title}</h1>
+                <span className="hidden shrink-0 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-brand sm:inline">
+                  {isPractice ? 'Practice' : 'Simulation'}
+                </span>
+              </div>
               <p className="hidden text-xs text-ink-soft sm:block">
                 {task.label} · {wordGuidance(task)}
               </p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <Timer expiresAt={expiresAt} onExpire={onExpire} />
+            <Timer expiresAt={expiresAt} onExpire={onExpire} pausedAt={pausedAtIso} />
+            {isPractice && (
+              <button
+                type="button"
+                onClick={togglePause}
+                className="rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+              >
+                {draft.pausedAt ? 'Resume' : 'Pause'}
+              </button>
+            )}
             <button
               type="button"
               onClick={handleSubmitClick}
@@ -269,13 +365,16 @@ function WritingRunner({ test, onLeave }: { test: WritingTest; onLeave: () => vo
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
+              disabled={!!draft.pausedAt}
               placeholder="Write your answer here…"
-              className="min-h-[24rem] flex-1 resize-y rounded-xl border border-line bg-page px-4 py-3 text-[15px] leading-relaxed text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand/40"
+              className="min-h-[24rem] flex-1 resize-y rounded-xl border border-line bg-page px-4 py-3 text-[15px] leading-relaxed text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-60"
             />
             <p className="mt-2 text-xs text-ink-soft">
-              {metMin
-                ? 'Word target reached — keep going or submit when you are ready.'
-                : wordGuidance(task) + '.'}
+              {draft.pausedAt
+                ? 'Paused — resume the timer to keep writing.'
+                : metMin
+                  ? 'Word target reached — keep going or submit when you are ready.'
+                  : wordGuidance(task) + '.'}
             </p>
           </div>
         </div>
@@ -312,6 +411,23 @@ function WritingRunner({ test, onLeave }: { test: WritingTest; onLeave: () => vo
         onCancel={() => setConfirm(null)}
       />
     </ExamScreen>
+  )
+}
+
+function BackIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      {...props}
+    >
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
   )
 }
 

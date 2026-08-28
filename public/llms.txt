@@ -1,0 +1,21 @@
+# Cefrly
+
+> CEFR (English proficiency) mock exams and preparation for Uzbek learners.
+> Timed Reading and Listening papers graded to an indicative CEFR band
+> (below B1 / B1 / B2 / C1), plus model Writing and Speaking answers.
+
+Cefrly is a single-page web app. Almost everything below the marketing pages
+requires an account, so only the public pages are listed here.
+
+## Pages
+
+- [Home](https://cefrly.vercel.app/): personal dashboard; signed-out visitors are sent to log in.
+- [Log in](https://cefrly.vercel.app/login): email or Google sign-in.
+- [Sign up](https://cefrly.vercel.app/signup): create an account.
+- [Pricing](https://cefrly.vercel.app/pricing): Free, Pro and Premium plans.
+- [Support](https://cefrly.vercel.app/support): FAQ and the Telegram community.
+
+## Optional
+
+- [Robots](https://cefrly.vercel.app/robots.txt): crawl rules.
+- [Sitemap](https://cefrly.vercel.app/sitemap.xml): the publicly indexable pages.

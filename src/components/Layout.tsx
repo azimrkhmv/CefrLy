@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from 'react'
+import { Suspense, useState, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { RouteFallback } from './RouteFallback'
 import { useAuth } from '../lib/auth'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { Logo } from './Logo'
@@ -60,7 +61,9 @@ function NavItem({
           {isActive && (
             <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-brand" />
           )}
-          <span className={isActive ? 'text-brand' : 'text-ink-faint group-hover:text-ink-soft'}>
+          {/* ink-soft, not ink-faint — ink-faint is 2.0:1 and misses even the
+              3:1 non-text contrast minimum for icons. */}
+          <span className={isActive ? 'text-brand' : 'text-ink-soft group-hover:text-ink'}>
             {icon}
           </span>
           <span>{label}</span>
@@ -70,21 +73,9 @@ function NavItem({
   )
 }
 
-function SoonItem({ icon, label }: { icon: ReactNode; label: string }) {
-  return (
-    <div className={`${navItemBase} px-3 text-ink-faint`} title="Coming soon">
-      <span className="text-ink-faint">{icon}</span>
-      <span>{label}</span>
-      <span className="ml-auto rounded-full border border-line px-2 py-0.5 text-[10px] font-bold lowercase text-ink-faint">
-        soon
-      </span>
-    </div>
-  )
-}
-
 function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-faint">
+    <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-soft">
       {children}
     </p>
   )
@@ -94,7 +85,9 @@ function MockStat({ num, label }: { num: string; label: string }) {
   return (
     <div>
       <div className="text-[17px] font-extrabold tabular-nums leading-none text-brand">{num}</div>
-      <div className="mt-1 text-[9.5px] font-bold uppercase tracking-wide text-ink-soft">
+      {/* brand-deep, not ink-soft: ink-soft on the card's brand-soft fill is
+          4.3:1, just under WCAG AA for this 9.5px label. */}
+      <div className="mt-1 text-[9.5px] font-bold uppercase tracking-wide text-brand-deep">
         {label}
       </div>
     </div>
@@ -115,7 +108,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to="/reading" icon={<BookIcon width={19} height={19} />} label="Reading" onNavigate={onNavigate} />
         <NavItem to="/listening" icon={<HeadphonesIcon width={19} height={19} />} label="Listening" onNavigate={onNavigate} />
         <NavItem to="/writing" icon={<PenIcon width={19} height={19} />} label="Writing" onNavigate={onNavigate} />
-        <SoonItem icon={<MicIcon width={19} height={19} />} label="Speaking" />
+        <NavItem to="/speaking" icon={<MicIcon width={19} height={19} />} label="Speaking" onNavigate={onNavigate} />
         {/* Model Writing/Speaking answers — fills the gap until those papers ship. */}
         <NavItem to="/samples" icon={<StarIcon width={19} height={19} />} label="Samples" onNavigate={onNavigate} />
       </nav>
@@ -164,7 +157,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={onNavigate}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
+          // accent-deep, not accent: white on --color-accent is 4.2:1 and fails
+          // WCAG AA for 14px text. accent-deep is 5.7:1 and reads the same.
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent-deep px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-brand"
         >
           <UsersIcon width={17} height={17} />
           Join CEFR Community
@@ -178,6 +173,7 @@ const PAGE_TITLES: [string, string][] = [
   ['/reading', 'Reading'],
   ['/listening', 'Listening'],
   ['/writing', 'Writing'],
+  ['/speaking', 'Speaking'],
   ['/dashboard', 'My results'],
   ['/settings', 'Settings'],
   ['/pricing', 'Pricing'],
@@ -202,6 +198,8 @@ export function Layout() {
       ? HeadphonesIcon
       : p.startsWith('/writing')
         ? PenIcon
+        : p.startsWith('/speaking')
+        ? MicIcon
         : p.startsWith('/dashboard')
         ? ChartIcon
         : p.startsWith('/settings')
@@ -346,7 +344,11 @@ export function Layout() {
           // every page's heading (pushed content out of view).
           className="page-enter mx-auto max-w-6xl px-4 pb-10 pt-3 sm:px-8 sm:pb-12 sm:pt-4"
         >
-          <Outlet />
+          {/* Route components are lazy (App.tsx). Boundary sits here, inside
+              <main>, so the sidebar/header never unmount while a chunk loads. */}
+          <Suspense fallback={<RouteFallback />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

@@ -1,4 +1,6 @@
+import { Suspense } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
+import { RouteFallback } from '../RouteFallback'
 import { useAuth } from '../../lib/auth'
 import { supabase } from '../../lib/supabase'
 
@@ -46,7 +48,10 @@ export function AdminLayout() {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8">
-        <Outlet />
+        {/* Admin pages are lazy — the whole /admin subtree is its own chunk. */}
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )

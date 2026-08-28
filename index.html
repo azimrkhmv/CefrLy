@@ -8,12 +8,10 @@
     <meta name="description" content="Cefrly — CEFR mock exams and preparation for Uzbek learners" />
     <meta name="theme-color" content="#3f2682" />
     <title>Cefrly — CEFR Mock Exams</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;0,900;1,800;1,900&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Fonts are self-hosted (public/fonts, @font-face in src/fonts.css). Only the
+         Latin Nunito face is preloaded — it paints every screen. Source Serif 4 is
+         reading-passage-only, so let it load lazily when a passage renders. -->
+    <link rel="preload" href="/fonts/nunito-latin.woff2" as="font" type="font/woff2" crossorigin />
     <style>html { background: #f8f7fc; }</style>
   </head>
   <body>

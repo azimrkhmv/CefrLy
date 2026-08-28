@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Self-hosted webfonts. Was a render-blocking <link> to fonts.googleapis.com in
+   index.html, which put two extra DNS+TLS round-trips on the critical path. */
+@import "./fonts.css";
 
 @theme {
   /* Design v3 — "friendly scholar": Cathoven-style warmth in Cefrly purple.
@@ -135,19 +138,31 @@ body {
 .bubble-pop { animation: bubble-in 0.35s ease both; }
 
 /* Skeleton loaders: a quiet shimmer over a lavender base. */
+/* The sweep runs on a pseudo-element's transform, not background-position:
+   animating background-position can't be composited, so a screenful of
+   skeletons repainted on the main thread every frame (Lighthouse flagged 9
+   non-composited animations on the loading dashboard). */
 @keyframes shimmer {
-  from { background-position: 200% 0; }
-  to { background-position: -200% 0; }
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
 }
 .skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-line);
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
   background: linear-gradient(
     90deg,
-    var(--color-line) 0%,
-    #f3f1fa 40%,
-    var(--color-line) 80%
+    transparent 0%,
+    #f3f1fa 50%,
+    transparent 100%
   );
-  background-size: 200% 100%;
   animation: shimmer 1.6s ease-in-out infinite;
+  will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -173,8 +188,11 @@ body {
     transition: none;
   }
   .skeleton {
-    animation: none;
     background: var(--color-line);
+  }
+  .skeleton::after {
+    animation: none;
+    content: none;
   }
 }
 

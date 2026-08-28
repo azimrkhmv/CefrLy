@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /$
+Allow: /login
+Allow: /signup
+Allow: /pricing
+Allow: /support
+Disallow: /admin
+Disallow: /test/
+Disallow: /results/
+Disallow: /review/
+Disallow: /analyze/
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /welcome
+Disallow: /handoff
+Disallow: /cat-preview
+
+Sitemap: https://cefrly.vercel.app/sitemap.xml

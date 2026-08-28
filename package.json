@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "seed:generate": "node scripts/generate-seed.mjs"
+    "seed:generate": "node scripts/generate-seed.mjs",
+    "perf": "npm run build && vite preview --port 4173 --open"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.0",

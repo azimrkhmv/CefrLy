@@ -1,0 +1,103 @@
+import { useState } from 'react'
+import { TabStrip } from '../components/TabStrip'
+import { Dropdown } from '../components/Dropdown'
+import { Toast } from '../components/Toast'
+import { SpeakingTaskGrid } from '../components/speaking/SpeakingTaskGrid'
+import { SpeakingCustomTab } from '../components/speaking/SpeakingCustomTab'
+import { AddCustomModal } from '../components/speaking/AddCustomModal'
+import { useSpeakingItems } from '../lib/speakingCatalog'
+import { countAttempts, useSpeakingAttempts } from '../lib/speakingAttempts'
+import { removeCustomQuestion } from '../lib/speakingCustom'
+import type { SpeakingPartType } from '../types/test'
+
+/** The catalog tabs: the Mock Test, one per single-part drill, and the student's
+ *  own saved prompts. Part keys reuse SpeakingPartType so they map straight onto
+ *  a task's `partType`. */
+export type SpeakingTab = 'mock' | SpeakingPartType | 'custom'
+
+const TABS: { key: SpeakingTab; label: string }[] = [
+  { key: 'mock', label: 'Mock Test' },
+  { key: 'part_1_1', label: 'Part 1.1' },
+  { key: 'part_1_2', label: 'Part 1.2' },
+  { key: 'part_2', label: 'Part 2' },
+  { key: 'part_3', label: 'Part 3' },
+  { key: 'custom', label: 'Custom Question' },
+]
+
+type StatusFilter = 'all' | 'todo' | 'done'
+
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'All tasks' },
+  { value: 'todo', label: 'Not started' },
+  { value: 'done', label: 'Completed' },
+]
+
+export function SpeakingPage() {
+  const [tab, setTab] = useState<SpeakingTab>('mock')
+  const [status, setStatus] = useState<StatusFilter>('all')
+  const [modal, setModal] = useState<{ partType: SpeakingPartType } | null>(null)
+  const [toast, setToast] = useState(false)
+
+  const { items } = useSpeakingItems(tab)
+  const attempts = useSpeakingAttempts()
+  const attemptCount = (id: string) => countAttempts(attempts, id)
+
+  const shown =
+    status === 'all'
+      ? items
+      : items.filter((it) =>
+          status === 'done' ? attemptCount(it.id) > 0 : attemptCount(it.id) === 0,
+        )
+
+  const openAddCustom = (partType: SpeakingPartType = 'part_1_1') => setModal({ partType })
+  const onCreated = () => {
+    setTab('custom')
+    setStatus('all')
+    setToast(true)
+  }
+
+  return (
+    <div className="rounded-2xl border border-line bg-white p-6 shadow-card sm:p-10">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+        <TabStrip ariaLabel="Speaking part" tabs={TABS} value={tab} onChange={setTab} />
+        <Dropdown
+          ariaLabel="Filter tasks"
+          value={status}
+          options={STATUS_OPTIONS}
+          onChange={setStatus}
+        />
+      </div>
+
+      {tab === 'custom' ? (
+        <SpeakingCustomTab
+          items={shown}
+          attemptCount={attemptCount}
+          onAdd={() => openAddCustom()}
+          onDelete={removeCustomQuestion}
+        />
+      ) : (
+        <SpeakingTaskGrid
+          tab={tab}
+          items={shown}
+          attemptCount={attemptCount}
+          onAddCustom={openAddCustom}
+        />
+      )}
+
+      {modal && (
+        <AddCustomModal
+          initialPartType={modal.partType}
+          onClose={() => setModal(null)}
+          onCreated={onCreated}
+        />
+      )}
+      {toast && (
+        <Toast
+          title="New task added successfully"
+          message="Your custom task has been saved."
+          onDone={() => setToast(false)}
+        />
+      )}
+    </div>
+  )
+}

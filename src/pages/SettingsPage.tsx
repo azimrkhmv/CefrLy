@@ -152,7 +152,7 @@ export function SettingsPage() {
             </div>
             <div>
               <label htmlFor="set-last" className="mb-1.5 block text-sm font-bold text-ink">
-                Surname <span className="font-semibold text-ink-faint">(optional)</span>
+                Surname <span className="font-semibold text-ink-soft">(optional)</span>
               </label>
               <input
                 id="set-last"

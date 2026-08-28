@@ -155,35 +155,43 @@ export function milliymockHandoff(token: string): Promise<{ tokenHash: string }>
 
 /** All of the signed-in user's attempts, newest first (RLS: own rows only).
  *  `skill` comes from the joined test; if the test row is gone we fall back to
- *  the skill captured in the stored result, else 'reading' (legacy attempts). */
+ *  the skill captured in the stored result, else 'reading' (legacy attempts).
+ *
+ *  Only FOUR scalars are pulled out of the `result` jsonb, via PostgREST json
+ *  paths. Selecting the whole blob made this the slowest request on the
+ *  dashboard's critical path (it ships every graded item + explanation for
+ *  every past attempt just to read four fallback fields). */
 export async function fetchMyAttempts(): Promise<AttemptSummary[]> {
   const { data, error } = await supabase
     .from('attempts')
+    // One string literal on purpose: supabase-js parses the select at the type
+    // level and a concatenated string degrades the row type to an error type.
     .select(
-      'id, test_id, raw_score, total, band, created_at, result, tests(title, skill, scope, part_number)',
+      'id, test_id, raw_score, total, band, created_at, tests(title, skill, scope, part_number), storedSkill:result->>skill, storedScope:result->>scope, storedPartNumber:result->>partNumber, storedTitle:result->>testTitle',
     )
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
-  return (data ?? []).map((row) => {
+  return ((data ?? []) as unknown as Record<string, unknown>[]).map((row) => {
     const test = row.tests as
       | { title?: string; skill?: string; scope?: string; part_number?: number | null }
       | { title?: string; skill?: string; scope?: string; part_number?: number | null }[]
       | null
     const testRow = Array.isArray(test) ? test[0] : test
-    const stored = (row.result ?? {}) as Partial<StoredAttemptResult>
-    const rawSkill = testRow?.skill ?? stored.skill
+    // ->> always yields text, so the stored part number comes back as a string.
+    const storedPart = row.storedPartNumber as string | null
+    const rawSkill = testRow?.skill ?? (row.storedSkill as string | null) ?? undefined
     const skill: Skill =
       rawSkill === 'listening' ? 'listening' : rawSkill === 'writing' ? 'writing' : 'reading'
     // Part drills score out of their own count and carry no CEFR band; the
     // joined test row is the source, the stored result the fallback.
-    const scope = testRow?.scope === 'part' || stored.scope === 'part' ? 'part' : 'full'
+    const scope = testRow?.scope === 'part' || row.storedScope === 'part' ? 'part' : 'full'
     return {
       id: row.id as string,
       testId: (row.test_id as string | null) ?? null,
-      testTitle: testRow?.title ?? stored.testTitle ?? 'Test',
+      testTitle: testRow?.title ?? (row.storedTitle as string | null) ?? 'Test',
       skill,
       scope,
-      partNumber: testRow?.part_number ?? stored.partNumber ?? null,
+      partNumber: testRow?.part_number ?? (storedPart == null ? null : Number(storedPart)),
       rawScore: row.raw_score as number,
       total: row.total as number,
       band: (row.band as Band | null) ?? null,

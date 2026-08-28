@@ -13,7 +13,7 @@
 
 export type CefrLevel = 'B1' | 'B2' | 'C1'
 export type Band = 'C1' | 'B2' | 'B1' | 'below_B1'
-export type Skill = 'reading' | 'listening' | 'writing'
+export type Skill = 'reading' | 'listening' | 'writing' | 'speaking'
 /** 'full' = the whole rigid mock paper; 'part' = exactly ONE canonical part of
  *  it (same layout/count rules), powering practice-by-part. */
 export type TestScope = 'full' | 'part'
@@ -270,6 +270,70 @@ export interface WritingTest {
   partNumber?: 1 | 2 | 3 | null
   /** full = ordered tasks (1.1, 1.2, Part 2); part = exactly one. */
   tasks: WritingTask[]
+}
+
+// ---------------------------------------------------------------------------
+// Speaking test (Phase 5) — the Multilevel speaking paper: interview, photo
+// comparison, a talk on a topic, and a for/against discussion. Like Writing
+// there is NO answer key: a part carries a prompt (+ OPTIONAL photos) the
+// student speaks against, with a prep window and a speaking window. The
+// `rubric` / `modelAnswer` are SERVER-ONLY (for a later grader) and get
+// stripped before the browser sees the part — same isolation rule as Writing.
+// NOTE: Speaking is deliberately kept OUT of AnyTest / SanitizedTest — it does
+// not route through the graded get-test / submit-test spine.
+// ---------------------------------------------------------------------------
+
+/** 1.1 = interview (B1) · 1.2 = photo comparison (B2) · 2 = topic talk (B2) ·
+ *  3 = for & against (C1). */
+export type SpeakingPartType = 'part_1_1' | 'part_1_2' | 'part_2' | 'part_3'
+
+export interface SpeakingPrompt {
+  title?: string
+  /** The speaking instruction; may hold rich prose (rendered in a .passage). */
+  html: string
+}
+
+export interface SpeakingImage {
+  /** A directly-usable image URL (public path, storage URL, or object URL). */
+  src: string
+  alt: string
+  caption?: string
+}
+
+export interface SpeakingTask {
+  id: string
+  partType: SpeakingPartType
+  /** Short display label, e.g. "Part 1.1", "Part 3". */
+  label: string
+  prompt: SpeakingPrompt
+  /** Part 1.1 asks several short questions, each answered in turn. */
+  questions?: string[]
+  /** OPTIONAL photos — required in spirit for Part 1.2 (compare two). */
+  images?: SpeakingImage[]
+  /** Silent preparation window before recording starts (0 = answer at once). */
+  prepSec: number
+  /** How long the student may speak (per question for Part 1.1). */
+  speakSec: number
+  /** Author pick — renders the brand "Recommended" badge on the card. */
+  recommended?: boolean
+  /** SERVER-ONLY (future grader) — never delivered to the browser. */
+  rubric?: string
+  modelAnswer?: string[]
+}
+
+export interface SpeakingTest {
+  id: string
+  skill: 'speaking'
+  title: string
+  targetLevels: CefrLevel[]
+  /** Author-set total; drives the countdown on the speaking screen. */
+  durationSec: number
+  /** 'full' = the Mock Test (4 parts); 'part' = a single-part drill. */
+  scope?: TestScope
+  /** iff scope='part': 1→Part 1.1, 2→Part 1.2, 3→Part 2, 4→Part 3. */
+  partNumber?: 1 | 2 | 3 | 4 | null
+  /** full = ordered parts (1.1, 1.2, 2, 3); part = exactly one. */
+  tasks: SpeakingTask[]
 }
 
 /** Either skill's full test (server-side). */

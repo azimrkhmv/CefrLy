@@ -67,6 +67,14 @@ const PART_LABELS: Record<Skill, string[]> = {
   // Writing part drills aren't authored through this form yet (Phase 4 is
   // UI-first); the labels keep the Record<Skill> exhaustive.
   writing: ['Informal email (Task 1.1)', 'Formal email (Task 1.2)', 'Forum post (Task 2)'],
+  // Speaking part drills aren't authored through this form yet (Phase 5 is
+  // UI-first); the labels keep the Record<Skill> exhaustive.
+  speaking: [
+    'Interview (Part 1.1)',
+    'Photo comparison (Part 1.2)',
+    'Topic talk (Part 2)',
+    'For & against (Part 3)',
+  ],
 }
 
 // Single-part test authoring (create at /admin/tests/new/part, edit via

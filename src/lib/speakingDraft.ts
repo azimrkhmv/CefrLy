@@ -1,18 +1,19 @@
 // ---------------------------------------------------------------------------
-// In-progress writing drafts (Phase 4). Persists the student's typed answers +
-// the clock start so a refresh or an accidental exit resumes exactly where they
-// left off (the writing analogue of the reading draft, `cefrly-draft-<id>`).
-// All localStorage access is try/catch-guarded — blocked/full storage must
-// never crash the exam. Client-side only this phase.
+// In-progress speaking drafts (Phase 5) — the mirror of writingDraft. Persists
+// which part the student reached + the clock start so a refresh or an accidental
+// exit resumes exactly where they left off. All localStorage access is
+// try/catch-guarded — blocked/full storage must never crash the exam.
+// Client-side only this phase (recordings are NOT stored here; the recorder
+// lands with the exam screen).
 //
-// The draft ALSO carries the chosen mode + the absolute deadline so a refresh
-// resumes into the same mode/clock without re-showing the picker. Practice mode
-// can pause (pausedAt freezes the countdown); simulation never sets it.
+// The draft carries the chosen mode + the absolute deadline so a refresh resumes
+// into the same mode/clock without re-showing the picker. Practice mode can pause
+// (pausedAt freezes the countdown); simulation never sets it.
 // ---------------------------------------------------------------------------
 
 import type { TestMode } from '../types/test'
 
-export interface WritingDraft {
+export interface SpeakingDraft {
   /** simulation (fixed clock, no pause) or practice (own limit, pausable). */
   mode: TestMode
   /** Epoch ms when the attempt's clock started. */
@@ -21,19 +22,19 @@ export interface WritingDraft {
   expiresAt: number
   /** Epoch ms the practice timer was paused, or null while running. */
   pausedAt: number | null
-  /** taskId → the text written so far. */
-  answers: Record<string, string>
-  /** Which task the student is currently on (full mock stepper). */
+  /** taskId → seconds already recorded (the recorder fills this in later). */
+  recorded: Record<string, number>
+  /** Which part the student is currently on (full mock stepper). */
   taskIndex: number
 }
 
-const key = (testId: string) => `cefrly-writing-draft-${testId}`
+const key = (testId: string) => `cefrly-speaking-draft-${testId}`
 
-export function readWritingDraft(testId: string): WritingDraft | null {
+export function readSpeakingDraft(testId: string): SpeakingDraft | null {
   try {
     const raw = localStorage.getItem(key(testId))
     if (!raw) return null
-    const draft = JSON.parse(raw) as WritingDraft
+    const draft = JSON.parse(raw) as SpeakingDraft
     // Guard against pre-mode legacy drafts — force the picker rather than
     // resuming into an attempt with no mode/deadline.
     if (draft.mode !== 'simulation' && draft.mode !== 'practice') return null
@@ -44,7 +45,7 @@ export function readWritingDraft(testId: string): WritingDraft | null {
   }
 }
 
-export function saveWritingDraft(testId: string, draft: WritingDraft) {
+export function saveSpeakingDraft(testId: string, draft: SpeakingDraft) {
   try {
     localStorage.setItem(key(testId), JSON.stringify(draft))
   } catch {
@@ -52,7 +53,7 @@ export function saveWritingDraft(testId: string, draft: WritingDraft) {
   }
 }
 
-export function clearWritingDraft(testId: string) {
+export function clearSpeakingDraft(testId: string) {
   try {
     localStorage.removeItem(key(testId))
   } catch {
@@ -61,6 +62,6 @@ export function clearWritingDraft(testId: string) {
 }
 
 /** True when an unsubmitted draft exists — the card shows "Resume" instead of "Start". */
-export function hasWritingDraft(testId: string): boolean {
-  return readWritingDraft(testId) !== null
+export function hasSpeakingDraft(testId: string): boolean {
+  return readSpeakingDraft(testId) !== null
 }

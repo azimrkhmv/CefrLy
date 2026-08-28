@@ -238,7 +238,7 @@ export function WelcomePage() {
         <div className="mx-auto w-full max-w-xl">
           <Logo />
         </div>
-        <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center text-center">
+        <main className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center text-center">
           <QuipBubble>{greetName ? `Nice to meet you, ${greetName}.` : 'Nice to meet you.'}</QuipBubble>
           <div className="mt-3">
             <BandCat band={draft.targetBand} height={110} />
@@ -258,7 +258,7 @@ export function WelcomePage() {
           >
             Go to my dashboard
           </button>
-        </div>
+        </main>
       </div>
     )
   }
@@ -291,7 +291,7 @@ export function WelcomePage() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl bg-white p-6 shadow-lift ring-1 ring-line/50 sm:p-8">
+        <main className="mt-6 rounded-2xl bg-white p-6 shadow-lift ring-1 ring-line/50 sm:p-8">
           {meta.quip && (
             <div className="mb-5 flex items-end gap-3">
               <BandCat height={48} />
@@ -324,7 +324,7 @@ export function WelcomePage() {
                 </div>
                 <div>
                   <label htmlFor="ob-last" className="mb-1.5 block text-sm font-bold text-ink">
-                    Surname <span className="font-semibold text-ink-faint">(optional)</span>
+                    Surname <span className="font-semibold text-ink-soft">(optional)</span>
                   </label>
                   <input
                     id="ob-last"
@@ -475,7 +475,7 @@ export function WelcomePage() {
               {step === STEP_COUNT - 1 ? (saving ? 'Saving…' : 'Finish') : 'Continue'}
             </button>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   )

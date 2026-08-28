@@ -1,23 +1,23 @@
 import { useEffect, useState } from 'react'
-import type { WritingTaskType, WritingTest } from '../../types/test'
-import { TASK_EXAMPLE, TASK_LABEL } from '../../lib/writingFixtures'
-import { addCustomQuestion } from '../../lib/writingCustom'
+import type { SpeakingPartType, SpeakingTest } from '../../types/test'
+import { PART_EXAMPLE, PART_LABEL } from '../../lib/speakingFixtures'
+import { addCustomQuestion } from '../../lib/speakingCustom'
 import { CloseIcon } from '../icons'
 
-const TASK_ORDER: WritingTaskType[] = ['task_1_1', 'task_1_2', 'part_2']
+const PART_ORDER: SpeakingPartType[] = ['part_1_1', 'part_1_2', 'part_2', 'part_3']
 
 /** Mounted only while open (parent conditionally renders it), so every open
- *  starts from a fresh form seeded with the tab's task type. */
+ *  starts from a fresh form seeded with the tab's part type. */
 export function AddCustomModal({
-  initialTaskType,
+  initialPartType,
   onClose,
   onCreated,
 }: {
-  initialTaskType: WritingTaskType
+  initialPartType: SpeakingPartType
   onClose: () => void
-  onCreated: (test: WritingTest) => void
+  onCreated: (test: SpeakingTest) => void
 }) {
-  const [taskType, setTaskType] = useState<WritingTaskType>(initialTaskType)
+  const [partType, setPartType] = useState<SpeakingPartType>(initialPartType)
   const [question, setQuestion] = useState('')
   const [title, setTitle] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -36,7 +36,7 @@ export function AddCustomModal({
       return
     }
     const test = addCustomQuestion({
-      taskType,
+      partType,
       title: title.trim(),
       question: question.trim(),
     })
@@ -65,15 +65,15 @@ export function AddCustomModal({
         <h2 className="text-center text-lg font-extrabold text-heading">Add a custom question</h2>
 
         <div className="mt-5 space-y-4">
-          <Field label="Writing task type">
+          <Field label="Speaking part">
             <select
-              value={taskType}
-              onChange={(e) => setTaskType(e.target.value as WritingTaskType)}
+              value={partType}
+              onChange={(e) => setPartType(e.target.value as SpeakingPartType)}
               className="w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm font-bold text-ink focus:outline-none focus:ring-2 focus:ring-brand/40"
             >
-              {TASK_ORDER.map((t) => (
-                <option key={t} value={t}>
-                  {TASK_LABEL[t]}
+              {PART_ORDER.map((p) => (
+                <option key={p} value={p}>
+                  {PART_LABEL[p]}
                 </option>
               ))}
             </select>
@@ -87,7 +87,7 @@ export function AddCustomModal({
                 setError(null)
               }}
               rows={5}
-              placeholder={TASK_EXAMPLE[taskType]}
+              placeholder={PART_EXAMPLE[partType]}
               className="w-full resize-y rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand/40"
             />
           </Field>
@@ -99,7 +99,7 @@ export function AddCustomModal({
                 setTitle(e.target.value)
                 setError(null)
               }}
-              placeholder="Example: A new library"
+              placeholder="Example: Your home town"
               className="w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand/40"
             />
           </Field>

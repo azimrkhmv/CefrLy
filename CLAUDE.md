@@ -99,6 +99,88 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
 - TypeScript strict. Clear folders (src/pages, src/components, src/lib, src/types). Small components.
 - Keep it simple. Phase 1 = Reading, Phase 3 = Listening (both live). Do NOT build Writing/Speaking yet.
 
+## Performance (done 2026-08-28)
+- NEVER run Lighthouse against the Vite dev server (:5173) — it serves raw
+  unbundled ESM, so the report invents problems that do not exist in prod
+  ("Minify JavaScript 3,190 KiB", "Reduce unused JavaScript 1,796 KiB",
+  "Duplicated JavaScript", "5,939 KiB payload", FCP 7.6s / LCP 13.8s were ALL
+  dev artifacts). Always measure `npm run build && npm run preview` (:4173).
+- ROUTE CODE-SPLITTING (src/App.tsx): every page except HomePage and AuthPage
+  (the two entry points) is `React.lazy`. Pages use named exports, so App.tsx
+  has a tiny `page(loader, name)` adapter that maps the named export onto
+  `default`. Suspense boundaries live INSIDE the shells — Layout.tsx and
+  admin/AdminLayout.tsx wrap their `<Outlet/>` — so the sidebar/header never
+  unmount while a chunk loads; App.tsx keeps one outer boundary for the
+  shell-less routes (/welcome, /cat-preview). Fallbacks: RouteFallback /
+  FullScreenFallback in src/components/RouteFallback.tsx (shimmer, per the
+  design system — never "Loading…"). Entry chunk went 826 KB → 258 KB
+  (79 KB gzip); admin CRUD, the exam player, review/analyze and the onboarding
+  wizard are now separate chunks students never download.
+- vite.config.ts `build.rollupOptions.output.manualChunks` splits react-vendor /
+  supabase / query so a normal deploy doesn't bust cached vendor code.
+- FONTS ARE SELF-HOSTED. The render-blocking `<link>` to fonts.googleapis.com
+  is GONE from index.html (it cost two extra DNS+TLS round-trips on the critical
+  path). woff2 files live in public/fonts (latin + latin-ext only — latin covers
+  U+02BB, the Uzbek ʻ), @font-face declarations in src/fonts.css, imported from
+  index.css. Only `/fonts/nunito-latin.woff2` is `<link rel=preload>`ed; Source
+  Serif 4 is reading-passage-only so it loads lazily when a passage renders.
+  Regenerate by refetching the css2 API with a browser User-Agent and rewriting
+  the URLs to /fonts/ (the files are variable fonts — several weights share one
+  file, which is why the CSS has 20 faces over 8 files).
+- IMAGES: the cat PNGs are already palette-quantized, so WebP does NOT beat them
+  (re-encoding several came out LARGER) — do not "optimize" them again. The one
+  exception was logo-cat.png → logo-cat.webp (70 KB → 21 KB, 512² art rendered
+  at 36–44 px); logo-cat-180.png stays PNG for the favicon/apple-touch-icon.
+  The auth mascot is that page's LCP element and can't be preloaded (the cat is
+  picked at random in JS), so it carries fetchPriority="high".
+- Measured after the work, prod build, local preview: LCP 575 ms, CLS 0.
+
+## Second perf/a11y/SEO pass (2026-08-28, from a /dashboard audit)
+- fetchMyAttempts (src/lib/api.ts) NO LONGER selects the whole `result` jsonb.
+  It was shipping every graded item + explanation of every past attempt just to
+  read four fallback fields, and was the slowest request on the dashboard's
+  critical path (72 KiB, ~2.7 s). It now pulls only
+  `storedSkill/storedScope/storedPartNumber/storedTitle` via PostgREST json
+  paths (`alias:result->>key`). Two gotchas: `->>` always returns TEXT (the part
+  number is parsed with Number()), and the select MUST be one string literal —
+  supabase-js types the select at compile time and a concatenated string
+  degrades the row type, hence the explicit cast.
+- DashboardPage no longer early-returns `<AttemptListSkeleton/>`. That withheld
+  the page heading until the query resolved, making the heading the LCP element
+  with ~2.9 s of render delay. Header paints immediately; loading/error/empty
+  are branches INSIDE the page. Apply the same shape to any new page.
+- public/robots.txt, public/sitemap.xml and public/llms.txt were MISSING, so
+  vercel.json's SPA rewrite answered /robots.txt with index.html and Lighthouse
+  parsed the HTML as robots ("26 errors"). Vercel serves public/ files before
+  rewrites, so the files alone fix it. robots.txt disallows every
+  authenticated route — expect `is-crawlable` to "fail" if you audit one of
+  those URLs; that is correct, audit `/` or `/login`.
+- WCAG AA fixes (Lighthouse a11y 91 → 100 on the shell): ink-faint is 2.0:1 on
+  white — it is DECORATIVE ONLY, and it was being used for real text. Moved to
+  ink-soft: the Logo's "CEFR EXAMS" line, sidebar section labels + inactive nav
+  icons, TabStrip "soon" tabs, the dashboard "First attempt" chip, the
+  "(optional)" surname hints. Two more: the sidebar mock-card stat labels were
+  ink-soft on brand-soft (4.3:1) → brand-deep, and the "Join CEFR Community"
+  CTA was white on --color-accent (4.2:1) → bg-accent-deep (5.7:1) with
+  hover:bg-brand. Also: a `role="tablist"` may only contain tabs, so TabStrip's
+  inert "soon" markers now carry role="tab" + aria-selected="false" +
+  aria-disabled + tabIndex={-1} (axe aria-required-children), and AuthPage /
+  WelcomePage grew a `<main>` landmark (Layout already had one).
+- The skeleton shimmer animates a pseudo-element's transform now, not
+  background-position — background-position can't be composited, so a screen of
+  skeletons repainted on the main thread every frame.
+- Verified on the prod preview build: Accessibility 100, Best Practices 100,
+  SEO 100, Agentic Browsing 100 on /login; LCP 202 ms, CLS 0 on the app shell.
+- ENTRY CHUNK COMPOSITION, measured 2026-08-28 (687 KB pre-minify, 39 modules):
+  react-dom 540 KB (79%), HomePage 25, AuthPage 21, Cat 18, Layout 14, App 10,
+  icons 8, api 7, BandRuler 7 — everything else under 4. The floor is react-dom;
+  there is no app code left worth splitting. 187 KB of admin already sits in
+  lazy chunks students never fetch, and AdminRoute/AdminLayout (the last 3.2 KB
+  of admin in the entry chunk) are lazy too now, so a student downloads ZERO
+  admin code. DO NOT split the admin panel into a separate app/domain for
+  performance — measured saving is ~1 KB gzip. (Blast-radius or release-cadence
+  reasons would be a different argument; perf is not one.)
+
 ## Working notes (added during phase 1)
 - Test authoring: edit supabase/seed/reading-test-1.json, then `npm run seed:generate`
   (validates the rigid structure and writes supabase/seed/seed.sql).

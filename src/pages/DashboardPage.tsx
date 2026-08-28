@@ -11,7 +11,7 @@ import { Sparkline } from '../components/Sparkline'
 import { TabStrip, type Tab } from '../components/TabStrip'
 import { AttemptListSkeleton } from '../components/Skeleton'
 import { EmptyState } from '../components/EmptyState'
-import { ArrowRightIcon, BookIcon, HeadphonesIcon, PenIcon, PlusIcon } from '../components/icons'
+import { ArrowRightIcon, BookIcon, HeadphonesIcon, MicIcon, PenIcon, PlusIcon } from '../components/icons'
 import type { AttemptSummary } from '../types/attempt'
 import type { Band, Skill } from '../types/test'
 
@@ -31,6 +31,7 @@ const SKILL_CARD: Record<
   reading: { tile: 'bg-brand-soft text-brand', Icon: BookIcon },
   listening: { tile: 'bg-sun-soft text-sun-ink', Icon: HeadphonesIcon },
   writing: { tile: 'bg-emerald-50 text-emerald-800', Icon: PenIcon },
+  speaking: { tile: 'bg-rose-50 text-rose-800', Icon: MicIcon },
 }
 
 const shortMonth = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short' })
@@ -50,7 +51,7 @@ function Triangle({ up }: { up: boolean }) {
 function DeltaChip({ delta }: { delta: number | null | undefined }) {
   if (delta === undefined) return null
   if (delta === null)
-    return <span className="text-xs font-bold text-ink-faint">First attempt</span>
+    return <span className="text-xs font-bold text-ink-soft">First attempt</span>
   if (delta === 0)
     return (
       <span className="tnum rounded-full bg-page px-2.5 py-1 text-xs font-bold text-ink-soft">±0</span>
@@ -282,15 +283,11 @@ export function DashboardPage() {
   const [filter, setFilter] = useState<Filter>('reading')
   const isWriting = filter === 'writing'
 
-  if (isLoading) return <AttemptListSkeleton />
-  if (error) {
-    return (
-      <p className="py-24 text-center text-sm text-rose-700">
-        Could not load your results. {error instanceof Error ? error.message : ''}
-      </p>
-    )
-  }
-
+  // NOTE: loading/error are handled INSIDE the page below, not with an early
+  // return. Returning a bare skeleton here withheld the page heading until the
+  // attempts query resolved, which made that heading the LCP element with ~3s
+  // of render delay. The header paints immediately now; only the results
+  // region waits on data.
   const all = attempts ?? []
   // Newest first (the design's order), regardless of what the API returns.
   const shown = all
@@ -337,7 +334,13 @@ export function DashboardPage() {
         </Link>
       </div>
 
-      {all.length === 0 && writingAttempts.length === 0 ? (
+      {isLoading ? (
+        <AttemptListSkeleton />
+      ) : error ? (
+        <p className="py-24 text-center text-sm text-rose-700">
+          Could not load your results. {error instanceof Error ? error.message : ''}
+        </p>
+      ) : all.length === 0 && writingAttempts.length === 0 ? (
         <EmptyState
           pose="nap"
           title="No attempts yet"

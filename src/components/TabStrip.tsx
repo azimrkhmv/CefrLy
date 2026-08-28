@@ -38,9 +38,15 @@ export function TabStrip<T extends string | number>({
           tab.soon ? (
             <span
               key={tab.key}
-              title="Coming soon"
+              // A tablist may only contain tabs — without role="tab" the "soon"
+              // markers failed axe's aria-required-children. ink-soft, not
+              // ink-faint: ink-faint is 2.0:1 on white and fails WCAG AA.
+              role="tab"
+              aria-selected="false"
               aria-disabled="true"
-              className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-extrabold text-ink-faint"
+              tabIndex={-1}
+              title="Coming soon"
+              className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-extrabold text-ink-soft"
             >
               {tab.label}
               <span className="rounded-full bg-page px-1.5 py-0.5 text-[10px] font-bold lowercase text-ink-soft">

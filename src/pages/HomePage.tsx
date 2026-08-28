@@ -257,8 +257,8 @@ function LevelSnapshot({
 const SKILLS = [
   { key: 'reading', name: 'Reading', Icon: BookIcon, desc: '35 questions · 5 parts · 60 min', to: '/reading', tile: 'bg-brand-soft text-brand' },
   { key: 'listening', name: 'Listening', Icon: HeadphonesIcon, desc: '35 questions · 6 parts · ~35 min', to: '/listening', tile: 'bg-sun-soft text-sun-ink' },
-  { key: 'writing', name: 'Writing', Icon: PenIcon, desc: 'Essay & email tasks', to: null, tile: 'bg-emerald-50 text-emerald-800' },
-  { key: 'speaking', name: 'Speaking', Icon: MicIcon, desc: 'Interview & talk', to: null, tile: 'bg-rose-50 text-rose-800' },
+  { key: 'writing', name: 'Writing', Icon: PenIcon, desc: 'Two emails · one forum post', to: '/writing', tile: 'bg-emerald-50 text-emerald-800' },
+  { key: 'speaking', name: 'Speaking', Icon: MicIcon, desc: '4 parts · interview & talk', to: '/speaking', tile: 'bg-rose-50 text-rose-800' },
 ] as const
 
 function SkillsRoadmap({ weakAreas }: { weakAreas?: WeakArea[] }) {

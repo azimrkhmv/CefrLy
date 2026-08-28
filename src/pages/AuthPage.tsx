@@ -334,9 +334,11 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
       <section className="relative flex flex-col overflow-hidden bg-page px-8 pb-10 pt-11 sm:px-14">
         <Link to="/" className="flex items-center gap-3">
           <img
-            src="/logo-cat.png"
+            src="/logo-cat.webp"
             alt=""
             aria-hidden="true"
+            width={44}
+            height={44}
             className="h-11 w-11 shrink-0 object-contain"
           />
           <span className="flex flex-col gap-px">
@@ -409,6 +411,11 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
                 src={cat.src}
                 alt={cat.alt}
                 draggable={false}
+                // The mascot is this page's LCP element. It can't be preloaded
+                // from the HTML (which cat renders is picked at random in JS),
+                // so at least tell the browser not to queue it behind the rest.
+                fetchPriority="high"
+                decoding="async"
                 className={`${
                   cat.sleepy ? 'cat-sleep' : 'cat-idle'
                 } block h-full w-full object-contain object-[left_bottom]`}
@@ -418,8 +425,9 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
         </div>
       </section>
 
-      {/* Form panel */}
-      <section className="grid place-items-center border-l border-line bg-white px-6 py-12 sm:px-[72px]">
+      {/* Form panel — the page's <main> landmark (the brand panel beside it is
+          decorative), so screen readers get a skip target. */}
+      <main className="grid place-items-center border-l border-line bg-white px-6 py-12 sm:px-[72px]">
         <form onSubmit={handleSubmit} className="flex w-full max-w-[420px] flex-col">
           <h2 className="m-0 text-[32px] font-black text-ink">
             {isLogin ? 'Welcome back' : 'Create an account'}
@@ -568,7 +576,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             </span>
           </div>
         </form>
-      </section>
+      </main>
     </div>
   )
 }
