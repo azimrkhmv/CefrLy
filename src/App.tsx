@@ -1,5 +1,5 @@
-import { Suspense, lazy, type ComponentType } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Suspense, lazy, useEffect, type ComponentType } from 'react'
+import { Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { FullScreenFallback } from './components/RouteFallback'
@@ -42,25 +42,32 @@ const HandoffPage = page(() => import('./pages/HandoffPage'), 'HandoffPage')
 const WelcomePage = page(() => import('./pages/WelcomePage'), 'WelcomePage')
 const SettingsPage = page(() => import('./pages/SettingsPage'), 'SettingsPage')
 
-// The admin shell itself is lazy too, so a student's bundle contains ZERO admin
-// code (measured: it was the last 3.2 KB of /admin in the entry chunk).
-const AdminRoute = page(() => import('./components/admin/AdminRoute'), 'AdminRoute')
-const AdminLayout = page(() => import('./components/admin/AdminLayout'), 'AdminLayout')
-const AdminTestsPage = page(() => import('./pages/admin/AdminTestsPage'), 'AdminTestsPage')
-const TestFormPage = page(() => import('./pages/admin/TestFormPage'), 'TestFormPage')
-const ListeningTestFormPage = page(
-  () => import('./pages/admin/ListeningTestFormPage'),
-  'ListeningTestFormPage',
-)
-const PartTestFormPage = page(() => import('./pages/admin/PartTestFormPage'), 'PartTestFormPage')
-const TestFormRouter = page(() => import('./pages/admin/TestFormRouter'), 'TestFormRouter')
-const AdminSamplesPage = page(() => import('./pages/admin/AdminSamplesPage'), 'AdminSamplesPage')
-const SampleFormPage = page(() => import('./pages/admin/SampleFormPage'), 'SampleFormPage')
-const AdminUsersPage = page(() => import('./pages/admin/AdminUsersPage'), 'AdminUsersPage')
-const AdminUserDetailPage = page(
-  () => import('./pages/admin/AdminUserDetailPage'),
-  'AdminUserDetailPage',
-)
+/**
+ * The admin console left this app on 2026-08-28 — it is its own deployment now
+ * (repo azimrkhmv/CefrLyAdmin, https://cefrly-admin.vercel.app). Old /admin
+ * bookmarks are forwarded there rather than 404ing. Nothing about the data
+ * changed: both apps talk to the same Supabase project, and authorization was
+ * always server-side in the admin-* edge functions.
+ */
+const ADMIN_URL = 'https://cefrly-admin.vercel.app'
+
+function AdminMoved() {
+  useEffect(() => {
+    // replace(), not assign(), so Back doesn't bounce between the two apps.
+    window.location.replace(ADMIN_URL + window.location.pathname)
+  }, [])
+  return (
+    <div className="grid min-h-screen place-items-center bg-page px-6 text-center">
+      <p className="text-sm text-ink-soft">
+        The admin console moved to{' '}
+        <a className="font-bold text-brand hover:underline" href={ADMIN_URL}>
+          cefrly-admin.vercel.app
+        </a>
+        …
+      </p>
+    </div>
+  )
+}
 
 // DEV ONLY: mascot pose sheet for design review. Remove before launch.
 function CatPreview() {
@@ -116,23 +123,9 @@ export default function App() {
           </Route>
         </Route>
 
-        <Route element={<AdminRoute />}>
-          <Route element={<AdminLayout />}>
-            <Route path="/admin" element={<Navigate to="/admin/tests" replace />} />
-            <Route path="/admin/tests" element={<AdminTestsPage />} />
-            <Route path="/admin/tests/new" element={<TestFormPage />} />
-            <Route path="/admin/tests/new/listening" element={<ListeningTestFormPage />} />
-            <Route path="/admin/tests/new/part" element={<PartTestFormPage />} />
-            <Route path="/admin/tests/:slug" element={<TestFormRouter />} />
-            <Route path="/admin/samples" element={<AdminSamplesPage />} />
-            <Route path="/admin/samples/new" element={<SampleFormPage />} />
-            <Route path="/admin/samples/:slug" element={<SampleFormPage />} />
-            <Route path="/admin/users" element={<AdminUsersPage />} />
-            <Route path="/admin/users/:id" element={<AdminUserDetailPage />} />
-            {/* The directory absorbed the old admins-only page; keep the link alive. */}
-            <Route path="/admin/admins" element={<Navigate to="/admin/users" replace />} />
-          </Route>
-        </Route>
+        {/* Forwards every old /admin bookmark to the separate console. */}
+        <Route path="/admin/*" element={<AdminMoved />} />
+        <Route path="/admin" element={<AdminMoved />} />
       </Routes>
     </Suspense>
   )

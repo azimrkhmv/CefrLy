@@ -5,6 +5,26 @@ A standalone CEFR (English proficiency) mock-exam + prep platform for Uzbek lear
 Own domain (cefrly). Separate from MilliyMock, but MilliyMock users can hand off into
 Cefrly without re-registering (see Auth). Phase 1 builds the foundation + the READING section only.
 
+## ⚠️ THE ADMIN CONSOLE LIVES IN ANOTHER REPO (split 2026-08-28)
+This repo is the STUDENT app only. Everything admin moved to
+`azimrkhmv/CefrLyAdmin` (local sibling `../CefrLyAdmin`, deployed at
+https://cefrly-admin.vercel.app, Vercel project `cefrly-admin`). Deleted from
+here: `src/pages/admin/`, `src/components/admin/`, `src/lib/adminApi.ts`,
+`testDraft.ts`, `listeningDraft.ts`, `sampleDraft.ts`, `testValidation.ts`,
+`listeningValidation.ts`. `/admin/*` now renders `AdminMoved` in App.tsx, which
+forwards old bookmarks to the new domain.
+NOTHING ABOUT THE BACKEND CHANGED: same Supabase project, same `admin-tests` /
+`admin-samples` / `admin-users` edge functions, same RLS. The split added no
+authorization — it never could; authorization is server-side and always was.
+The sections below still describe the admin UI as living here (Phase 2, the
+user directory, the samples admin, the part-test form). Treat every one of
+those as a pointer to `../CefrLyAdmin/CLAUDE.md`, not to this codebase.
+DUPLICATED FILES: the admin repo carries copies of `lib/auth`, `lib/supabase`,
+`lib/storage`, `lib/bands`, `lib/plans`, `lib/sessionExpiry`, `types/*` and a
+few components. Change any of those HERE and you must mirror the change THERE —
+the `types/*` files especially, since they mirror the exam schemas the edge
+function validators enforce, and drift causes silent save failures.
+
 ## Stack (do not change without asking)
 - Frontend: Vite + React + TypeScript + Tailwind CSS + React Router
 - Backend: Supabase (Postgres, Auth, Storage, Edge Functions)
