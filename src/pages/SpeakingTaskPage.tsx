@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -15,6 +15,10 @@ import {
   type SpeakingDraft,
 } from '../lib/speakingDraft'
 import { addSpeakingAttempt, type SpeakingAnswer } from '../lib/speakingAttempts'
+import { gradeSpeakingAttempt } from '../lib/speakingGrading'
+import { PlanLimitError } from '../lib/api'
+import { hasPremiumAccess } from '../lib/plans'
+import { useAuth } from '../lib/auth'
 import { cancelSpeech } from '../lib/speech'
 import type { SpeakingTest } from '../types/test'
 
@@ -81,6 +85,9 @@ export function SpeakingTaskPage() {
 }
 
 function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => void }) {
+  // Whether this student's plan can get an AI check is said UP FRONT, on the
+  // mic check — finding out after ten minutes of speaking would feel like a trap.
+  const { plan } = useAuth()
   // A broken microphone discovered mid-exam costs the whole attempt, so every
   // attempt opens on the mic check.
   const [checked, setChecked] = useState(false)
@@ -113,7 +120,10 @@ function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => 
           onExit={onLeave}
           exitLabel="Exit"
         />
-        <MicCheck bullets={instructionsFor(test)} onContinue={() => setChecked(true)} />
+        <MicCheck
+          bullets={instructionsFor(test, hasPremiumAccess(plan))}
+          onContinue={() => setChecked(true)}
+        />
       </ExamScreen>
     )
   }
@@ -236,7 +246,7 @@ function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => 
 }
 
 /** The "before you start" bullets, derived from the paper itself. */
-function instructionsFor(test: SpeakingTest): string[] {
+function instructionsFor(test: SpeakingTest, canCheck: boolean): string[] {
   const isFull = (test.scope ?? 'full') === 'full'
   const total = questionCount(test)
   const steps = speakingSteps(test)
@@ -251,11 +261,15 @@ function instructionsFor(test: SpeakingTest): string[] {
     'Each question is read aloud, then you get preparation time before recording starts by itself',
     `Preparation + speaking time per question: ${windows.join(', ')}`,
     'Recording stops on its own when the time is up — you cannot speak past it',
+    canCheck
+      ? 'When you finish, AI checks your answers and gives your band score'
+      : 'AI band scoring needs Pro or Premium — on the Free plan you will not get a score for this attempt',
   ]
 }
 
-/** Post-attempt review. There is no grader yet, so this is deliberately honest
- *  about that rather than inventing a band. */
+/** Post-attempt: send the recordings for an AI check, then hand over to the
+ *  analysis. Free-plan students see the upgrade wall instead — the check is a
+ *  Pro/Premium feature, and we make that clear before the exam, not only here. */
 function Finished({
   test,
   steps,
@@ -267,14 +281,60 @@ function Finished({
   answers: Record<string, StepAnswer>
   onLeave: () => void
 }) {
+  const navigate = useNavigate()
+  const { plan } = useAuth()
+  const canCheck = hasPremiumAccess(plan)
+
   const spoken = steps.reduce((n, s) => n + (answers[s.id]?.durationSec ?? 0), 0)
+  const recorded = steps.filter((s) => answers[s.id]).length
+
+  const [state, setState] = useState<'idle' | 'sending' | 'error'>(canCheck ? 'sending' : 'idle')
+  const [message, setMessage] = useState<string | null>(null)
+  const [locked, setLocked] = useState<PlanLimitError | null>(null)
+  const started = useRef(false)
+
+  const send = useCallback(async () => {
+    setState('sending')
+    setMessage(null)
+    try {
+      const attemptId = await gradeSpeakingAttempt({
+        test: {
+          id: test.id,
+          title: test.title,
+          scope: (test.scope ?? 'full') as 'full' | 'part',
+          partType: test.scope === 'part' ? test.tasks[0].partType : null,
+        },
+        steps,
+        answers,
+      })
+      // replace(): the exam screen is finished, so Back should not return to it.
+      navigate(`/speaking/analyze/${attemptId}`, { replace: true })
+    } catch (e) {
+      if (e instanceof PlanLimitError) {
+        setLocked(e)
+        setState('idle')
+        return
+      }
+      setMessage(e instanceof Error ? e.message : 'The AI check failed.')
+      setState('error')
+    }
+  }, [test, steps, answers, navigate])
+
+  // Send once, automatically — the recordings only live in this page, so
+  // waiting for a click risks losing them to a stray reload.
+  useEffect(() => {
+    if (!canCheck || started.current) return
+    started.current = true
+    void send()
+  }, [canCheck, send])
+
   return (
     <ExamScreen>
       <SpeakingTopBar title={test.title} subtitle="Attempt complete" onExit={onLeave}>
         <button
           type="button"
           onClick={onLeave}
-          className="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+          className="rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
         >
           Back to Speaking
         </button>
@@ -288,12 +348,44 @@ function Finished({
             </span>
             <h2 className="mt-3 text-xl font-extrabold text-heading">Attempt complete</h2>
             <p className="tnum mt-1 text-sm text-ink-soft">
-              {steps.length} question{steps.length > 1 ? 's' : ''} · {Math.round(spoken)}s spoken
+              {recorded} of {steps.length} answered · {Math.round(spoken)}s spoken
             </p>
-            <p className="mx-auto mt-3 max-w-md text-sm text-ink-soft">
-              Automatic band scoring is not built yet. Play your answers back and compare them with
-              the model answers in Samples.
-            </p>
+
+            {state === 'sending' && (
+              <p className="mt-4 text-sm font-bold text-brand">
+                Sending your answers to be checked…
+              </p>
+            )}
+
+            {state === 'error' && (
+              <div className="mt-4">
+                <p className="text-sm text-rose-700">{message}</p>
+                <button
+                  type="button"
+                  onClick={() => void send()}
+                  className="mt-3 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+                >
+                  Try again
+                </button>
+                <p className="mt-2 text-xs text-ink-soft">
+                  Keep this page open — your recordings are only held here.
+                </p>
+              </div>
+            )}
+
+            {!canCheck && !locked && (
+              <UpgradeWall
+                title="Get your CEFR band for this attempt"
+                body="An AI check gives you a band score, your transcript, your mistakes and a stronger version of every answer. It is part of Pro and Premium."
+              />
+            )}
+
+            {locked && (
+              <UpgradeWall
+                title={locked.code === 'premium_only' ? 'AI checks are a paid feature' : 'Monthly checks used up'}
+                body={locked.message}
+              />
+            )}
           </div>
 
           <ol className="space-y-3">
@@ -303,11 +395,27 @@ function Finished({
           </ol>
 
           <p className="text-center text-xs text-ink-soft">
-            These recordings are held in this page only — they are lost when you close or reload it.
+            Your recordings are not saved. After the check they are deleted — only the transcript
+            and feedback are kept.
           </p>
         </div>
       </div>
     </ExamScreen>
+  )
+}
+
+function UpgradeWall({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="mt-5 rounded-2xl bg-brand-soft p-5 text-left">
+      <h3 className="font-extrabold text-heading">{title}</h3>
+      <p className="mt-1.5 text-sm text-ink-soft">{body}</p>
+      <Link
+        to="/pricing"
+        className="mt-3 inline-block rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+      >
+        See plans
+      </Link>
+    </div>
   )
 }
 

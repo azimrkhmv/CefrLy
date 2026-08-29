@@ -1,0 +1,149 @@
+import { supabase } from './supabase'
+import { PlanLimitError } from './api'
+import type { SpeakingAttemptRow } from '../types/speakingResult'
+import type { SpeakingStep } from './speakingQuestions'
+import type { StepAnswer } from '../components/speaking/QuestionRunner'
+
+// ---------------------------------------------------------------------------
+// Sending a finished speaking attempt off to be graded.
+//
+// The clips go to the PRIVATE `speaking-temp` bucket, the edge function reads
+// them once and deletes them. They are never public, never played back, and
+// nothing here can read them again — storage RLS grants the student insert only.
+// The Gemini key lives in the function's secrets; this file never sees it.
+// ---------------------------------------------------------------------------
+
+const BUCKET = 'speaking-temp'
+
+export interface GradeInput {
+  test: { id: string; title: string; scope: 'full' | 'part'; partType?: string | null }
+  steps: SpeakingStep[]
+  answers: Record<string, StepAnswer>
+}
+
+/** Thrown when grading itself failed (not a plan problem) — retryable. */
+export class GradingError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'GradingError'
+  }
+}
+
+const extensionFor = (mime: string) =>
+  mime.includes('ogg') ? 'ogg' : mime.includes('mp4') ? 'mp4' : mime.includes('wav') ? 'wav' : 'webm'
+
+/**
+ * Upload every recorded answer, then ask the server to grade them.
+ * Returns the attempt id; the analyze page reads the row it wrote.
+ */
+export async function gradeSpeakingAttempt({ test, steps, answers }: GradeInput): Promise<string> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new GradingError('You need to be signed in for an AI check.')
+
+  const attemptId = crypto.randomUUID()
+  const answered = steps
+    .map((step, index) => ({ step, index, clip: answers[step.id] }))
+    .filter((x) => x.clip)
+
+  if (answered.length === 0) throw new GradingError('There is nothing recorded to check.')
+
+  const uploaded: {
+    questionIndex: number
+    partType: string
+    questionText: string
+    durationSec: number
+    path: string
+    mimeType: string
+  }[] = []
+
+  for (const { step, index, clip } of answered) {
+    const blob = clip!.blob
+    const mimeType = blob.type || 'audio/webm'
+    // Path is scoped by user id — storage RLS refuses anything else.
+    const path = `${user.id}/${attemptId}/${index}.${extensionFor(mimeType)}`
+    const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
+      contentType: mimeType,
+      upsert: true,
+    })
+    if (error) throw new GradingError(`Could not upload answer ${index + 1}: ${error.message}`)
+    uploaded.push({
+      questionIndex: index,
+      partType: step.task.partType,
+      questionText: step.question.text,
+      durationSec: clip!.durationSec,
+      path,
+      mimeType,
+    })
+  }
+
+  const { data, error } = await supabase.functions.invoke('grade-speaking', {
+    body: {
+      attemptId,
+      testId: test.id,
+      testTitle: test.title,
+      scope: test.scope,
+      partType: test.partType ?? null,
+      answers: uploaded,
+    },
+  })
+
+  if (error) {
+    // Surface plan problems as PlanLimitError so the UI can show the upgrade
+    // wall instead of a generic failure.
+    const ctx = (error as { context?: Response }).context
+    if (ctx) {
+      try {
+        const parsed = (await ctx.json()) as {
+          error?: string
+          code?: string
+          action?: 'speaking_check'
+          plan?: 'free' | 'pro' | 'premium'
+          limit?: number
+        }
+        if (parsed.code === 'plan_limit' || parsed.code === 'premium_only') {
+          throw new PlanLimitError(
+            parsed.error ?? 'This needs a paid plan.',
+            parsed.code,
+            parsed.action ?? 'speaking_check',
+            parsed.plan ?? 'free',
+            parsed.limit ?? null,
+          )
+        }
+        throw new GradingError(parsed.error ?? 'The AI check failed. Please try again.')
+      } catch (e) {
+        if (e instanceof PlanLimitError || e instanceof GradingError) throw e
+      }
+    }
+    throw new GradingError('The AI check could not be reached. Please try again.')
+  }
+
+  return (data as { attemptId?: string })?.attemptId ?? attemptId
+}
+
+/** Read one graded attempt (RLS limits this to the student's own rows). */
+export async function fetchSpeakingAttempt(id: string): Promise<SpeakingAttemptRow | null> {
+  const { data, error } = await supabase
+    .from('speaking_attempts')
+    .select(
+      'id, test_id, test_title, scope, part_type, status, error_message, raw_score, rating, band, result, created_at, graded_at',
+    )
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  return (data as SpeakingAttemptRow | null) ?? null
+}
+
+/** The student's graded speaking attempts, newest first. */
+export async function fetchSpeakingAttempts(): Promise<SpeakingAttemptRow[]> {
+  const { data, error } = await supabase
+    .from('speaking_attempts')
+    .select(
+      'id, test_id, test_title, scope, part_type, status, error_message, raw_score, rating, band, result, created_at, graded_at',
+    )
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) throw new Error(error.message)
+  return (data ?? []) as SpeakingAttemptRow[]
+}

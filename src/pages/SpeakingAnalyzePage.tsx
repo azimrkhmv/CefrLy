@@ -1,0 +1,368 @@
+import { Fragment, type ReactNode } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { BandRuler } from '../components/BandRuler'
+import { Skeleton } from '../components/Skeleton'
+import { CheckIcon, MicIcon } from '../components/icons'
+import { fetchSpeakingAttempt } from '../lib/speakingGrading'
+import { BAND_INFO } from '../lib/bands'
+import { ERROR_LABEL, type GradedAnswer, type SpeakingAttemptRow } from '../types/speakingResult'
+
+// ---------------------------------------------------------------------------
+// The speaking analysis. There is no audio here and there never will be — the
+// recordings were deleted the moment grading finished, so the TRANSCRIPT is the
+// record of what the student said. Everything else hangs off it: mistakes are
+// highlighted in place, the good phrases beside them, and the improved version
+// sits next to the original so the difference is visible rather than described.
+// ---------------------------------------------------------------------------
+
+export function SpeakingAnalyzePage() {
+  const { attemptId } = useParams()
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['speaking-attempt', attemptId],
+    queryFn: () => fetchSpeakingAttempt(attemptId!),
+    enabled: !!attemptId,
+    // Grading takes a few seconds; keep looking until it lands.
+    refetchInterval: (q) => (q.state.data?.status === 'grading' ? 3000 : false),
+  })
+
+  if (isLoading) return <LoadingState />
+  if (error) return <Notice title="Could not load this analysis" body={(error as Error).message} />
+  if (!data) return <Notice title="Analysis not found" body="This attempt does not exist, or it belongs to another account." />
+  if (data.status === 'grading') return <GradingState />
+  if (data.status === 'failed' || !data.result) {
+    return (
+      <Notice
+        title="Grading did not finish"
+        body={data.error_message ?? 'Something went wrong while checking this attempt.'}
+      />
+    )
+  }
+
+  return <Analysis attempt={data} />
+}
+
+function Analysis({ attempt }: { attempt: SpeakingAttemptRow }) {
+  const result = attempt.result!
+  const isDrill = attempt.scope === 'part'
+  const rating = attempt.rating ?? 0
+  // A drill fills one block only, so its band is scaled, not earned. The row
+  // stores band NULL for exactly that reason; we recompute it for display and
+  // label it as an estimate.
+  const band = attempt.band ?? bandFromRating(rating)
+
+  return (
+    <div className="space-y-6">
+      <section className="rounded-2xl border border-line bg-white p-6 shadow-card sm:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-wide text-ink-soft">
+              Speaking · {isDrill ? 'Part practice' : 'Full mock'}
+            </p>
+            <h1 className="mt-1 truncate text-2xl font-extrabold text-heading">
+              {attempt.test_title}
+            </h1>
+            <p className="mt-1 text-sm text-ink-soft">
+              {new Date(attempt.created_at).toLocaleString()}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="tnum text-4xl font-extrabold text-heading">
+              {rating}
+              <span className="text-lg text-ink-soft">/75</span>
+            </p>
+            <span className="mt-1 inline-block rounded-full bg-brand-soft px-3 py-1 text-sm font-bold text-brand">
+              {BAND_INFO[band].label}
+            </span>
+          </div>
+        </div>
+
+        {isDrill ? (
+          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            This is an <strong>estimate</strong> from one part only. A real CEFR band needs all four
+            parts, so this score is not saved to your results history.
+          </p>
+        ) : (
+          <div className="mt-5">
+            <BandRuler band={band} score={ratingToRulerScore(rating)} animate />
+          </div>
+        )}
+
+        <p className="tnum mt-4 text-sm text-ink-soft">
+          Raw score {attempt.raw_score} of{' '}
+          {result.blocks.reduce((n, b) => n + b.max, 0)}
+        </p>
+      </section>
+
+      {result.fixFirst && (
+        <section className="rounded-2xl bg-sun-soft p-5 sm:p-6">
+          <p className="text-xs font-bold uppercase tracking-wide text-sun-ink">Fix this first</p>
+          <p className="mt-1.5 font-bold text-heading">{result.fixFirst}</p>
+        </section>
+      )}
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {result.blocks.map((b) => (
+          <div key={b.key} className="rounded-2xl border border-line bg-white p-5 shadow-card">
+            <p className="text-xs font-bold uppercase tracking-wide text-ink-soft">{b.label}</p>
+            <p className="tnum mt-1 text-2xl font-extrabold text-heading">
+              {b.score}
+              <span className="text-base text-ink-soft">/{b.max}</span>
+            </p>
+            {b.reason && <p className="mt-2 text-sm text-ink-soft">{b.reason}</p>}
+          </div>
+        ))}
+      </section>
+
+      {result.summary && (
+        <section className="rounded-2xl border border-line bg-white p-6 shadow-card">
+          <h2 className="font-extrabold text-heading">Overall</h2>
+          <p className="mt-2 text-sm leading-relaxed text-ink">{result.summary}</p>
+        </section>
+      )}
+
+      <div className="space-y-5">
+        <h2 className="text-lg font-extrabold text-heading">Your answers</h2>
+        {result.answers.map((a, i) => (
+          <AnswerCard key={a.questionIndex} n={i + 1} answer={a} />
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <Link
+          to="/speaking"
+          className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+        >
+          Practise again
+        </Link>
+        <Link
+          to="/samples"
+          className="rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+        >
+          See model answers
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+function AnswerCard({ n, answer }: { n: number; answer: GradedAnswer }) {
+  const spoke = answer.transcript.trim().length > 0
+  return (
+    <section className="rounded-2xl border border-line bg-white p-6 shadow-card">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="tnum font-extrabold text-brand">Q{n}</span>
+        <p className="min-w-0 flex-1 font-bold text-ink">{answer.questionText}</p>
+      </div>
+
+      <div className="tnum mt-3 flex flex-wrap gap-2 text-xs">
+        <Stat label="spoke" value={`${Math.round(answer.durationSec)}s`} />
+        <Stat label="speed" value={`${answer.wordsPerMinute} wpm`} />
+        <Stat label="fillers" value={String(answer.fillerCount)} />
+      </div>
+
+      {!spoke ? (
+        <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          Nothing was recorded for this question.
+        </p>
+      ) : (
+        <>
+          <div className="mt-4">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-ink-soft">
+              What you said
+            </h3>
+            <p className="mt-2 leading-loose text-ink">
+              <Marked
+                text={answer.transcript}
+                errors={answer.errors.map((e) => e.quote)}
+                strengths={answer.strengths.map((s) => s.quote)}
+              />
+            </p>
+            <p className="mt-2 text-xs text-ink-soft">
+              <span className="rounded bg-rose-100 px-1.5 py-0.5 font-bold text-rose-800">
+                mistake
+              </span>{' '}
+              <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 font-bold text-emerald-800">
+                good phrase
+              </span>
+            </p>
+          </div>
+
+          {answer.errors.length > 0 && (
+            <div className="mt-5">
+              <h3 className="text-xs font-bold uppercase tracking-wide text-ink-soft">
+                Mistakes ({answer.errors.length})
+              </h3>
+              <ul className="mt-2 space-y-2">
+                {answer.errors.map((e, i) => (
+                  <li
+                    key={`${e.quote}-${i}`}
+                    className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm"
+                  >
+                    <span className="rounded-full bg-white px-2 py-0.5 text-xs font-bold text-rose-800">
+                      {ERROR_LABEL[e.type] ?? e.type}
+                    </span>
+                    <p className="mt-1.5 text-rose-900 line-through decoration-rose-400">
+                      {e.quote}
+                    </p>
+                    <p className="mt-1 font-bold text-ink">{e.fix}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {answer.strengths.length > 0 && (
+            <div className="mt-5">
+              <h3 className="text-xs font-bold uppercase tracking-wide text-ink-soft">
+                Good language you used
+              </h3>
+              <ul className="mt-2 space-y-2">
+                {answer.strengths.map((s, i) => (
+                  <li
+                    key={`${s.quote}-${i}`}
+                    className="flex gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm"
+                  >
+                    <CheckIcon width={16} height={16} />
+                    <span>
+                      <strong className="font-bold text-emerald-900">{s.quote}</strong>
+                      <span className="text-emerald-900"> — {s.why}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="mt-5 grid gap-3 lg:grid-cols-2">
+            <Panel title="Pronunciation">{answer.pronunciation}</Panel>
+            <Panel title="Fluency">{answer.fluency}</Panel>
+          </div>
+
+          {answer.improved && (
+            <div className="mt-5 rounded-2xl bg-brand-soft p-5">
+              <h3 className="text-xs font-bold uppercase tracking-wide text-brand">
+                A stronger version of your answer
+              </h3>
+              <p className="mt-2 leading-relaxed text-ink">{answer.improved}</p>
+              <p className="mt-2 text-xs text-ink-soft">
+                Written one level above what you said — close enough to copy next time.
+              </p>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
+/** Highlight the quoted mistakes and strong phrases inside the transcript.
+ *  Quotes come back from the model as exact substrings; any that no longer
+ *  match (a paraphrase slipped through) is simply skipped rather than
+ *  mangling the text. */
+function Marked({
+  text,
+  errors,
+  strengths,
+}: {
+  text: string
+  errors: string[]
+  strengths: string[]
+}): ReactNode {
+  type Span = { start: number; end: number; kind: 'error' | 'strength' }
+  const spans: Span[] = []
+
+  const add = (quote: string, kind: Span['kind']) => {
+    const q = quote.trim()
+    if (q.length < 2) return
+    const at = text.toLowerCase().indexOf(q.toLowerCase())
+    if (at === -1) return
+    spans.push({ start: at, end: at + q.length, kind })
+  }
+  errors.forEach((q) => add(q, 'error'))
+  strengths.forEach((q) => add(q, 'strength'))
+
+  spans.sort((a, b) => a.start - b.start)
+  const out: ReactNode[] = []
+  let cursor = 0
+  spans.forEach((s, i) => {
+    if (s.start < cursor) return // overlapping quotes: keep the first
+    if (s.start > cursor) out.push(<Fragment key={`t${i}`}>{text.slice(cursor, s.start)}</Fragment>)
+    out.push(
+      <mark
+        key={`m${i}`}
+        className={
+          s.kind === 'error'
+            ? 'rounded bg-rose-100 px-0.5 font-bold text-rose-900'
+            : 'rounded bg-emerald-100 px-0.5 font-bold text-emerald-900'
+        }
+      >
+        {text.slice(s.start, s.end)}
+      </mark>,
+    )
+    cursor = s.end
+  })
+  if (cursor < text.length) out.push(<Fragment key="tail">{text.slice(cursor)}</Fragment>)
+  return <>{out}</>
+}
+
+const Stat = ({ label, value }: { label: string; value: string }) => (
+  <span className="rounded-full bg-page px-3 py-1 font-bold text-ink-soft">
+    {value} <span className="font-normal">{label}</span>
+  </span>
+)
+
+const Panel = ({ title, children }: { title: string; children: ReactNode }) => (
+  <div className="rounded-xl border border-line bg-page px-4 py-3">
+    <h3 className="text-xs font-bold uppercase tracking-wide text-ink-soft">{title}</h3>
+    <p className="mt-1 text-sm text-ink">{children}</p>
+  </div>
+)
+
+/** The ruler works in exam marks, not rating points; map 0-75 onto its scale. */
+function ratingToRulerScore(rating: number): number {
+  if (rating >= 65) return 28 + Math.round(((rating - 65) / 10) * 7)
+  if (rating >= 50) return 18 + Math.round(((rating - 50) / 15) * 10)
+  if (rating >= 38) return 10 + Math.round(((rating - 38) / 12) * 8)
+  return Math.round((rating / 38) * 9)
+}
+
+function bandFromRating(rating: number) {
+  if (rating >= 65) return 'C1' as const
+  if (rating >= 50) return 'B2' as const
+  if (rating >= 38) return 'B1' as const
+  return 'below_B1' as const
+}
+
+const LoadingState = () => (
+  <div className="space-y-4">
+    <Skeleton className="h-40 rounded-2xl" />
+    <Skeleton className="h-24 rounded-2xl" />
+    <Skeleton className="h-64 rounded-2xl" />
+  </div>
+)
+
+const GradingState = () => (
+  <div className="rounded-2xl border border-line bg-white p-10 text-center shadow-card">
+    <span className="mx-auto grid h-16 w-16 animate-pulse place-items-center rounded-full bg-brand-soft text-brand">
+      <MicIcon width={26} height={26} />
+    </span>
+    <h1 className="mt-4 text-xl font-extrabold text-heading">Checking your speaking…</h1>
+    <p className="mt-1 text-sm text-ink-soft">
+      This usually takes under a minute. The page updates by itself.
+    </p>
+  </div>
+)
+
+const Notice = ({ title, body }: { title: string; body: string }) => (
+  <div className="rounded-2xl border border-line bg-white p-10 text-center shadow-card">
+    <h1 className="text-xl font-extrabold text-heading">{title}</h1>
+    <p className="mx-auto mt-2 max-w-md text-sm text-ink-soft">{body}</p>
+    <Link
+      to="/speaking"
+      className="mt-5 inline-block rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+    >
+      Back to Speaking
+    </Link>
+  </div>
+)
