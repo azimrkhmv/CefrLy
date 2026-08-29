@@ -167,6 +167,50 @@ export async function fetchSpeakingAttempt(id: string): Promise<SpeakingAttemptR
   return (data as SpeakingAttemptRow | null) ?? null
 }
 
+export interface RecheckRequest {
+  id: string
+  attempt_id: string
+  reason: string
+  status: 'open' | 'reviewed' | 'rejected'
+  admin_note: string | null
+  created_at: string
+  reviewed_at: string | null
+}
+
+/**
+ * Ask a human to look at a score again. This does NOT re-run the AI: the
+ * recordings are gone after grading, so a second automatic pass would read the
+ * same transcript and reach the same answer. It puts the complaint in front of
+ * an admin.
+ */
+export async function requestRecheck(attemptId: string, reason: string): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('You need to be signed in.')
+  const { error } = await supabase
+    .from('speaking_recheck_requests')
+    .insert({ attempt_id: attemptId, user_id: user.id, reason: reason.trim() })
+  if (error) {
+    // The unique constraint on attempt_id is the "already asked" case.
+    if (/duplicate|unique/i.test(error.message)) {
+      throw new Error('You have already asked us to look at this attempt.')
+    }
+    throw new Error(error.message)
+  }
+}
+
+/** The student's own recheck request for an attempt, if they raised one. */
+export async function fetchRecheck(attemptId: string): Promise<RecheckRequest | null> {
+  const { data, error } = await supabase
+    .from('speaking_recheck_requests')
+    .select('id, attempt_id, reason, status, admin_note, created_at, reviewed_at')
+    .eq('attempt_id', attemptId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  return (data as RecheckRequest | null) ?? null
+}
+
 /** The student's graded speaking attempts, newest first. */
 export async function fetchSpeakingAttempts(): Promise<SpeakingAttemptRow[]> {
   const { data, error } = await supabase

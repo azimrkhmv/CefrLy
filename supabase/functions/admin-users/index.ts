@@ -23,8 +23,51 @@ const PROFILE_FIELDS =
 const ATTEMPT_FIELDS =
   'id, user_id, raw_score, total, band, created_at, tests(slug, title, skill, scope, part_number)'
 
+// Speaking is scored out of 75 by the official rating table, not out of 35 like
+// Reading/Listening, and it is NOT a row in `attempts` — hence its own fields
+// and its own summary rather than reusing the ones above.
+const SPEAKING_FIELDS = 'id, user_id, rating, band, scope, status, created_at'
+const SPEAKING_DETAIL_FIELDS =
+  'id, test_id, test_title, scope, part_type, status, error_message, raw_score, rating, band, result, created_at, graded_at'
+
 // deno-lint-ignore no-explicit-any
 type Row = any
+
+function shapeSpeaking(r: Row) {
+  return {
+    id: r.id,
+    test_id: r.test_id,
+    test_title: r.test_title,
+    scope: r.scope ?? 'full',
+    part_type: r.part_type ?? null,
+    status: r.status,
+    error_message: r.error_message ?? null,
+    raw_score: r.raw_score ?? null,
+    rating: r.rating ?? null,
+    band: r.band ?? null,
+    result: r.result ?? null,
+    created_at: r.created_at,
+    graded_at: r.graded_at ?? null,
+  }
+}
+
+/** Last and best SPEAKING band. Only full papers carry a band — a drill's score
+ *  is an estimate from one part and would flatter the student's record. */
+function summariseSpeaking(rows: Row[]) {
+  const graded = rows.filter((r) => r.status === 'done')
+  const banded = graded.filter((r) => r.band !== null && r.scope === 'full')
+  const best = banded.reduce(
+    (acc: Row | null, r) => (acc === null || (r.rating ?? 0) > (acc.rating ?? 0) ? r : acc),
+    null,
+  )
+  return {
+    speaking_count: graded.length,
+    speaking_last_band: banded[0]?.band ?? null,
+    speaking_last_rating: banded[0]?.rating ?? null,
+    speaking_best_rating: best?.rating ?? null,
+    speaking_last_at: graded[0]?.created_at ?? null,
+  }
+}
 
 /** Flatten the embedded test (PostgREST returns to-one embeds as an object). */
 function shapeAttempt(a: Row) {
@@ -124,6 +167,20 @@ Deno.serve(async (req) => {
         .order('created_at', { ascending: false })
       if (attemptsError) return json({ error: attemptsError.message }, 500)
 
+      // Speaking lives in its own table (it is not an `attempts` row), so its
+      // summary has to be fetched and joined separately.
+      const { data: speaking } = await admin
+        .from('speaking_attempts')
+        .select(SPEAKING_FIELDS)
+        .eq('status', 'done')
+        .order('created_at', { ascending: false })
+      const speakingByUser = new Map<string, Row[]>()
+      for (const s of (speaking ?? []) as Row[]) {
+        const list = speakingByUser.get(s.user_id)
+        if (list) list.push(s)
+        else speakingByUser.set(s.user_id, [s])
+      }
+
       const byId = new Map<string, Row>((profiles ?? []).map((p: Row) => [p.id, p]))
       const attemptsByUser = new Map<string, ReturnType<typeof shapeAttempt>[]>()
       for (const a of (attempts ?? []) as Row[]) {
@@ -150,6 +207,7 @@ Deno.serve(async (req) => {
             self_level: p?.self_level ?? null,
             target_band: p?.target_band ?? null,
             ...summarise(attemptsByUser.get(u.id) ?? []),
+            ...summariseSpeaking(speakingByUser.get(u.id) ?? []),
           }
         })
         .sort((a, b) => (a.created_at < b.created_at ? 1 : -1)) // newest signup first
@@ -179,6 +237,19 @@ Deno.serve(async (req) => {
         .order('created_at', { ascending: false })
       if (attemptsError) return json({ error: attemptsError.message }, 500)
 
+      const { data: speakingRows } = await admin
+        .from('speaking_attempts')
+        .select(SPEAKING_DETAIL_FIELDS)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+      const speakingAttempts = ((speakingRows ?? []) as Row[]).map(shapeSpeaking)
+
+      const { data: rechecks } = await admin
+        .from('speaking_recheck_requests')
+        .select('id, attempt_id, reason, status, admin_note, created_at, reviewed_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+
       const shaped = ((attempts ?? []) as Row[]).map(shapeAttempt)
       const p = profile as Row
       return json({
@@ -197,6 +268,9 @@ Deno.serve(async (req) => {
           self_level: p?.self_level ?? null,
           target_band: p?.target_band ?? null,
           ...summarise(shaped),
+          ...summariseSpeaking(
+            ((speakingRows ?? []) as Row[]).filter((r) => r.status === 'done'),
+          ),
         },
         onboarding: {
           first_exam: p?.first_exam ?? null,
@@ -210,7 +284,33 @@ Deno.serve(async (req) => {
           source: p?.source ?? null,
         },
         attempts: shaped,
+        speakingAttempts,
+        rechecks: rechecks ?? [],
       })
+    }
+
+    // Answer a student's "this score is wrong". Any admin may reply — this is
+    // support, not a privilege escalation, so it is not super_admin-only.
+    case 'resolveRecheck': {
+      const recheckId = body.recheckId
+      const status = body.status
+      const note = body.adminNote
+      if (typeof recheckId !== 'string' || !recheckId) {
+        return json({ error: 'recheckId is required' }, 400)
+      }
+      if (status !== 'reviewed' && status !== 'rejected' && status !== 'open') {
+        return json({ error: 'status must be open, reviewed or rejected' }, 400)
+      }
+      const { error } = await admin
+        .from('speaking_recheck_requests')
+        .update({
+          status,
+          admin_note: typeof note === 'string' ? note.slice(0, 2000) : null,
+          reviewed_at: status === 'open' ? null : new Date().toISOString(),
+        })
+        .eq('id', recheckId)
+      if (error) return json({ error: error.message }, 500)
+      return json({ ok: true })
     }
 
     case 'setUserRole': {

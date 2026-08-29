@@ -1,11 +1,14 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchSamples } from '../lib/api'
+import { useAuth } from '../lib/auth'
+import { hasPremiumAccess } from '../lib/plans'
 import { imageUrl } from '../lib/storage'
 import { EmptyState } from '../components/EmptyState'
 import { TabStrip } from '../components/TabStrip'
 import { TestGridSkeleton } from '../components/Skeleton'
-import { ArrowRightIcon, MicIcon, PenIcon } from '../components/icons'
+import { ArrowRightIcon, LockIcon, MicIcon, PenIcon } from '../components/icons'
 import type { Sample, SampleCategory, SampleImage, SampleSkill, SpeakingTurn, VocabItem } from '../types/sample'
 import { SAMPLE_CATEGORIES, SAMPLE_SKILLS, sampleSkill, sampleUsesTurns } from '../types/sample'
 
@@ -33,16 +36,60 @@ const chipsFor = (category: SampleCategory): { label: string; className: string 
 const firstCategoryOf = (skill: SampleSkill): SampleCategory =>
   SAMPLE_CATEGORIES.find((c) => c.skill === skill)!.key
 
+/** What a Free student sees. Deliberately says what is behind the wall rather
+ *  than pretending the library is empty. */
+function SamplesLocked() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-extrabold text-heading">Samples</h1>
+        <p className="mt-1 max-w-2xl text-sm text-ink-soft">
+          Model answers to real Multilevel writing and speaking tasks.
+        </p>
+      </div>
+
+      <section className="rounded-2xl border border-line bg-white p-8 text-center shadow-card sm:p-10">
+        <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-brand-soft text-brand">
+          <LockIcon width={24} height={24} />
+        </span>
+        <h2 className="mt-4 text-xl font-extrabold text-heading">
+          Model answers are part of Pro and Premium
+        </h2>
+        <p className="mx-auto mt-2 max-w-lg text-sm text-ink-soft">
+          Over 100 model answers written to the real exam format — three writing parts and all four
+          speaking parts — each with the examiner's task, the full model response and a vocabulary
+          glossary.
+        </p>
+        <Link
+          to="/pricing"
+          className="mt-5 inline-block rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+        >
+          See plans
+        </Link>
+        <p className="mt-3 text-xs text-ink-soft">
+          Practice tests stay free — this unlocks the model answers.
+        </p>
+      </section>
+    </div>
+  )
+}
+
 export function SamplesPage() {
   const [skill, setSkill] = useState<SampleSkill>('writing')
   const [tab, setTab] = useState<SampleCategory>('writing1_1')
   const [openSlug, setOpenSlug] = useState<string | null>(null)
 
+  // Model answers are part of Pro and Premium. The real gate is RLS on the
+  // `samples` table — this only decides what a locked student SEES, and skips a
+  // fetch that would come back empty anyway.
+  const { plan } = useAuth()
+  const locked = !hasPremiumAccess(plan)
+
   const {
     data: allSamples,
     isLoading,
     error,
-  } = useQuery({ queryKey: ['samples'], queryFn: fetchSamples })
+  } = useQuery({ queryKey: ['samples'], queryFn: fetchSamples, enabled: !locked })
 
   const subTabs = SAMPLE_CATEGORIES.filter((c) => c.skill === skill)
   const samples = (allSamples ?? []).filter((s) => s.category === tab)
@@ -57,6 +104,8 @@ export function SamplesPage() {
     setTab(next)
     setOpenSlug(null)
   }
+
+  if (locked) return <SamplesLocked />
 
   return (
     <div className="space-y-6">

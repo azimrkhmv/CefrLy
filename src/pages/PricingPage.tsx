@@ -43,6 +43,7 @@ const PLANS: Plan[] = [
       { text: 'Every free test, any time' },
       { text: 'No card needed' },
       { text: 'Premium mock tests (Pro & Premium)', excluded: true },
+      { text: 'Model answers library (Pro & Premium)', excluded: true },
     ],
     cta: { label: 'Continue free', helper: 'No card needed', variant: 'secondary', to: '/reading' },
   },
@@ -59,6 +60,7 @@ const PLANS: Plan[] = [
       { text: 'Unlimited Listening sets' },
       { lead: '10', text: 'Writing checks', note: '/mo' },
       { lead: '10', text: 'Speaking checks', note: '/mo' },
+      { text: 'Model answers library' },
       { text: 'Instant CEFR band' },
     ],
     cta: {
@@ -83,6 +85,7 @@ const PLANS: Plan[] = [
       { text: 'Unlimited Listening sets' },
       { text: 'Unlimited Writing checks' },
       { text: 'Unlimited Speaking checks' },
+      { text: 'Model answers library' },
       { text: 'Instant CEFR band' },
     ],
     cta: {

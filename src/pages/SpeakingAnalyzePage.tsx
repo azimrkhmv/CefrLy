@@ -1,10 +1,15 @@
 import { Fragment, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { BandRuler } from '../components/BandRuler'
 import { Skeleton } from '../components/Skeleton'
 import { CheckIcon, MicIcon } from '../components/icons'
-import { fetchSpeakingAttempt, retrySpeakingAttempt } from '../lib/speakingGrading'
+import {
+  fetchRecheck,
+  fetchSpeakingAttempt,
+  requestRecheck,
+  retrySpeakingAttempt,
+} from '../lib/speakingGrading'
 import { BAND_INFO } from '../lib/bands'
 import { ERROR_LABEL, type GradedAnswer, type SpeakingAttemptRow } from '../types/speakingResult'
 
@@ -122,6 +127,8 @@ function Analysis({ attempt }: { attempt: SpeakingAttemptRow }) {
           <AnswerCard key={a.questionIndex} n={i + 1} answer={a} />
         ))}
       </div>
+
+      <RecheckBox attemptId={attempt.id} />
 
       <div className="flex flex-wrap gap-3">
         <Link
@@ -348,6 +355,131 @@ const GradingState = () => (
     </p>
   </div>
 )
+
+/**
+ * "This score looks wrong." An AI grader will sometimes be harsh or plain wrong,
+ * and a student with no way to say so just loses faith in the whole product.
+ *
+ * It does NOT re-run the AI: the recordings were deleted after grading, so a
+ * second pass would read the same transcript and reach the same score. This
+ * reaches a person, which is the only thing that can actually help.
+ */
+function RecheckBox({ attemptId }: { attemptId: string }) {
+  const queryClient = useQueryClient()
+  const { data: existing, isLoading } = useQuery({
+    queryKey: ['speaking-recheck', attemptId],
+    queryFn: () => fetchRecheck(attemptId),
+  })
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+
+  if (isLoading) return null
+
+  if (existing) {
+    return (
+      <section className="rounded-2xl border border-line bg-white p-5 shadow-card">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="font-extrabold text-heading">You asked us to check this again</h2>
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+              existing.status === 'open'
+                ? 'bg-sun-soft text-sun-ink'
+                : existing.status === 'reviewed'
+                  ? 'bg-emerald-50 text-emerald-800'
+                  : 'bg-page text-ink-soft'
+            }`}
+          >
+            {existing.status === 'open'
+              ? 'Waiting for a teacher'
+              : existing.status === 'reviewed'
+                ? 'Reviewed'
+                : 'Closed'}
+          </span>
+        </div>
+        <p className="mt-2 text-sm text-ink-soft">“{existing.reason}”</p>
+        {existing.admin_note && (
+          <p className="mt-3 rounded-xl bg-brand-soft px-4 py-3 text-sm text-ink">
+            <strong className="font-bold">Our answer:</strong> {existing.admin_note}
+          </p>
+        )}
+      </section>
+    )
+  }
+
+  const submit = async () => {
+    setBusy(true)
+    setProblem(null)
+    try {
+      await requestRecheck(attemptId, reason)
+      void queryClient.invalidateQueries({ queryKey: ['speaking-recheck', attemptId] })
+      setOpen(false)
+    } catch (e) {
+      setProblem(e instanceof Error ? e.message : 'Could not send that.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const tooShort = reason.trim().length < 10
+
+  return (
+    <section className="rounded-2xl border border-line bg-white p-5 shadow-card">
+      {!open ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-ink-soft">
+            Think this score is wrong? A teacher can look at your transcript.
+          </p>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-brand transition-colors hover:border-brand hover:bg-brand-soft"
+          >
+            Ask for a recheck
+          </button>
+        </div>
+      ) : (
+        <div>
+          <h2 className="font-extrabold text-heading">Ask for a recheck</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Tell us what looks wrong — which question, and why you think the score is unfair. A
+            teacher will read your transcript and reply here.
+          </p>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={4}
+            maxLength={2000}
+            placeholder="Example: In question 2 I answered the whole question, but the score says I was off topic."
+            className="mt-3 w-full rounded-xl border border-line bg-page px-4 py-3 text-sm text-ink outline-none focus:border-brand"
+          />
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => void submit()}
+              disabled={busy || tooShort}
+              className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep disabled:opacity-50"
+            >
+              {busy ? 'Sending…' : 'Send'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+            >
+              Cancel
+            </button>
+            {tooShort && (
+              <span className="text-xs text-ink-soft">Please write a little more detail.</span>
+            )}
+          </div>
+          {problem && <p className="mt-2 text-sm text-rose-700">{problem}</p>}
+        </div>
+      )}
+    </section>
+  )
+}
 
 /** A check that failed. The recordings survive for an hour after the attempt,
  *  so within that window this really can be retried — after it, the audio is
