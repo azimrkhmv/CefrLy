@@ -8,6 +8,10 @@ import { SpeakingCustomTab } from '../components/speaking/SpeakingCustomTab'
 import { AddCustomModal } from '../components/speaking/AddCustomModal'
 import { useSpeakingItems } from '../lib/speakingCatalog'
 import { countAttempts, useSpeakingAttempts } from '../lib/speakingAttempts'
+import { fetchSpeakingAttempts } from '../lib/speakingGrading'
+import { hasPremiumAccess } from '../lib/plans'
+import { useAuth } from '../lib/auth'
+import { useQuery } from '@tanstack/react-query'
 import { removeCustomQuestion } from '../lib/speakingCustom'
 import type { SpeakingPartType } from '../types/test'
 
@@ -38,10 +42,20 @@ export function SpeakingPage() {
   const [status, setStatus] = useState<StatusFilter>('all')
   const [modal, setModal] = useState<{ partType: SpeakingPartType } | null>(null)
   const [toast, setToast] = useState(false)
+  const { plan } = useAuth()
 
   const { items, isLoading, error } = useSpeakingItems(tab)
+  // Attempts live in two stores that never overlap: ungraded ones locally, graded
+  // ones on the server. A card's count is the sum, or a checked attempt would
+  // make the card look untouched again.
   const attempts = useSpeakingAttempts()
-  const attemptCount = (id: string) => countAttempts(attempts, id)
+  const { data: gradedRows } = useQuery({
+    queryKey: ['speaking-attempts'],
+    queryFn: fetchSpeakingAttempts,
+  })
+  const graded = gradedRows ?? []
+  const attemptCount = (id: string) =>
+    countAttempts(attempts, id) + graded.filter((g) => g.test_id === id).length
 
   const shown =
     status === 'all'
@@ -89,6 +103,7 @@ export function SpeakingPage() {
           tab={tab}
           items={shown}
           attemptCount={attemptCount}
+          checkLocked={!hasPremiumAccess(plan)}
           onAddCustom={openAddCustom}
         />
       )}

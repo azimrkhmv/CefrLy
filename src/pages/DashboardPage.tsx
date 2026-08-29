@@ -4,6 +4,11 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchMyAttempts } from '../lib/api'
 import { useWritingAttempts, type WritingAttempt } from '../lib/writingAttempts'
 import { TASK_LABEL } from '../lib/writingFixtures'
+import { fetchSpeakingAttempts } from '../lib/speakingGrading'
+import { useSpeakingAttempts, type SpeakingAttempt } from '../lib/speakingAttempts'
+import { PART_LABEL } from '../lib/speakingFixtures'
+import type { SpeakingAttemptRow } from '../types/speakingResult'
+import type { SpeakingPartType } from '../types/test'
 import { BAND_INFO } from '../lib/bands'
 import { skillMeta } from '../lib/skills'
 import { BandRuler } from '../components/BandRuler'
@@ -273,6 +278,192 @@ function WritingResults({ attempts }: { attempts: WritingAttempt[] }) {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Speaking. Unlike the other skills these attempts come from `speaking_attempts`
+// (there is no `attempts` row and no /35 score — speaking is marked out of 75).
+// Every graded card links to its analysis: without this the analyze page was
+// reachable only in the seconds after submitting, so a paid check could be lost
+// by closing the tab.
+// ---------------------------------------------------------------------------
+function SpeakingResults({
+  attempts,
+  ungraded,
+}: {
+  attempts: SpeakingAttemptRow[]
+  /** Sittings with no AI check — a Free plan, or a check that never ran. */
+  ungraded: SpeakingAttempt[]
+}) {
+  // Only full papers carry a real band; drills store NULL on purpose, so they
+  // never influence "best" or the trend.
+  const banded = attempts.filter((a) => a.status === 'done' && a.scope === 'full' && a.rating != null)
+  const best = banded.length > 0 ? banded.reduce((a, b) => (b.rating! > a.rating! ? b : a)) : null
+  const chron = [...banded].reverse()
+  const trend =
+    chron.length >= 2 ? chron[chron.length - 1].rating! - chron[0].rating! : null
+
+  return (
+    <>
+      {best && (
+        <div className="rounded-2xl bg-brand-soft p-5 sm:p-6">
+          <p className="text-xs font-bold uppercase tracking-wide text-brand">
+            Speaking · Your progress
+          </p>
+          <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
+            <p className="tnum text-4xl font-extrabold text-heading">
+              {best.rating}
+              <span className="text-lg text-ink-soft">/75</span>
+            </p>
+            {best.band && (
+              <span className="rounded-full bg-white px-3 py-1 text-sm font-bold text-brand">
+                {BAND_INFO[best.band].label}
+              </span>
+            )}
+            {trend !== null && (
+              <span className="tnum text-sm font-bold text-ink-soft">
+                {trend >= 0 ? '+' : ''}
+                {trend} points since your first mock
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base font-extrabold text-heading">All attempts</h2>
+        <span className="text-[13px] font-semibold text-ink-soft">
+          {attempts.length} {attempts.length === 1 ? 'attempt' : 'attempts'} · newest first
+        </span>
+      </div>
+
+      <ul className="grid gap-4 sm:grid-cols-2">
+        {attempts.map((a) => (
+          <SpeakingAttemptCard key={a.id} attempt={a} isBest={best?.id === a.id} />
+        ))}
+        {ungraded.map((a) => (
+          <UncheckedSpeakingCard key={a.id} attempt={a} />
+        ))}
+      </ul>
+    </>
+  )
+}
+
+/** A sitting that was never checked. It still happened, so it is still listed —
+ *  silently dropping it would look like the attempt was lost. */
+function UncheckedSpeakingCard({ attempt }: { attempt: SpeakingAttempt }) {
+  const spoken = attempt.answers.reduce((n, a) => n + a.durationSec, 0)
+  return (
+    <li className="flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-card">
+      <div className="flex items-center gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-rose-50 text-rose-800">
+          <MicIcon width={20} height={20} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-extrabold leading-snug text-heading">{attempt.title}</p>
+          <p className="mt-0.5 text-xs font-semibold text-ink-soft">
+            {new Date(attempt.submittedAt).toLocaleString(undefined, {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            })}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3.5">
+        <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-bold text-brand">
+          {attempt.scope === 'full'
+            ? 'Full mock'
+            : (attempt.partType && PART_LABEL[attempt.partType]) || 'Part practice'}
+        </span>
+        <span className="tnum text-xs font-bold text-ink-soft">{Math.round(spoken)}s spoken</span>
+      </div>
+      <p className="mt-3 text-xs text-ink-soft">
+        Not checked by AI — no band score for this attempt.{' '}
+        <Link to="/pricing" className="font-bold text-brand hover:underline">
+          See plans
+        </Link>
+      </p>
+    </li>
+  )
+}
+
+function SpeakingAttemptCard({
+  attempt,
+  isBest,
+}: {
+  attempt: SpeakingAttemptRow
+  isBest: boolean
+}) {
+  const done = attempt.status === 'done'
+  const chip =
+    attempt.scope === 'full'
+      ? 'Full mock'
+      : PART_LABEL[attempt.part_type as SpeakingPartType] ?? 'Part practice'
+
+  return (
+    <li
+      className={`flex h-full flex-col rounded-2xl border bg-white p-5 shadow-card transition-shadow ${
+        isBest ? 'border-brand' : 'border-line'
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${
+            isBest ? 'bg-brand text-white' : 'bg-rose-50 text-rose-800'
+          }`}
+        >
+          <MicIcon width={20} height={20} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-extrabold leading-snug text-heading">{attempt.test_title}</p>
+          <p className="mt-0.5 text-xs font-semibold text-ink-soft">
+            {new Date(attempt.created_at).toLocaleString(undefined, {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            })}
+          </p>
+        </div>
+        {isBest && (
+          <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-extrabold text-brand">
+            BEST
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3.5">
+        <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-bold text-brand">
+          {chip}
+        </span>
+
+        {done ? (
+          <span className="flex items-center gap-2">
+            <span className="tnum text-sm font-bold text-heading">{attempt.rating}/75</span>
+            {attempt.band ? (
+              <span className="rounded-full bg-page px-2.5 py-0.5 text-xs font-bold text-ink">
+                {BAND_INFO[attempt.band].label}
+              </span>
+            ) : (
+              <span className="rounded-full bg-page px-2.5 py-0.5 text-xs font-bold text-ink-soft">
+                estimate
+              </span>
+            )}
+          </span>
+        ) : attempt.status === 'grading' ? (
+          <span className="text-xs font-bold text-brand">Checking…</span>
+        ) : (
+          <span className="text-xs font-bold text-rose-700">Check failed</span>
+        )}
+      </div>
+
+      <Link
+        to={`/speaking/analyze/${attempt.id}`}
+        className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-brand hover:underline"
+      >
+        {done ? 'See analysis' : 'Open'}
+        <ArrowRightIcon width={14} height={14} />
+      </Link>
+    </li>
+  )
+}
+
 export function DashboardPage() {
   const {
     data: attempts,
@@ -280,8 +471,19 @@ export function DashboardPage() {
     error,
   } = useQuery({ queryKey: ['my-attempts'], queryFn: fetchMyAttempts })
   const writingAttempts = useWritingAttempts()
+  // Speaking lives in its own table, so it needs its own query rather than
+  // riding along with fetchMyAttempts.
+  const { data: speakingRows } = useQuery({
+    queryKey: ['speaking-attempts'],
+    queryFn: fetchSpeakingAttempts,
+  })
+  const speakingAttempts = speakingRows ?? []
+  // Local sittings are the ungraded ones by construction: a graded attempt is
+  // removed from localStorage as soon as the server records it.
+  const localSpeaking = useSpeakingAttempts()
   const [filter, setFilter] = useState<Filter>('reading')
   const isWriting = filter === 'writing'
+  const isSpeaking = filter === 'speaking'
 
   // NOTE: loading/error are handled INSIDE the page below, not with an early
   // return. Returning a bare skeleton here withheld the page heading until the
@@ -312,7 +514,7 @@ export function DashboardPage() {
     { key: 'reading', label: 'Reading' },
     { key: 'listening', label: 'Listening' },
     { key: 'writing', label: 'Writing' },
-    { key: 'speaking', label: 'Speaking', soon: true },
+    { key: 'speaking', label: 'Speaking' },
   ]
   const activeLabel = `${skillMeta(filter).label.toLowerCase()} `
 
@@ -340,7 +542,10 @@ export function DashboardPage() {
         <p className="py-24 text-center text-sm text-rose-700">
           Could not load your results. {error instanceof Error ? error.message : ''}
         </p>
-      ) : all.length === 0 && writingAttempts.length === 0 ? (
+      ) : all.length === 0 &&
+        writingAttempts.length === 0 &&
+        speakingAttempts.length === 0 &&
+        localSpeaking.length === 0 ? (
         <EmptyState
           pose="nap"
           title="No attempts yet"
@@ -364,7 +569,11 @@ export function DashboardPage() {
             onChange={(key) => setFilter(key as Filter)}
           />
 
-          {(isWriting ? writingAttempts.length === 0 : shown.length === 0) ? (
+          {(isWriting
+            ? writingAttempts.length === 0
+            : isSpeaking
+              ? speakingAttempts.length + localSpeaking.length === 0
+              : shown.length === 0) ? (
             <EmptyState
               pose="nap"
               title={`No ${activeLabel}attempts yet`}
@@ -380,6 +589,8 @@ export function DashboardPage() {
             />
           ) : isWriting ? (
             <WritingResults attempts={writingAttempts} />
+          ) : isSpeaking ? (
+            <SpeakingResults attempts={speakingAttempts} ungraded={localSpeaking} />
           ) : (
             <>
               {mocks.length > 0 && <ProgressPanel skill={filter} mocks={mocks} />}

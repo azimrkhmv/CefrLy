@@ -76,11 +76,7 @@ Deno.serve(async (req) => {
   }
 
   const attemptId = body.attemptId
-  const answers = (body.answers ?? []).filter((a) => a && a.path)
-  if (!attemptId || !body.testId || !body.testTitle) {
-    return json({ error: 'attemptId, testId and testTitle are required' }, 400)
-  }
-  if (answers.length === 0) return json({ error: 'No answers to grade' }, 400)
+  if (!attemptId) return json({ error: 'attemptId is required' }, 400)
 
   const admin = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -117,11 +113,23 @@ Deno.serve(async (req) => {
   // the student twice or re-run the model.
   const { data: existing } = await admin
     .from('speaking_attempts')
-    .select('id, user_id, status, result, raw_score, rating, band')
+    .select(
+      'id, user_id, status, result, raw_score, rating, band, test_id, test_title, scope, part_type, audio_manifest',
+    )
     .eq('id', attemptId)
     .maybeSingle()
   if (existing && existing.user_id !== user.id) return json({ error: 'Not found' }, 404)
   if (existing?.status === 'done') return json({ attemptId, ...existing }, 200)
+
+  // A RETRY sends nothing but the id: the clips are still in the bucket and the
+  // manifest on the row says which question each one answers. That is the whole
+  // point of storing it — otherwise closing the tab stranded recoverable audio.
+  const answers = ((body.answers?.length ? body.answers : existing?.audio_manifest) ?? [])
+    .filter((a: AnswerIn) => a && a.path)
+  const testId = body.testId ?? existing?.test_id
+  const testTitle = body.testTitle ?? existing?.test_title
+  if (!testId || !testTitle) return json({ error: 'This attempt cannot be graded again.' }, 400)
+  if (answers.length === 0) return json({ error: 'No answers to grade' }, 400)
 
   const limit = isStaff ? null : PLAN_LIMITS[plan].speaking_check
   if (limit !== null) {
@@ -149,18 +157,21 @@ Deno.serve(async (req) => {
     }
   }
 
-  const scope = body.scope === 'part' ? 'part' : 'full'
-  const partType = scope === 'part' ? (body.partType ?? null) : null
+  const rawScope = body.scope ?? existing?.scope
+  const scope = rawScope === 'part' ? 'part' : 'full'
+  const partType = scope === 'part' ? (body.partType ?? existing?.part_type ?? null) : null
 
   await admin.from('speaking_attempts').upsert({
     id: attemptId,
     user_id: user.id,
-    test_id: body.testId,
-    test_title: body.testTitle,
+    test_id: testId,
+    test_title: testTitle,
     scope,
     part_type: partType,
     status: 'grading',
     error_message: null,
+    // Written BEFORE the model call so a failure leaves enough behind to retry.
+    audio_manifest: answers,
   })
 
   const ordered = [...answers].sort((a, b) => a.questionIndex - b.questionIndex)
@@ -181,6 +192,8 @@ Deno.serve(async (req) => {
         result: summary.result,
         graded_at: new Date().toISOString(),
         error_message: null,
+        // The clips are about to be deleted; the manifest points at nothing now.
+        audio_manifest: null,
       })
       .eq('id', attemptId)
 

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import type { SpeakingCatalogItem } from '../../lib/speakingCatalog'
 import { PART_LABEL } from '../../lib/speakingFixtures'
 import { hasSpeakingDraft } from '../../lib/speakingDraft'
-import { CloseIcon, MicIcon, PlayIcon, StarIcon } from '../icons'
+import { CloseIcon, LockIcon, MicIcon, PlayIcon, StarIcon } from '../icons'
 
 // ONE tile for every speaking card — the yellow microphone, whatever the part
 // (owner call). Writing colour-codes its tiles per task type; Speaking
@@ -17,11 +17,16 @@ export function SpeakingTaskCard({
   item,
   attempts,
   inProgress = false,
+  /** True when this student's plan cannot get an AI check. Speaking practice
+   *  itself is always free — only the band score and feedback are paid, and
+   *  saying so on the card beats letting them find out after speaking. */
+  checkLocked = false,
   onDelete,
 }: {
   item: SpeakingCatalogItem
   attempts: number
   inProgress?: boolean
+  checkLocked?: boolean
   onDelete?: () => void
 }) {
   const chip = item.scope === 'full' ? 'Full mock test' : PART_LABEL[item.partType!]
@@ -61,6 +66,15 @@ export function SpeakingTaskCard({
             {item.prepSec ? (
               <span className="tnum text-xs text-ink-soft">· {item.prepSec}s prep</span>
             ) : null}
+            {checkLocked && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-page px-2 py-0.5 text-xs font-bold text-ink-soft"
+                title="Practice is free. The AI band score and feedback need Pro or Premium."
+              >
+                <LockIcon width={11} height={11} />
+                AI check on Pro
+              </span>
+            )}
           </div>
         </div>
       </div>

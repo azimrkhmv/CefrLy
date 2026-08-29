@@ -63,6 +63,9 @@ export interface SpeakingAttemptRow {
   /** NULL for single-part drills — an estimate from one block is not a band. */
   band: Band | null
   result: SpeakingResult | null
+  /** Present only while an attempt is ungraded: which clip answers which
+   *  question, so a failed check can be retried without the exam tab. */
+  audio_manifest?: { questionIndex: number; path: string }[] | null
   created_at: string
   graded_at: string | null
 }

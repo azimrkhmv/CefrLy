@@ -131,12 +131,35 @@ export async function gradeSpeakingAttempt({ test, steps, answers }: GradeInput)
   return (data as { attemptId?: string })?.attemptId ?? attemptId
 }
 
+/**
+ * Ask the server to grade an attempt again. The clips are still in the bucket
+ * and the attempt row remembers which question each one answers, so this needs
+ * nothing but the id — a retry works even after the exam tab was closed. Only
+ * possible within the hour before the clips are swept.
+ */
+export async function retrySpeakingAttempt(attemptId: string): Promise<void> {
+  const { error } = await supabase.functions.invoke('grade-speaking', {
+    body: { attemptId },
+  })
+  if (!error) return
+  const ctx = (error as { context?: Response }).context
+  if (ctx) {
+    try {
+      const parsed = (await ctx.json()) as { error?: string }
+      throw new GradingError(parsed.error ?? 'The AI check failed again.')
+    } catch (e) {
+      if (e instanceof GradingError) throw e
+    }
+  }
+  throw new GradingError('The AI check could not be reached.')
+}
+
 /** Read one graded attempt (RLS limits this to the student's own rows). */
 export async function fetchSpeakingAttempt(id: string): Promise<SpeakingAttemptRow | null> {
   const { data, error } = await supabase
     .from('speaking_attempts')
     .select(
-      'id, test_id, test_title, scope, part_type, status, error_message, raw_score, rating, band, result, created_at, graded_at',
+      'id, test_id, test_title, scope, part_type, status, error_message, raw_score, rating, band, result, audio_manifest, created_at, graded_at',
     )
     .eq('id', id)
     .maybeSingle()

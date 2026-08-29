@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { MicCheck } from '../components/speaking/MicCheck'
@@ -14,7 +15,11 @@ import {
   saveSpeakingDraft,
   type SpeakingDraft,
 } from '../lib/speakingDraft'
-import { addSpeakingAttempt, type SpeakingAnswer } from '../lib/speakingAttempts'
+import {
+  addSpeakingAttempt,
+  removeSpeakingAttempt,
+  type SpeakingAnswer,
+} from '../lib/speakingAttempts'
 import { gradeSpeakingAttempt } from '../lib/speakingGrading'
 import { PlanLimitError } from '../lib/api'
 import { hasPremiumAccess } from '../lib/plans'
@@ -96,6 +101,7 @@ function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => 
   )
   const [confirm, setConfirm] = useState<Confirm>(null)
   const [submitted, setSubmitted] = useState(false)
+  const [localAttemptId, setLocalAttemptId] = useState<string | null>(null)
 
   // Recorded audio lives here, NOT in the draft: blobs cannot go in
   // localStorage, so they last only as long as this page does.
@@ -129,7 +135,15 @@ function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => 
   }
 
   if (submitted) {
-    return <Finished test={test} steps={steps} answers={answers} onLeave={onLeave} />
+    return (
+      <Finished
+        test={test}
+        steps={steps}
+        answers={answers}
+        localAttemptId={localAttemptId}
+        onLeave={onLeave}
+      />
+    )
   }
 
   const index = Math.min(draft.stepIndex, steps.length - 1)
@@ -151,13 +165,17 @@ function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => 
         recordingSrc: a?.url,
       }
     })
-    addSpeakingAttempt({
+    // Recorded locally straight away so the attempt survives even if the AI
+    // check never happens (Free plan, or a failed grade). It is removed again
+    // once the server has a graded record of the same sitting.
+    const local = addSpeakingAttempt({
       testId: test.id,
       title: test.title,
       scope: (test.scope ?? 'full') as 'full' | 'part',
       partType: (test.scope ?? 'full') === 'part' ? test.tasks[0].partType : undefined,
       answers: rows,
     })
+    setLocalAttemptId(local.id)
     clearSpeakingDraft(test.id)
     cancelSpeech()
     setSubmitted(true)
@@ -274,14 +292,18 @@ function Finished({
   test,
   steps,
   answers,
+  localAttemptId,
   onLeave,
 }: {
   test: SpeakingTest
   steps: SpeakingStep[]
   answers: Record<string, StepAnswer>
+  /** The local record of this sitting, dropped once the server grades it. */
+  localAttemptId: string | null
   onLeave: () => void
 }) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { plan } = useAuth()
   const canCheck = hasPremiumAccess(plan)
 
@@ -307,6 +329,10 @@ function Finished({
         steps,
         answers,
       })
+      // The server now owns this sitting; drop the local copy so My Results and
+      // the catalog never count it twice.
+      if (localAttemptId) removeSpeakingAttempt(localAttemptId)
+      void queryClient.invalidateQueries({ queryKey: ['speaking-attempts'] })
       // replace(): the exam screen is finished, so Back should not return to it.
       navigate(`/speaking/analyze/${attemptId}`, { replace: true })
     } catch (e) {
@@ -318,7 +344,7 @@ function Finished({
       setMessage(e instanceof Error ? e.message : 'The AI check failed.')
       setState('error')
     }
-  }, [test, steps, answers, navigate])
+  }, [test, steps, answers, navigate, localAttemptId, queryClient])
 
   // Send once, automatically — the recordings only live in this page, so
   // waiting for a click risks losing them to a stray reload.

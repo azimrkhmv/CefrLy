@@ -2,11 +2,17 @@ import { useSyncExternalStore } from 'react'
 import type { SpeakingPartType } from '../types/test'
 
 // ---------------------------------------------------------------------------
-// Submitted speaking attempts (Phase 5, UI-first) — the mirror of
-// writingAttempts. Client-side only; there is no grader (and no recorder) yet,
-// so an attempt just records that the part was completed so the card can show
-// "Completed" and it can appear in My Results. When the recorder + backend land,
-// `recordings` carries the stored clip references; the shape already allows it.
+// Locally-recorded speaking attempts — the UNGRADED ones, and only those.
+//
+// There are two records of a speaking attempt and they do not overlap:
+//   · this file  — every submitted attempt, written immediately, so the catalog
+//                  can show "Completed" even when no AI check was run (a Free
+//                  student, or a check that failed).
+//   · the `speaking_attempts` table — attempts that were actually graded, with
+//                  the band, transcript and feedback.
+// An attempt is REMOVED from here the moment grading succeeds (see
+// removeSpeakingAttempt), so a graded attempt lives in exactly one place and
+// nothing is ever counted twice.
 // ---------------------------------------------------------------------------
 
 const KEY = 'cefrly-speaking-attempts'
@@ -74,6 +80,12 @@ export function addSpeakingAttempt(
   }
   write([attempt, ...read()])
   return attempt
+}
+
+/** Drop a local attempt once the server has a graded record of it, so the two
+ *  stores never both describe the same sitting. */
+export function removeSpeakingAttempt(id: string) {
+  write(read().filter((a) => a.id !== id))
 }
 
 function subscribe(cb: () => void) {

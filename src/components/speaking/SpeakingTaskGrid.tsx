@@ -26,11 +26,14 @@ export function SpeakingTaskGrid({
   tab,
   items,
   attemptCount,
+  checkLocked = false,
   onAddCustom,
 }: {
   tab: 'mock' | SpeakingPartType
   items: SpeakingCatalogItem[]
   attemptCount: (id: string) => number
+  /** This student's plan cannot get an AI check (shown per card). */
+  checkLocked?: boolean
   onAddCustom: (partType: SpeakingPartType) => void
 }) {
   const showAddTile = tab !== 'mock'
@@ -62,6 +65,7 @@ export function SpeakingTaskGrid({
             item={item}
             attempts={attemptCount(item.id)}
             inProgress={hasSpeakingDraft(item.id)}
+            checkLocked={checkLocked}
           />
         </div>
       ))}

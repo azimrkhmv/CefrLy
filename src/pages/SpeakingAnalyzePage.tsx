@@ -1,10 +1,10 @@
-import { Fragment, type ReactNode } from 'react'
+import { Fragment, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { BandRuler } from '../components/BandRuler'
 import { Skeleton } from '../components/Skeleton'
 import { CheckIcon, MicIcon } from '../components/icons'
-import { fetchSpeakingAttempt } from '../lib/speakingGrading'
+import { fetchSpeakingAttempt, retrySpeakingAttempt } from '../lib/speakingGrading'
 import { BAND_INFO } from '../lib/bands'
 import { ERROR_LABEL, type GradedAnswer, type SpeakingAttemptRow } from '../types/speakingResult'
 
@@ -18,7 +18,7 @@ import { ERROR_LABEL, type GradedAnswer, type SpeakingAttemptRow } from '../type
 
 export function SpeakingAnalyzePage() {
   const { attemptId } = useParams()
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['speaking-attempt', attemptId],
     queryFn: () => fetchSpeakingAttempt(attemptId!),
     enabled: !!attemptId,
@@ -31,12 +31,7 @@ export function SpeakingAnalyzePage() {
   if (!data) return <Notice title="Analysis not found" body="This attempt does not exist, or it belongs to another account." />
   if (data.status === 'grading') return <GradingState />
   if (data.status === 'failed' || !data.result) {
-    return (
-      <Notice
-        title="Grading did not finish"
-        body={data.error_message ?? 'Something went wrong while checking this attempt.'}
-      />
-    )
+    return <FailedState attempt={data} onRetried={() => void refetch()} />
   }
 
   return <Analysis attempt={data} />
@@ -353,6 +348,76 @@ const GradingState = () => (
     </p>
   </div>
 )
+
+/** A check that failed. The recordings survive for an hour after the attempt,
+ *  so within that window this really can be retried — after it, the audio is
+ *  gone and there is nothing honest to offer but a re-take. */
+function FailedState({
+  attempt,
+  onRetried,
+}: {
+  attempt: SpeakingAttemptRow
+  onRetried: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const retryable =
+    !!attempt.audio_manifest?.length &&
+    Date.now() - new Date(attempt.created_at).getTime() < 60 * 60 * 1000
+
+  const retry = async () => {
+    setBusy(true)
+    setProblem(null)
+    try {
+      await retrySpeakingAttempt(attempt.id)
+      onRetried()
+    } catch (e) {
+      setProblem(e instanceof Error ? e.message : 'It failed again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-line bg-white p-10 text-center shadow-card">
+      <h1 className="text-xl font-extrabold text-heading">The check did not finish</h1>
+      <p className="mx-auto mt-2 max-w-md text-sm text-ink-soft">
+        {attempt.error_message ?? 'Something went wrong while checking this attempt.'}
+      </p>
+      <p className="mx-auto mt-2 max-w-md text-sm text-ink-soft">
+        This did not use any of your monthly checks.
+      </p>
+
+      {retryable ? (
+        <>
+          <button
+            type="button"
+            onClick={() => void retry()}
+            disabled={busy}
+            className="mt-5 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep disabled:opacity-60"
+          >
+            {busy ? 'Checking…' : 'Try the check again'}
+          </button>
+          {problem && <p className="mt-3 text-sm text-rose-700">{problem}</p>}
+        </>
+      ) : (
+        <p className="mx-auto mt-4 max-w-md text-sm text-ink-soft">
+          Your recordings have been deleted, so this attempt cannot be checked again. Speak the
+          paper once more to get a band score.
+        </p>
+      )}
+
+      <div className="mt-5">
+        <Link
+          to="/speaking"
+          className="rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+        >
+          Back to Speaking
+        </Link>
+      </div>
+    </div>
+  )
+}
 
 const Notice = ({ title, body }: { title: string; body: string }) => (
   <div className="rounded-2xl border border-line bg-white p-10 text-center shadow-card">
