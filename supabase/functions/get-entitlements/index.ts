@@ -63,6 +63,18 @@ Deno.serve(async (req) => {
   // never metered.
   const usedByAction = await countPremiumSubmittedThisMonth(admin, user.id, periodStart)
 
+  // Speaking checks are NOT rows in `attempts` — they live in speaking_attempts,
+  // written by grade-speaking. Counted here with the SAME rule the gate uses
+  // (completed checks only), so the meter a student sees can never disagree
+  // with what actually blocks them.
+  const { count: speakingUsed } = await admin
+    .from('speaking_attempts')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('status', 'done')
+    .gte('created_at', periodStart)
+  usedByAction.speaking_check = speakingUsed ?? 0
+
   const usage = Object.fromEntries(
     ACTION_TYPES.map((a) => {
       const used = usedByAction[a] ?? 0
