@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { TabStrip } from '../components/TabStrip'
+import { TestGridSkeleton } from '../components/Skeleton'
 import { Dropdown } from '../components/Dropdown'
 import { Toast } from '../components/Toast'
 import { SpeakingTaskGrid } from '../components/speaking/SpeakingTaskGrid'
@@ -38,7 +39,7 @@ export function SpeakingPage() {
   const [modal, setModal] = useState<{ partType: SpeakingPartType } | null>(null)
   const [toast, setToast] = useState(false)
 
-  const { items } = useSpeakingItems(tab)
+  const { items, isLoading, error } = useSpeakingItems(tab)
   const attempts = useSpeakingAttempts()
   const attemptCount = (id: string) => countAttempts(attempts, id)
 
@@ -68,7 +69,15 @@ export function SpeakingPage() {
         />
       </div>
 
-      {tab === 'custom' ? (
+      {error && (
+        <p className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          Speaking papers could not be loaded. Check your connection and refresh.
+        </p>
+      )}
+
+      {isLoading ? (
+        <TestGridSkeleton />
+      ) : tab === 'custom' ? (
         <SpeakingCustomTab
           items={shown}
           attemptCount={attemptCount}

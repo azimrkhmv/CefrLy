@@ -11,13 +11,21 @@ import type { SpeakingPartType } from '../types/test'
 
 const KEY = 'cefrly-speaking-attempts'
 
+/** ONE recording, for ONE question. A card with three questions produces three
+ *  of these — the student answers them one at a time, as in the real exam. */
 export interface SpeakingAnswer {
   taskId: string
   taskLabel: string
   partType: SpeakingPartType
-  /** Seconds actually spoken (0 until the recorder ships). */
+  /** Position within the task, so the answers can be replayed in order. */
+  questionIndex: number
+  /** The question as asked — kept with the answer so a result page (and later
+   *  the grader) does not have to re-resolve the paper. */
+  questionText: string
+  /** Seconds actually spoken. */
   durationSec: number
-  /** Future: object URL / storage path of the recorded clip. */
+  /** Object URL of the clip. IN-MEMORY ONLY — it dies with the page. Uploading
+   *  to storage and keeping a durable path is the backend's job. */
   recordingSrc?: string
 }
 

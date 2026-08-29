@@ -300,19 +300,41 @@ export interface SpeakingImage {
   caption?: string
 }
 
+/** One question the student answers with one recording.
+ *
+ *  A bare string is still accepted (the fixtures and every custom question the
+ *  student writes use that form) and is normalised to `{ text }` — see
+ *  `taskQuestions()` in lib/speakingQuestions. */
+export interface SpeakingQuestion {
+  text: string
+  /** Authored recording of an examiner reading this question aloud (storage
+   *  path or URL). When absent the browser speaks `text` instead. Custom
+   *  questions can never have one, which is why the fallback is not optional. */
+  audio?: string
+  /** Per-question clock overrides. The exam's timings are rigid but NOT uniform
+   *  inside a part — Part 1.2 gives 10s/45s to look at the photos and compare
+   *  them, then 5s/30s for each follow-up. Absent = inherit the task's values. */
+  prepSec?: number
+  speakSec?: number
+}
+
 export interface SpeakingTask {
   id: string
   partType: SpeakingPartType
   /** Short display label, e.g. "Part 1.1", "Part 3". */
   label: string
   prompt: SpeakingPrompt
-  /** Part 1.1 asks several short questions, each answered in turn. */
-  questions?: string[]
+  /** The questions asked in this task, answered ONE AT A TIME — each gets its
+   *  own recording. Parts with a single long turn carry exactly one entry (or
+   *  none, in which case the prompt itself is the question). */
+  questions?: (string | SpeakingQuestion)[]
   /** OPTIONAL photos — required in spirit for Part 1.2 (compare two). */
   images?: SpeakingImage[]
-  /** Silent preparation window before recording starts (0 = answer at once). */
+  /** Default silent preparation window before EACH question's recording starts
+   *  (0 = record at once). A question may override it. */
   prepSec: number
-  /** How long the student may speak (per question for Part 1.1). */
+  /** Default speaking window for EACH question, in seconds. Hard: the recorder
+   *  stops itself when it runs out. A question may override it. */
   speakSec: number
   /** Author pick — renders the brand "Recommended" badge on the card. */
   recommended?: boolean

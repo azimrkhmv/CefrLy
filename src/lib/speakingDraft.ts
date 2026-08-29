@@ -1,31 +1,26 @@
 // ---------------------------------------------------------------------------
-// In-progress speaking drafts (Phase 5) — the mirror of writingDraft. Persists
-// which part the student reached + the clock start so a refresh or an accidental
-// exit resumes exactly where they left off. All localStorage access is
-// try/catch-guarded — blocked/full storage must never crash the exam.
-// Client-side only this phase (recordings are NOT stored here; the recorder
-// lands with the exam screen).
+// In-progress speaking drafts. Persists which question the student reached and
+// which ones already have a recording, so a refresh or an accidental exit does
+// not restart the paper. All localStorage access is try/catch-guarded —
+// blocked/full storage must never crash the exam.
 //
-// The draft carries the chosen mode + the absolute deadline so a refresh resumes
-// into the same mode/clock without re-showing the picker. Practice mode can pause
-// (pausedAt freezes the countdown); simulation never sets it.
+// NO CLOCK. Unlike Reading/Listening/Writing, a speaking attempt is not timed:
+// answers run as long as the student needs, so there is no deadline to persist
+// and no mode to remember. That is why this draft is far smaller than the
+// writing one.
+//
+// The audio itself is NOT here — blobs cannot live in localStorage, so a
+// resumed attempt knows what was answered but cannot replay it. Durable clips
+// arrive with the upload-to-storage backend.
 // ---------------------------------------------------------------------------
 
-import type { TestMode } from '../types/test'
-
 export interface SpeakingDraft {
-  /** simulation (fixed clock, no pause) or practice (own limit, pausable). */
-  mode: TestMode
-  /** Epoch ms when the attempt's clock started. */
+  /** Epoch ms the attempt began (used for ordering, not for a countdown). */
   startedAt: number
-  /** Epoch ms deadline — the countdown derives from this (shifts on resume). */
-  expiresAt: number
-  /** Epoch ms the practice timer was paused, or null while running. */
-  pausedAt: number | null
-  /** taskId → seconds already recorded (the recorder fills this in later). */
+  /** stepId ("<taskId>-q<n>") → seconds recorded for that question. */
   recorded: Record<string, number>
-  /** Which part the student is currently on (full mock stepper). */
-  taskIndex: number
+  /** Which question the student is on (index into the flattened step list). */
+  stepIndex: number
 }
 
 const key = (testId: string) => `cefrly-speaking-draft-${testId}`
@@ -35,10 +30,9 @@ export function readSpeakingDraft(testId: string): SpeakingDraft | null {
     const raw = localStorage.getItem(key(testId))
     if (!raw) return null
     const draft = JSON.parse(raw) as SpeakingDraft
-    // Guard against pre-mode legacy drafts — force the picker rather than
-    // resuming into an attempt with no mode/deadline.
-    if (draft.mode !== 'simulation' && draft.mode !== 'practice') return null
-    if (typeof draft.expiresAt !== 'number') return null
+    // Drafts written before the clock was removed carry a different shape;
+    // ignore them rather than resuming into something inconsistent.
+    if (typeof draft.stepIndex !== 'number' || typeof draft.recorded !== 'object') return null
     return draft
   } catch {
     return null
