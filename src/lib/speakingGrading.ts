@@ -63,11 +63,20 @@ export async function gradeSpeakingAttempt({ test, steps, answers }: GradeInput)
     const mimeType = blob.type || 'audio/webm'
     // Path is scoped by user id — storage RLS refuses anything else.
     const path = `${user.id}/${attemptId}/${index}.${extensionFor(mimeType)}`
+    // upsert MUST stay false. It compiles to INSERT ... ON CONFLICT DO UPDATE,
+    // and Postgres then demands an UPDATE policy on storage.objects even when
+    // nothing conflicts — so an upsert is rejected by RLS outright. Students get
+    // INSERT only, deliberately: they can neither overwrite nor read a clip back.
     const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
       contentType: mimeType,
-      upsert: true,
+      upsert: false,
     })
-    if (error) throw new GradingError(`Could not upload answer ${index + 1}: ${error.message}`)
+    // A retry re-uploads answers that already made it; that is not a failure.
+    const alreadyThere =
+      error && ((error as { statusCode?: string }).statusCode === '409' || /exist/i.test(error.message))
+    if (error && !alreadyThere) {
+      throw new GradingError(`Could not upload answer ${index + 1}: ${error.message}`)
+    }
     uploaded.push({
       questionIndex: index,
       partType: step.task.partType,
