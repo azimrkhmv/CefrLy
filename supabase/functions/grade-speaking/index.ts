@@ -16,11 +16,11 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders, json } from './cors.ts'
 import { effectivePlan, hasPremiumAccess, monthStartUTC, PLAN_LIMITS, type PlanId } from './plans.ts'
 import {
-  BLOCK_RATING_CAP,
   BLOCKS,
   bandForRating,
   blockForPart,
   estimateRatingFromBlock,
+  estimateRatingFromProfile,
   MAX_RAW,
   ratingForRaw,
   RUBRIC_TEXT,
@@ -728,19 +728,26 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
 
   const rawScore = blocks.reduce((n, b) => n + b.score, 0)
   const full = scope === 'full'
-  const drillKey = blocks[0]?.key as BlockKey | undefined
+  const drill = blocks[0]
+
+  // A FULL PAPER is scored by the official table — raw out of 21, straight to
+  // the rating. A DRILL has no such total: one block's mark is bounded by its
+  // own task, so its /75 is estimated from HOW THE STUDENT SPOKE (the profile)
+  // and then reduced for questions they did not answer. That is the only way a
+  // B2 speaker on Part 1.1 lands at B2 instead of being told they are B1.
   const rating = full
     ? ratingForRaw(rawScore)
-    : estimateRatingFromBlock(drillKey as BlockKey, blocks[0]?.score ?? 0)
+    : profile && drill
+      ? estimateRatingFromProfile(profile, {
+          block: drill.key,
+          onTopicCount: drill.onTopicCount ?? 0,
+          questionCount: drill.questionCount,
+          coverage: drill.coverage,
+          balanced: drill.balanced,
+        })
+      : // Older attempts, graded before profiles existed.
+        estimateRatingFromBlock(drill?.key as BlockKey, drill?.score ?? 0)
   const band = bandForRating(rating)
-  // A drill's estimate is clamped to what its block can demonstrate (Part 1.1
-  // cannot show C1 however well it goes). Say so on the page rather than
-  // quietly showing a lower number than the arithmetic suggests.
-  const capRating = !full && drillKey ? BLOCK_RATING_CAP[drillKey] : null
-  const cappedByPart =
-    !full && drillKey
-      ? ratingForRaw(((blocks[0]?.score ?? 0) / (blocks[0]?.max || 1)) * MAX_RAW) > capRating!
-      : false
 
   return {
     rawScore,
@@ -766,12 +773,10 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
       // it happens to have: skipping a whole part would otherwise turn 12/21
       // into a flattering "12 of 15".
       maxRaw: full ? MAX_RAW : (blocks[0]?.max ?? 0),
-      // Drills only: the ceiling this part can prove, and whether the student
-      // actually hit it. The page explains the cap instead of showing a band
-      // the paper never tested.
-      capRating,
-      capBand: capRating === null ? undefined : bandForRating(capRating),
-      cappedByPart,
+      // Where a drill's /75 came from, so the page can say so honestly:
+      // 'criteria' = estimated from how the student spoke; 'block' = an older
+      // attempt whose estimate was scaled from the block mark.
+      estimateBasis: full ? undefined : profile ? 'criteria' : 'block',
       model: MODEL,
     },
   }

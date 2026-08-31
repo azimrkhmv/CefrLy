@@ -89,26 +89,25 @@ function Analysis({ attempt }: { attempt: SpeakingAttemptRow }) {
               This is an <strong>estimate</strong> from one part only. A real CEFR band needs all
               four parts, so this score is not saved to your results history.
             </p>
-            {/* The honest ceiling. Each part is anchored at a level — Part 1.1
-                asks A2-level questions — so a part can only ever show that the
-                student is past its own anchor. Without this, full marks on the
-                easiest part reported a perfect 75/75 and C1. */}
-            {result.capBand && (
+            {/* Where the number came from. A block mark is bounded by its task
+                (Part 1.1 is worth 5), so the /75 is read off HOW THE STUDENT
+                SPOKE instead — otherwise a B2 speaker on an easy part gets told
+                they are B1. */}
+            {result.estimateBasis === 'criteria' ? (
               <p className="mt-2">
-                {result.cappedByPart ? (
-                  <>
-                    You answered this part as well as it can be answered. Even so,{' '}
-                    <strong>{blockLabel(result)} tops out at {BAND_INFO[result.capBand].label}</strong>{' '}
-                    — the harder parts are where a higher level is shown.
-                  </>
-                ) : (
-                  <>
-                    {blockLabel(result)} can show up to{' '}
-                    <strong>{BAND_INFO[result.capBand].label}</strong>; the harder parts are where a
-                    higher level is shown.
-                  </>
-                )}
+                This score is placed on the 75-point scale from{' '}
+                <strong>how you spoke</strong> — your grammar, vocabulary, pronunciation, fluency
+                and linking of ideas — less anything you did not answer. The full paper is what
+                settles a real band.
               </p>
+            ) : (
+              result.capBand && (
+                <p className="mt-2">
+                  Graded before we improved this: {blockLabel(result)} estimates were capped at{' '}
+                  <strong>{BAND_INFO[result.capBand].label}</strong> back then. A new attempt is
+                  scored from how you speak.
+                </p>
+              )
             )}
           </div>
         ) : (

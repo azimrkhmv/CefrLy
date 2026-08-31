@@ -74,10 +74,13 @@ export interface SpeakingResult {
   fixFirst: string
   /** The paper's full raw total (21 for a mock). Older attempts lack it. */
   maxRaw?: number
-  /** DRILLS ONLY. One part cannot demonstrate the whole scale — Part 1.1 is
-   *  anchored at A2, so however well it goes it proves the student is past A2
-   *  and nothing more. The estimate is clamped to `capRating` (`capBand` is the
-   *  band that lands in), and `cappedByPart` says the clamp actually bit. */
+  /** DRILLS ONLY — where the /75 came from. 'criteria' means it was estimated
+   *  from how the student spoke (the profile), which is the honest way to place
+   *  one part on the full scale. 'block' is an older attempt whose estimate was
+   *  scaled from the block mark, so a good speaker on an easy part could be
+   *  placed too low (or, before that, absurdly high). */
+  estimateBasis?: 'criteria' | 'block'
+  /** LEGACY, older attempts only: the cap that used to clamp a drill's band. */
   capRating?: number | null
   capBand?: Band
   cappedByPart?: boolean

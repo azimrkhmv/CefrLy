@@ -75,38 +75,86 @@ export function bandForRating(rating: number): Band {
 }
 
 /**
- * The highest rating a single block can HONESTLY demonstrate.
+ * LEGACY. A drill's estimate used to be its block mark scaled to /75, which is
+ * how full marks on Part 1.1 — anchored at A2, three easy questions — came out
+ * as a perfect 75/75 and C1. Capping the scale then broke it the other way: a
+ * student the grader had just judged B2 on every criterion was shown "B1",
+ * because a cap describes what a task can PROVE (a floor) and was being read as
+ * a measure of the speaker (a ceiling).
  *
- * Scaling a block straight to /75 produces nonsense: Part 1.1 is anchored at A2
- * and its top mark means only "speech above A2", so three well-answered
- * questions about your favourite films used to report 75/75 and C1 — a perfect
- * exam score for the easiest task on the paper. What a block proves is bounded
- * by what it ASKS. Part 1.1 can show a student is past A2 and no more; only
- * Parts 2 and 3 put them in a position to show C1.
- *
- * So a drill's estimate is clamped here: 49 = top of B1, 64 = top of B2, 71 =
- * a solid C1 (never the perfect 75, which no single block can earn).
- */
-export const BLOCK_RATING_CAP: Record<BlockKey, number> = {
-  q1_3: 49,
-  q4_6: 64,
-  q7: 71,
-  q8: 75,
-}
-
-/**
- * A single-part drill only fills one block, so it has no honest /75. We scale
- * that block to the full raw scale to show an ESTIMATE — capped at what the
- * block can actually demonstrate, clearly labelled in the UI, and never written
- * to the attempt's `band` column, so it stays out of the student's real CEFR
- * history.
+ * Kept only for attempts graded before profiles existed. New drills use
+ * estimateRatingFromProfile, below.
  */
 export function estimateRatingFromBlock(blockKey: BlockKey, score: number): number {
   const block = BLOCKS.find((b) => b.key === blockKey)
   if (!block || block.max === 0) return 0
-  const scaled = ratingForRaw((score / block.max) * MAX_RAW)
-  return Math.min(scaled, BLOCK_RATING_CAP[blockKey])
+  return ratingForRaw((score / block.max) * MAX_RAW)
 }
+
+/**
+ * A DRILL'S ESTIMATE COMES FROM HOW THE STUDENT SPOKE, NOT FROM THE BLOCK MARK.
+ *
+ * A block mark is bounded by its task: Part 1.1 is worth 5 and its top mark
+ * means only "above A2", so no arithmetic on it can place a good speaker
+ * correctly. The five criteria are not bounded that way — they describe the
+ * speech itself, and a B2 speaker answering easy questions is still B2. So the
+ * estimate is read off the profile and then reduced for whatever the student
+ * did not actually do.
+ *
+ * The anchors are the middles of the official bands (B1 starts at 38, B2 at 50,
+ * C1 at 65), so "all B2" lands mid-B2 rather than on a boundary where one
+ * criterion would flip the band.
+ */
+const LEVEL_ANCHOR: [number, number][] = [
+  [0, 10], // everything below A2
+  [1, 30], // all A2      → mid below-B1
+  [2, 44], // all B1      → mid B1  (38-49)
+  [3, 57], // all B2      → mid B2  (50-64)
+  [4, 70], // all C1      → mid C1  (65-75)
+]
+
+export interface TaskAchievement {
+  onTopicCount: number
+  questionCount: number
+  coverage?: 'full' | 'partial'
+  /** Q8 only. */
+  balanced?: boolean
+  block: BlockKey
+}
+
+export function estimateRatingFromProfile(
+  criteria: Record<Criterion, CefrLevel>,
+  task: TaskAchievement,
+): number {
+  // Mean, not median: half a level of difference between criteria should move
+  // the estimate a little, and a /75 scale is fine enough to show it.
+  const mean =
+    CRITERIA.reduce((n, c) => n + (LEVEL_RANK[criteria[c]] ?? 0), 0) / CRITERIA.length
+
+  let rating = LEVEL_ANCHOR[0][1]
+  for (let i = 1; i < LEVEL_ANCHOR.length; i++) {
+    const [lo, loR] = LEVEL_ANCHOR[i - 1]
+    const [hi, hiR] = LEVEL_ANCHOR[i]
+    if (mean <= hi) {
+      rating = loR + ((mean - lo) / (hi - lo)) * (hiR - loR)
+      break
+    }
+    rating = hiR
+  }
+
+  // Speaking well is not the whole job — the questions still have to be
+  // answered. These come off the estimate rather than out of the criteria,
+  // because they are about what was done, not about the English.
+  const missed = Math.max(0, task.questionCount - task.onTopicCount)
+  rating -= missed * 8
+  if (task.coverage === 'partial') rating -= 6
+  if (task.block === 'q8' && task.balanced === false) rating -= 4
+
+  return Math.max(0, Math.min(MAX_RATING, Math.round(rating)))
+}
+
+/** The exam's ceiling: 75. Nothing above it exists on this paper. */
+export const MAX_RATING = 75
 
 // ---------------------------------------------------------------------------
 // SCORING IS OURS, JUDGEMENT IS THE MODEL'S.
