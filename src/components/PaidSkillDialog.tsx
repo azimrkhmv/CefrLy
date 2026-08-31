@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 
 // ---------------------------------------------------------------------------
@@ -12,6 +13,12 @@ import { Link } from 'react-router-dom'
 //
 // Cefrly's own dialog with the startled cat, never window.confirm — same rule
 // as ConfirmDialog on every other student surface.
+//
+// RENDERED THROUGH A PORTAL, and it must stay that way. The app shell wraps
+// routes in <main class="page-enter">, which animates a transform — and a
+// transformed ancestor becomes the containing block for `position: fixed`
+// descendants. Left inside the tree, this dialog anchors itself to <main>
+// instead of the viewport and slides off the top as the catalog scrolls.
 // ---------------------------------------------------------------------------
 
 export function PaidSkillDialog({
@@ -37,16 +44,16 @@ export function PaidSkillDialog({
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-heading/40 px-4 py-10"
+      className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-heading/40 px-4 py-10"
       role="dialog"
       aria-modal="true"
       aria-labelledby="paid-skill-title"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-line bg-white p-6 text-center shadow-card sm:p-8"
+        className="my-auto w-full max-w-md rounded-2xl border border-line bg-white p-6 text-center shadow-card sm:p-8"
         onClick={(e) => e.stopPropagation()}
       >
         <img
@@ -84,6 +91,7 @@ export function PaidSkillDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
