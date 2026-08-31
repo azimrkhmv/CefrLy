@@ -54,6 +54,12 @@ export interface StoredAttemptResult {
   /** null for part-test attempts — CEFR bands only exist for the full /35 paper. */
   band: Band | null
   submittedAt: string
+  /** Handed in after the clock ran out — either the student claimed their
+   *  answers from the rescue screen, or the expiry sweep did it for them. */
+  late?: boolean
+  /** Nobody pressed Submit: the deadline passed and the server graded the
+   *  answers it had. Only ever set together with `late`. */
+  autoSubmitted?: boolean
   items: ItemResult[]
 }
 

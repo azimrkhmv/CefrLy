@@ -3,6 +3,7 @@
 // result including explanations.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders, json } from './cors.ts'
+import { gradePaper } from './grade.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -100,49 +101,15 @@ Deno.serve(async (req) => {
   }
 
   const content = contentRow.content
-  const itemResults = []
-  const sectionScores: Record<string, { correct: number; total: number }> = {}
-  let rawScore = 0
-  let total = 0
-
-  for (const part of content.parts ?? []) {
-    const section = (sectionScores[part.number] ??= { correct: 0, total: 0 })
-    // Listening Part 5 (multi_extract_mcq) holds its items inside groups;
-    // every other layout uses part.items. Flatten so grading is uniform.
-    const items =
-      Array.isArray(part.groups) && part.groups.length > 0
-        ? // deno-lint-ignore no-explicit-any
-          part.groups.flatMap((g: any) => g.items ?? [])
-        : (part.items ?? [])
-    for (const item of items) {
-      total += 1
-      section.total += 1
-      const raw = answerMap[item.id]
-      const userAnswer = typeof raw === 'string' && raw.trim() !== '' ? raw : null
-      const correct = isCorrect(item, userAnswer)
-      if (correct) {
-        rawScore += 1
-        section.correct += 1
-      }
-      itemResults.push({
-        id: item.id,
-        partNumber: part.number,
-        type: item.type,
-        prompt: item.prompt,
-        correct,
-        userAnswer,
-        userAnswerLabel: answerLabel(part, item, userAnswer),
-        correctAnswerLabel: correctAnswerLabel(part, item),
-        explanation: item.explanation,
-      })
-    }
-  }
-
   // CEFR bands exist only for the full /35 paper — a single-part drill's raw
   // score means nothing on the 28/18/10 thresholds, so part attempts store
   // band = null and the UI shows score-only results.
-  const scope = test.scope === 'part' ? 'part' : 'full'
-  const band = scope === 'part' ? null : bandFor(rawScore)
+  const scope: 'full' | 'part' = test.scope === 'part' ? 'part' : 'full'
+  const { rawScore, total, band, sectionScores, items: itemResults } = gradePaper(
+    content,
+    answerMap,
+    scope,
+  )
   const result = {
     testId: test.id,
     testTitle: test.title,
@@ -184,72 +151,8 @@ Deno.serve(async (req) => {
     .update({ submitted_at: new Date().toISOString() })
     .eq('id', session.id)
 
+  // The in-progress copy has done its job — the graded attempt is the record now.
+  await admin.from('session_answers').delete().eq('session_id', session.id)
+
   return json({ attemptId: inserted.id, ...result })
 })
-
-function normalize(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, ' ')
-}
-
-// deno-lint-ignore no-explicit-any
-function isCorrect(item: any, userAnswer: string | null): boolean {
-  if (userAnswer === null) return false
-  switch (item.type) {
-    case 'gap':
-      return (item.answer as string[]).map(normalize).includes(normalize(userAnswer))
-    case 'match':
-    case 'mcq':
-    case 'tfng':
-      return userAnswer === item.answer
-    default:
-      return false
-  }
-}
-
-// Indicative per-skill band from raw correct count out of 35 (same thresholds
-// for reading and listening).
-function bandFor(score: number): string {
-  if (score >= 28) return 'C1'
-  if (score >= 18) return 'B2'
-  if (score >= 10) return 'B1'
-  return 'below_B1'
-}
-
-// deno-lint-ignore no-explicit-any
-function optionLabel(pool: any[] | undefined, key: string): string {
-  const found = pool?.find((option) => option.key === key)
-  return found ? `${found.key}. ${found.label}` : key
-}
-
-// deno-lint-ignore no-explicit-any
-function answerLabel(part: any, item: any, value: string | null): string | null {
-  if (value === null) return null
-  switch (item.type) {
-    case 'gap':
-      return value
-    case 'match':
-      return optionLabel(part.optionPool, value)
-    case 'mcq':
-      return optionLabel(item.options, value)
-    case 'tfng':
-      return value === 'true' ? 'True' : value === 'false' ? 'False' : item.thirdOptionLabel
-    default:
-      return value
-  }
-}
-
-// deno-lint-ignore no-explicit-any
-function correctAnswerLabel(part: any, item: any): string {
-  switch (item.type) {
-    case 'gap':
-      return (item.answer as string[]).join(' / ')
-    case 'match':
-      return optionLabel(part.optionPool, item.answer)
-    case 'mcq':
-      return optionLabel(item.options, item.answer)
-    case 'tfng':
-      return item.answer === 'true' ? 'True' : item.answer === 'false' ? 'False' : item.thirdOptionLabel
-    default:
-      return String(item.answer)
-  }
-}

@@ -90,6 +90,16 @@ function ResultsView({ result }: { result: AttemptResult }) {
             <p className="reveal reveal-1 text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft">
               Your result · {submittedOn}
             </p>
+            {/* Say who pressed Submit. A paper the clock handed in is graded on
+                whatever was written when the time ran out, and the student
+                deserves to know that before reading the score. */}
+            {result.late && (
+              <p className="reveal reveal-2 mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm font-semibold text-amber-900">
+                {result.autoSubmitted
+                  ? 'Your time ran out while this test was closed, so it was handed in automatically with the answers saved at that moment.'
+                  : 'Handed in after the time was up, so this is marked as a late attempt.'}
+              </p>
+            )}
             <p className="reveal reveal-2 mt-4 text-sm font-semibold text-ink-soft">
               {result.testTitle}
             </p>

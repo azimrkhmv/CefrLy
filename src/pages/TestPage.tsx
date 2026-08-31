@@ -5,9 +5,11 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   cancelSession,
   controlSession,
+  fetchSavedAnswers,
   fetchTestState,
   pauseSessionOnLeave,
   PlanLimitError,
+  saveAnswers,
   startSession,
   submitTest,
 } from '../lib/api'
@@ -59,9 +61,27 @@ interface DraftShape {
   savedAt?: number
 }
 
+/** When this browser's draft for a session was last written (0 when there is
+ *  none). Decides whether the server's copy is newer and should replace it. */
+function readDraftSavedAt(sessionId: string): number {
+  try {
+    const raw = localStorage.getItem(draftKey(sessionId))
+    if (!raw) return 0
+    const draft = JSON.parse(raw) as DraftShape
+    return typeof draft.savedAt === 'number' ? draft.savedAt : 0
+  } catch {
+    return 0
+  }
+}
+
 /** Drafts older than this are cleaned up on the next exam open. Long enough
  *  that a student juggling several unfinished papers never loses one. */
 const DRAFT_TTL_MS = 14 * 24 * 60 * 60 * 1000
+
+/** How long a burst of typing is coalesced before the server copy is updated.
+ *  Short enough that almost nothing is lost, long enough that a fast typist
+ *  produces a handful of writes per attempt rather than hundreds. */
+const SERVER_SAVE_MS = 5000
 
 // Housekeeping for OTHER sessions' drafts. It used to delete every draft that
 // was not the current one — so opening Reading Mock 3 silently erased the
@@ -339,6 +359,24 @@ export function TestPage() {
         /* storage unavailable */
       }
     }
+
+    // Then the SERVER copy, which may be newer — a cleared cache, a different
+    // browser, or another device. Whichever was written last wins, so the usual
+    // same-device refresh keeps exactly what is already on screen.
+    let cancelled = false
+    const localSavedAt = readDraftSavedAt(sessionId)
+    fetchSavedAnswers(sessionId)
+      .then((remote) => {
+        if (cancelled || !remote) return
+        if (new Date(remote.updatedAt).getTime() <= localSavedAt) return
+        useAnswersStore.getState().hydrate(remote.answers, remote.marked)
+      })
+      .catch(() => {
+        // Offline or blocked: the local copy stands. Never disturb the exam.
+      })
+    return () => {
+      cancelled = true
+    }
   }, [sessionId, reset])
 
   // Save every answer/mark/highlight change so nothing is lost on refresh. Both
@@ -363,16 +401,48 @@ export function TestPage() {
       } catch {
         // Storage full/blocked: state stays in memory; submitting still works.
       }
+      queueServerSave()
     }
+
+    // The server copy: same answers, a few seconds behind. It is what makes an
+    // attempt survive a cleared cache or a change of device, and what the expiry
+    // sweep grades when a simulation's clock runs out with the tab closed.
+    // Coalesced so a burst of typing is ONE write, and silent on failure — the
+    // student's exam must never stall on a sync.
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let dirty = false
+    const pushNow = () => {
+      timer = null
+      if (!dirty) return
+      dirty = false
+      const { answers, marked } = useAnswersStore.getState()
+      saveAnswers(sessionId, answers, marked).catch(() => {
+        dirty = true // try again on the next change
+      })
+    }
+    const queueServerSave = () => {
+      dirty = true
+      if (timer === null) timer = setTimeout(pushNow, SERVER_SAVE_MS)
+    }
+    // Leaving the page is the moment the server copy matters most.
+    const flush = () => {
+      if (timer !== null) clearTimeout(timer)
+      pushNow()
+    }
+    window.addEventListener('pagehide', flush)
+
     const unsubAnswers = useAnswersStore.subscribe(persist)
     const unsubMarks = useHighlightsStore.subscribe(persist)
     const unsubAudio = useAudioStore.subscribe(persist)
     return () => {
       // ORDER MATTERS: stop persisting BEFORE clearing the stores, so leaving
-      // the exam can never write an empty draft over the student's work.
+      // the exam can never write an empty draft over the student's work. The
+      // final server push happens here too, while the stores still hold them.
       unsubAnswers()
       unsubMarks()
       unsubAudio()
+      window.removeEventListener('pagehide', flush)
+      flush()
       reset()
       useHighlightsStore.getState().reset()
     }

@@ -125,6 +125,52 @@ export function fetchTestState(testId: string): Promise<TestState> {
   return invokeFunction<TestState>('get-test', { testId, picker: true })
 }
 
+/** The server's copy of an in-progress attempt. The exam stays local-first —
+ *  this is a background copy a few seconds behind, so answers survive a cleared
+ *  cache or a different device, and the expiry sweep has something to grade when
+ *  a simulation's clock runs out with the tab closed. */
+export interface SavedAnswers {
+  answers: Record<string, string>
+  marked: Record<string, boolean>
+  updatedAt: string
+}
+
+export async function fetchSavedAnswers(sessionId: string): Promise<SavedAnswers | null> {
+  const { data, error } = await supabase
+    .from('session_answers')
+    .select('answers, marked, updated_at')
+    .eq('session_id', sessionId)
+    .maybeSingle()
+  if (error || !data) return null
+  return {
+    answers: (data.answers ?? {}) as Record<string, string>,
+    marked: (data.marked ?? {}) as Record<string, boolean>,
+    updatedAt: data.updated_at as string,
+  }
+}
+
+/** Push the answers so far. Silent on failure by design: a student mid-exam must
+ *  never see a sync error, and the browser copy is still authoritative for them. */
+export async function saveAnswers(
+  sessionId: string,
+  answers: Record<string, string>,
+  marked: Record<string, boolean>,
+): Promise<void> {
+  const { data } = await supabase.auth.getUser()
+  const userId = data.user?.id
+  if (!userId) return
+  await supabase.from('session_answers').upsert(
+    {
+      session_id: sessionId,
+      user_id: userId,
+      answers,
+      marked,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'session_id' },
+  )
+}
+
 /** Pause a practice attempt as the page is going away (tab closed, navigated
  *  off). It cannot use the normal client: that unload moment is too late for a
  *  promise chain, so this is a raw `keepalive` fetch the browser finishes on its
