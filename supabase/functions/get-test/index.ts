@@ -62,7 +62,8 @@ Deno.serve(async (req) => {
   // any stray get-test call — it resurrected attempts the student had just
   // cancelled via Exit (leaving = the attempt is cancelled, user decision
   // 2026-07-06). With no open session the client shows the picker.
-  const session = await findActiveSession(admin, user.id, testId)
+  const latest = await findLatestOpenSession(admin, user.id, testId)
+  const session = latest && !isPastDeadline(latest) ? latest : null
   if (!session) {
     // Single-call clients (picker:true) get the picker METADATA with a null
     // session — NO session is created — so a page load makes ONE round-trip
@@ -78,6 +79,18 @@ Deno.serve(async (req) => {
         partNumber: test.part_number ?? null,
         serverNow: new Date().toISOString(),
         session: null,
+        // The attempt whose clock ran out while the student was away. The
+        // browser still holds that session's answers, so the client offers to
+        // submit them late instead of silently losing an hour of work. Null
+        // once the late window has passed (submit-test enforces the same one).
+        expired: latest && isWithinLateWindow(latest)
+          ? {
+              id: latest.id,
+              expiresAt: latest.expires_at,
+              mode: latest.mode ?? 'simulation',
+              lateUntil: new Date(deadlineOf(latest) + LATE_SUBMIT_MS).toISOString(),
+            }
+          : null,
       })
     }
     return json({ error: 'No active test session — choose a mode to start.' }, 409)
@@ -100,10 +113,13 @@ Deno.serve(async (req) => {
   })
 })
 
-// The newest open (unsubmitted, not-yet-expired) session, or null. A PAUSED
-// practice session never counts as expired while it is frozen.
+/** How long after the clock runs out a student may still hand in the answers
+ *  they already had. Must match submit-test. */
+const LATE_SUBMIT_MS = 24 * 60 * 60 * 1000
+
+// The newest open (unsubmitted) session, expired or not — the caller decides.
 // deno-lint-ignore no-explicit-any
-async function findActiveSession(admin: any, userId: string, testId: string) {
+async function findLatestOpenSession(admin: any, userId: string, testId: string) {
   const { data } = await admin
     .from('test_sessions')
     .select('id, started_at, expires_at, submitted_at, mode, duration_sec, paused_at')
@@ -113,12 +129,26 @@ async function findActiveSession(admin: any, userId: string, testId: string) {
     .order('started_at', { ascending: false })
     .limit(1)
     .maybeSingle()
-  if (!data) return null
-  const now = Date.now()
-  const effectiveDeadline = data.paused_at
-    ? new Date(data.expires_at).getTime() + (now - new Date(data.paused_at).getTime())
-    : new Date(data.expires_at).getTime()
-  return now > effectiveDeadline ? null : data
+  return data ?? null
+}
+
+/** The moment this session really runs out. A PAUSED practice session is frozen,
+ *  so its wall-clock deadline moves out by however long it has been paused. */
+// deno-lint-ignore no-explicit-any
+function deadlineOf(s: any): number {
+  const base = new Date(s.expires_at).getTime()
+  return s.paused_at ? base + (Date.now() - new Date(s.paused_at).getTime()) : base
+}
+
+// deno-lint-ignore no-explicit-any
+function isPastDeadline(s: any): boolean {
+  return Date.now() > deadlineOf(s)
+}
+
+// deno-lint-ignore no-explicit-any
+function isWithinLateWindow(s: any): boolean {
+  const deadline = deadlineOf(s)
+  return Date.now() > deadline && Date.now() <= deadline + LATE_SUBMIT_MS
 }
 
 // deno-lint-ignore no-explicit-any

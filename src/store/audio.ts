@@ -20,6 +20,9 @@ interface AudioState {
   markPreviewed: (assetPath: string) => void
   markDone: (assetPath: string) => void
   setVolume: (volume: number) => void
+  /** Restore what a refresh must not forget: which recordings have finished (and
+   *  which previews are over). NOT `plays` — see the note in TestPage's draft. */
+  hydrate: (done: Record<string, boolean>, previewed: Record<string, boolean>) => void
   reset: () => void
 }
 
@@ -47,5 +50,6 @@ export const useAudioStore = create<AudioState>((set) => ({
     localStorage.setItem(VOLUME_KEY, String(volume))
     set({ volume })
   },
+  hydrate: (done, previewed) => set({ done, previewed }),
   reset: () => set({ plays: {}, previewed: {}, done: {} }),
 }))

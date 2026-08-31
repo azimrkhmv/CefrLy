@@ -153,8 +153,11 @@ export function cancelSession(sessionId: string): Promise<{ ok: true }> {
 export function submitTest(
   testId: string,
   answers: Record<string, string>,
+  /** Hand in answers whose clock ran out while the student was away. The server
+   *  allows it for 24h after the deadline and marks the attempt `late`. */
+  late = false,
 ): Promise<AttemptResult> {
-  return invokeFunction<AttemptResult>('submit-test', { testId, answers })
+  return invokeFunction<AttemptResult>('submit-test', { testId, answers, late })
 }
 
 /** Full study review of a SUBMITTED attempt (content + keys + transcripts +

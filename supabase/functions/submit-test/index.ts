@@ -8,7 +8,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
-  let body: { testId?: unknown; answers?: unknown }
+  let body: { testId?: unknown; answers?: unknown; late?: unknown }
   try {
     body = await req.json()
   } catch {
@@ -79,7 +79,16 @@ Deno.serve(async (req) => {
   const effectiveDeadline = session.paused_at
     ? new Date(session.expires_at).getTime() + (Date.now() - new Date(session.paused_at).getTime())
     : new Date(session.expires_at).getTime()
-  if (Date.now() > effectiveDeadline + GRACE_MS) {
+  // A student whose tab was closed when the clock ran out still has their
+  // answers in the browser. Losing an hour of work to a closed laptop is the
+  // worst outcome this exam can produce, so within LATE_SUBMIT_MS they may hand
+  // in what they had — the attempt is stored with `late: true` so a late paper
+  // is never mistaken for one finished inside the time. The client asks for this
+  // explicitly (`late: true`); a normal submit past the deadline still 409s.
+  const LATE_SUBMIT_MS = 24 * 60 * 60 * 1000
+  const overdueBy = Date.now() - effectiveDeadline
+  const late = overdueBy > GRACE_MS
+  if (late && !(body.late === true && overdueBy <= LATE_SUBMIT_MS)) {
     await admin
       .from('test_sessions')
       .update({ submitted_at: new Date().toISOString() })
@@ -144,6 +153,10 @@ Deno.serve(async (req) => {
     total,
     band,
     submittedAt: new Date().toISOString(),
+    // Handed in after the clock ran out (the "your time ran out while you were
+    // away" rescue). Kept on the record so a late paper is never read as one
+    // finished inside the time.
+    late,
     items: itemResults,
   }
 

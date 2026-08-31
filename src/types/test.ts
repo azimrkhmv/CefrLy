@@ -453,6 +453,19 @@ export interface NoOpenAttempt {
   scope?: TestScope
   partNumber?: number | null
   serverNow: string
+  /** An attempt whose clock ran out while the student was away, still inside
+   *  the late-hand-in window. The answers are in this browser's draft, so the
+   *  exam offers to submit them instead of losing the work. */
+  expired?: ExpiredAttempt | null
+}
+
+/** The ran-out-while-you-were-away attempt offered for a late hand-in. */
+export interface ExpiredAttempt {
+  id: string
+  expiresAt: string
+  mode: TestMode
+  /** After this moment the answers can no longer be handed in. */
+  lateUntil: string
 }
 
 /** The full get-test result: the sanitized paper when an attempt is open, or

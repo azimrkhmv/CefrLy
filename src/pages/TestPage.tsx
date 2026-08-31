@@ -41,6 +41,74 @@ interface DraftShape {
   answers?: Record<string, string>
   marked?: Record<string, boolean>
   marks?: Record<string, { start: number; end: number }[]>
+  /** Listening only: which recordings have played out, and which previews are
+   *  over. Simulation gates Submit on `done`, so without this a refresh locked
+   *  the student out of submitting until the whole recording played AGAIN —
+   *  with no timer to rescue them. `plays` is deliberately NOT persisted: a
+   *  refresh mid-recording would burn the single allowed play and leave the
+   *  student unable to listen or submit. */
+  audio?: {
+    done?: Record<string, boolean>
+    previewed?: Record<string, boolean>
+  }
+  /** When this draft was last written (epoch ms). Drives the housekeeping
+   *  below — old drafts age out instead of every other test's work being wiped
+   *  the moment a different test opens. */
+  savedAt?: number
+}
+
+/** Drafts older than this are cleaned up on the next exam open. Long enough
+ *  that a student juggling several unfinished papers never loses one. */
+const DRAFT_TTL_MS = 14 * 24 * 60 * 60 * 1000
+
+// Housekeeping for OTHER sessions' drafts. It used to delete every draft that
+// was not the current one — so opening Reading Mock 3 silently erased the
+// answers of an unfinished Reading Mock 2, whose clock was still running. Now a
+// draft only goes when it has aged out; ones written before `savedAt` existed
+// are stamped on first sight rather than thrown away.
+function pruneOldDrafts(keepKey: string) {
+  const now = Date.now()
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i)
+      if (!key?.startsWith('cefrly-draft-') || key === keepKey) continue
+      const raw = localStorage.getItem(key)
+      if (!raw) continue
+      try {
+        const draft = JSON.parse(raw) as DraftShape
+        if (typeof draft.savedAt !== 'number') {
+          localStorage.setItem(key, JSON.stringify({ ...draft, savedAt: now }))
+        } else if (now - draft.savedAt > DRAFT_TTL_MS) {
+          localStorage.removeItem(key)
+        }
+      } catch {
+        localStorage.removeItem(key) // unreadable — nothing to preserve
+      }
+    }
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+/** The answers still stored for a session, ignoring blanks. Used by the rescue
+ *  screen: an attempt whose clock ran out is only worth offering back when the
+ *  student actually wrote something. */
+function readDraftAnswers(sessionId: string | undefined): Record<string, string> {
+  if (!sessionId) return {}
+  try {
+    const raw = localStorage.getItem(draftKey(sessionId))
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as DraftShape | Record<string, string>
+    const answers =
+      parsed && typeof parsed === 'object' && 'answers' in parsed
+        ? ((parsed as DraftShape).answers ?? {})
+        : (parsed as Record<string, string>)
+    return Object.fromEntries(
+      Object.entries(answers).filter(([, v]) => typeof v === 'string' && v.trim() !== ''),
+    )
+  } catch {
+    return {}
+  }
 }
 
 // The exam takes over the whole viewport — no app sidebar/header — so students
@@ -111,6 +179,16 @@ export function TestPage() {
   const catalogPath = attempt?.skill === 'listening' ? '/listening' : '/reading'
   const sessionId = test?.session.id
 
+  // RESCUE: the clock ran out while the student was away (tab closed, laptop
+  // shut). The attempt is over as far as the server is concerned, but this
+  // browser still holds the answers — offering them back beats losing an hour
+  // of work in silence. Restarting instead is a deliberate choice below.
+  const expired = attempt && attempt.session === null ? (attempt.expired ?? null) : null
+  const [restartAfterExpiry, setRestartAfterExpiry] = useState(false)
+  const rescued = useMemo(() => readDraftAnswers(expired?.id), [expired?.id])
+  const rescuedCount = Object.keys(rescued).length
+  const showRescue = !!expired && rescuedCount > 0 && !restartAfterExpiry
+
   // Begin a session in the chosen mode, then reload the paper. start-session
   // closes any session still open for this test first, so choosing a mode is a
   // REAL restart. Invalidating ['test'] refetches get-test, which now returns
@@ -129,12 +207,15 @@ export function TestPage() {
   // scope) already rendered its paper, so this effect no-ops there.
   useEffect(() => {
     if (!attempt || attempt.session !== null) return
+    // Never auto-start over a rescue: a new session closes the expired one, and
+    // the answers waiting to be handed in would be lost for good.
+    if (showRescue) return
     if (isPartTest && !start.isPending && !start.isError) {
       start.mutate({ mode: 'practice', durationSec: attempt.durationSec })
     }
     // `start` is stable per mount (useMutation); depending on attempt is enough.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attempt, isPartTest])
+  }, [attempt, isPartTest, showRescue])
 
   // Pause / resume the practice timer (server-authoritative). The response
   // carries the fresh session (shifted deadline, cleared/set pausedAt) which we
@@ -163,13 +244,8 @@ export function TestPage() {
     reset()
     useAudioStore.getState().reset()
     useHighlightsStore.getState().reset()
+    pruneOldDrafts(draftKey(sessionId))
     try {
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i)
-        if (key?.startsWith('cefrly-draft-') && key !== draftKey(sessionId)) {
-          localStorage.removeItem(key)
-        }
-      }
       const saved = localStorage.getItem(draftKey(sessionId))
       if (saved) {
         const parsed = JSON.parse(saved) as DraftShape | Record<string, string>
@@ -177,6 +253,7 @@ export function TestPage() {
           const draft = parsed as DraftShape
           useAnswersStore.getState().hydrate(draft.answers ?? {}, draft.marked ?? {})
           useHighlightsStore.getState().hydrate(draft.marks ?? {})
+          useAudioStore.getState().hydrate(draft.audio?.done ?? {}, draft.audio?.previewed ?? {})
         } else {
           useAnswersStore.getState().hydrate(parsed as Record<string, string>)
         }
@@ -199,12 +276,15 @@ export function TestPage() {
     const persist = () => {
       try {
         const answers = useAnswersStore.getState()
+        const audio = useAudioStore.getState()
         localStorage.setItem(
           draftKey(sessionId),
           JSON.stringify({
             answers: answers.answers,
             marked: answers.marked,
             marks: useHighlightsStore.getState().marks,
+            audio: { done: audio.done, previewed: audio.previewed },
+            savedAt: Date.now(),
           } satisfies DraftShape),
         )
       } catch {
@@ -213,11 +293,13 @@ export function TestPage() {
     }
     const unsubAnswers = useAnswersStore.subscribe(persist)
     const unsubMarks = useHighlightsStore.subscribe(persist)
+    const unsubAudio = useAudioStore.subscribe(persist)
     return () => {
       // ORDER MATTERS: stop persisting BEFORE clearing the stores, so leaving
       // the exam can never write an empty draft over the student's work.
       unsubAnswers()
       unsubMarks()
+      unsubAudio()
       reset()
       useHighlightsStore.getState().reset()
     }
@@ -233,14 +315,24 @@ export function TestPage() {
   const totalItems = test?.parts.reduce((sum, part) => sum + partItems(part).length, 0) ?? 0
 
   const submission = useMutation({
-    mutationFn: () => submitTest(testId!, useAnswersStore.getState().answers),
+    // The argument carries the rescue path: the clock ran out while the student
+    // was away, so the answers come from that session's stored draft rather than
+    // from the live store (there is no paper on screen to read them from).
+    mutationFn: (opts: { answers: Record<string, string>; late: true } | null) =>
+      submitTest(testId!, opts?.answers ?? useAnswersStore.getState().answers, opts?.late ?? false),
     onSuccess: (result) => {
       // reset() BEFORE removing the draft: the saver subscription reacts to
       // the reset by writing {} — deleting afterwards leaves no orphan key.
       reset()
       useAudioStore.getState().reset()
       useHighlightsStore.getState().reset()
-      if (sessionId) localStorage.removeItem(draftKey(sessionId))
+      try {
+        // The rescue path has no live session, so clear the expired one's draft.
+        const done = sessionId ?? expired?.id
+        if (done) localStorage.removeItem(draftKey(done))
+      } catch {
+        /* storage unavailable */
+      }
       queryClient.removeQueries({ queryKey: ['test', testId] })
       // Reading opens its Analysis page directly; listening keeps the score
       // page (which carries the audio/transcript review link).
@@ -320,7 +412,7 @@ export function TestPage() {
       setConfirmAction('submit')
       return
     }
-    submission.mutate()
+    submission.mutate(null)
   }
 
   // ---- Pre-exam states ------------------------------------------------------
@@ -400,6 +492,77 @@ export function TestPage() {
         </ExamScreen>
       )
     }
+    // Time ran out while the student was away — offer the answers back before
+    // anything else. Restarting from here is a deliberate choice, and it is the
+    // only path that throws them away.
+    if (showRescue && expired) {
+      const ranOut = new Date(expired.expiresAt)
+      return (
+        <ExamScreen center>
+          <div className="mx-auto max-w-md space-y-5">
+            <img
+              src="/cat-surprised.png"
+              alt=""
+              aria-hidden
+              className="mx-auto h-40 w-auto object-contain"
+            />
+            <div className="space-y-2">
+              <h2 className="text-xl font-extrabold text-heading">Your time ran out</h2>
+              <p className="text-sm text-ink-soft">
+                The clock finished at{' '}
+                <span className="font-bold text-ink">
+                  {ranOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>{' '}
+                while this test was closed. We still have the{' '}
+                <span className="font-bold text-ink">
+                  {rescuedCount} answer{rescuedCount === 1 ? '' : 's'}
+                </span>{' '}
+                you had written — hand them in now to get your score.
+              </p>
+              <p className="text-xs text-ink-faint">
+                Saved as a late hand-in. Starting again instead clears these answers.
+              </p>
+            </div>
+            {submission.isError && (
+              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-800">
+                {submission.error instanceof Error
+                  ? submission.error.message
+                  : 'Could not submit those answers.'}
+              </p>
+            )}
+            <div className="flex flex-col items-center gap-2.5 sm:flex-row sm:justify-center">
+              <button
+                onClick={() => submission.mutate({ answers: rescued, late: true })}
+                disabled={submission.isPending}
+                className="w-full rounded-xl bg-brand px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-deep disabled:opacity-50 sm:w-auto"
+              >
+                {submission.isPending ? 'Submitting…' : 'Submit my answers'}
+              </button>
+              <button
+                onClick={() => {
+                  try {
+                    localStorage.removeItem(draftKey(expired.id))
+                  } catch {
+                    /* storage unavailable */
+                  }
+                  setRestartAfterExpiry(true)
+                }}
+                className="w-full rounded-xl border border-line bg-white px-6 py-3 text-sm font-bold text-ink transition-colors hover:border-ink-faint sm:w-auto"
+              >
+                Start again
+              </button>
+            </div>
+            <Link
+              to={catalogPath}
+              className="inline-block text-sm font-bold text-brand hover:underline"
+            >
+              Back to tests
+            </Link>
+          </div>
+        </ExamScreen>
+      )
+    }
+
     if (isPartTest) {
       if (start.isError) {
         return (
@@ -624,7 +787,7 @@ export function TestPage() {
                   simulation the Submit button is otherwise locked and the timer
                   won't fire its auto-submit twice, so this is the only retry. */}
               <button
-                onClick={() => submission.mutate()}
+                onClick={() => submission.mutate(null)}
                 disabled={submission.isPending}
                 className="shrink-0 rounded-xl bg-brand px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-brand-deep disabled:opacity-50"
               >
@@ -726,7 +889,7 @@ export function TestPage() {
         onConfirm={() => {
           const action = confirmAction
           setConfirmAction(null)
-          if (action === 'submit') submission.mutate()
+          if (action === 'submit') submission.mutate(null)
           else abandon.mutate()
         }}
         onCancel={() => setConfirmAction(null)}
