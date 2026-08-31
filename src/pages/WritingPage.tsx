@@ -2,12 +2,15 @@ import { useState } from 'react'
 import { TabStrip } from '../components/TabStrip'
 import { Dropdown } from '../components/Dropdown'
 import { Toast } from '../components/Toast'
+import { PaidSkillDialog } from '../components/PaidSkillDialog'
 import { WritingTaskGrid } from '../components/writing/WritingTaskGrid'
 import { WritingCustomTab } from '../components/writing/WritingCustomTab'
 import { AddCustomModal } from '../components/writing/AddCustomModal'
 import { useWritingItems } from '../lib/writingCatalog'
 import { countAttempts, useWritingAttempts } from '../lib/writingAttempts'
 import { removeCustomQuestion } from '../lib/writingCustom'
+import { hasPremiumAccess } from '../lib/plans'
+import { useAuth } from '../lib/auth'
 import type { WritingTaskType } from '../types/test'
 
 /** The catalog tabs: the Mock Test, one per single-task drill, and the student's
@@ -36,6 +39,11 @@ export function WritingPage() {
   const [status, setStatus] = useState<StatusFilter>('all')
   const [modal, setModal] = useState<{ taskType: WritingTaskType } | null>(null)
   const [toast, setToast] = useState(false)
+  // Writing answers are AI-checked, which is a paid feature. The catalog stays
+  // browsable; the wall lands on the first click.
+  const { plan } = useAuth()
+  const locked = !hasPremiumAccess(plan)
+  const [paywall, setPaywall] = useState(false)
 
   const { items } = useWritingItems(tab)
   const attempts = useWritingAttempts()
@@ -79,6 +87,8 @@ export function WritingPage() {
           tab={tab}
           items={shown}
           attemptCount={attemptCount}
+          checkLocked={locked}
+          onBlocked={() => setPaywall(true)}
           onAddCustom={openAddCustom}
         />
       )}
@@ -90,6 +100,8 @@ export function WritingPage() {
           onCreated={onCreated}
         />
       )}
+      <PaidSkillDialog open={paywall} skill="Writing" onClose={() => setPaywall(false)} />
+
       {toast && (
         <Toast
           title="New task added successfully"

@@ -26,11 +26,15 @@ export function WritingTaskGrid({
   tab,
   items,
   attemptCount,
+  checkLocked = false,
+  onBlocked,
   onAddCustom,
 }: {
   tab: 'mock' | WritingTaskType
   items: WritingCatalogItem[]
   attemptCount: (id: string) => number
+  checkLocked?: boolean
+  onBlocked?: () => void
   onAddCustom: (taskType: WritingTaskType) => void
 }) {
   const showAddTile = tab !== 'mock'
@@ -62,6 +66,8 @@ export function WritingTaskGrid({
             item={item}
             attempts={attemptCount(item.id)}
             inProgress={hasWritingDraft(item.id)}
+            checkLocked={checkLocked}
+            onBlocked={onBlocked}
           />
         </div>
       ))}

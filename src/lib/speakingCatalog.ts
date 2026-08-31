@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { SpeakingPartType, SpeakingTest } from '../types/test'
 import type { SpeakingTab } from '../pages/SpeakingPage'
-import { fetchSamples } from './api'
+import { fetchSamplePrompts } from './api'
 import { speakingTestsFromSamples } from './speakingFromSamples'
 import { isCustomSpeakingId, useCustomSpeakingTests } from './speakingCustom'
 
@@ -63,7 +63,9 @@ export function speakingItemsForTab(
 
 /** Every published speaking paper, derived from the samples library. */
 export function useSpeakingTests() {
-  const query = useQuery({ queryKey: ['samples'], queryFn: fetchSamples })
+  // Prompts, NOT the full samples: the papers must be visible on every plan,
+  // and the model answers are the part that is paid for.
+  const query = useQuery({ queryKey: ['sample-prompts'], queryFn: fetchSamplePrompts })
   const tests = useMemo(
     () => (query.data ? speakingTestsFromSamples(query.data) : []),
     [query.data],

@@ -22,6 +22,7 @@ import {
 } from '../lib/speakingAttempts'
 import { gradeSpeakingAttempt } from '../lib/speakingGrading'
 import { PlanLimitError } from '../lib/api'
+import { PaidSkillDialog } from '../components/PaidSkillDialog'
 import { hasPremiumAccess } from '../lib/plans'
 import { useAuth } from '../lib/auth'
 import { cancelSpeech } from '../lib/speech'
@@ -93,6 +94,7 @@ function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => 
   // Whether this student's plan can get an AI check is said UP FRONT, on the
   // mic check — finding out after ten minutes of speaking would feel like a trap.
   const { plan } = useAuth()
+  const locked = !hasPremiumAccess(plan)
   // A broken microphone discovered mid-exam costs the whole attempt, so every
   // attempt opens on the mic check.
   const [checked, setChecked] = useState(false)
@@ -116,6 +118,16 @@ function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => 
 
   // Nothing should still be talking once the exam screen goes away.
   useEffect(() => () => cancelSpeech(), [])
+
+  // The catalog blocks locked plans on the Start button, but a bookmark or a
+  // pasted link would walk straight past it.
+  if (locked) {
+    return (
+      <ExamScreen center>
+        <PaidSkillDialog open skill="Speaking" onClose={onLeave} />
+      </ExamScreen>
+    )
+  }
 
   if (!checked) {
     return (

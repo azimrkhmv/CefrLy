@@ -25,11 +25,17 @@ export function WritingTaskCard({
   attempts,
   inProgress = false,
   onDelete,
+  checkLocked = false,
+  onBlocked,
 }: {
   item: WritingCatalogItem
   attempts: number
   inProgress?: boolean
   onDelete?: () => void
+  /** This student's plan cannot get an AI check. */
+  checkLocked?: boolean
+  /** Called instead of opening the paper when the plan cannot use it. */
+  onBlocked?: () => void
 }) {
   const kind = item.scope === 'full' ? 'full' : (item.taskType as WritingTaskType)
   const { cls, Icon } = TILE[kind]
@@ -81,13 +87,26 @@ export function WritingTaskCard({
             'No attempts yet'
           )}
         </span>
-        <Link
-          to={`/writing/task/${item.id}`}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-brand transition-colors hover:border-brand hover:bg-brand-soft"
-        >
-          <PlayIcon width={14} height={14} />
-          {cta}
-        </Link>
+        {/* The wall lands on the first click, not after the student has written
+            250 words for a check they cannot get. */}
+        {checkLocked && onBlocked ? (
+          <button
+            type="button"
+            onClick={onBlocked}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-brand transition-colors hover:border-brand hover:bg-brand-soft"
+          >
+            <PlayIcon width={14} height={14} />
+            {cta}
+          </button>
+        ) : (
+          <Link
+            to={`/writing/task/${item.id}`}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-brand transition-colors hover:border-brand hover:bg-brand-soft"
+          >
+            <PlayIcon width={14} height={14} />
+            {cta}
+          </Link>
+        )}
       </div>
     </div>
   )

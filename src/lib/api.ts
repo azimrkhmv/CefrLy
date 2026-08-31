@@ -91,6 +91,21 @@ export async function listTests(): Promise<TestCatalogEntry[]> {
 
 /** Published Writing/Speaking samples, in catalog order. Samples carry no
  *  answer keys, so RLS-guarded direct reads are safe (published rows only). */
+/**
+ * The QUESTION side of the samples library — no model answers, no glossary.
+ * Readable on every plan, because the speaking exam is generated from these
+ * prompts and must work for free students; the full rows stay behind
+ * has_premium_access(). See migration 0022.
+ */
+export async function fetchSamplePrompts(): Promise<Sample[]> {
+  const { data, error } = await supabase
+    .from('sample_prompts')
+    .select('id, slug, category, badge, title, content')
+    .order('category', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as Sample[]
+}
+
 export async function fetchSamples(): Promise<Sample[]> {
   const { data, error } = await supabase
     .from('samples')

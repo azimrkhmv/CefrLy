@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Timer } from '../components/test/Timer'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { PaidSkillDialog } from '../components/PaidSkillDialog'
+import { hasPremiumAccess } from '../lib/plans'
+import { useAuth } from '../lib/auth'
 import { WritingModePicker } from '../components/writing/WritingModePicker'
 import { CloseIcon } from '../components/icons'
 import { findWritingTest } from '../lib/writingCatalog'
@@ -81,6 +84,10 @@ export function WritingTaskPage() {
 type Confirm = 'exit' | 'submit' | null
 
 function WritingRunner({ test, onLeave }: { test: WritingTest; onLeave: () => void }) {
+  // The catalog blocks locked plans on the Start button, but a bookmark or a
+  // pasted link would walk straight past it.
+  const { plan } = useAuth()
+  const locked = !hasPremiumAccess(plan)
   const tasks = test.tasks
   const isFull = (test.scope ?? 'full') === 'full'
 
@@ -111,6 +118,15 @@ function WritingRunner({ test, onLeave }: { test: WritingTest; onLeave: () => vo
       answers: {},
       taskIndex: 0,
     })
+  }
+
+
+  if (locked) {
+    return (
+      <ExamScreen center>
+        <PaidSkillDialog open skill="Writing" onClose={onLeave} />
+      </ExamScreen>
+    )
   }
 
   if (!draft) {

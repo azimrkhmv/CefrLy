@@ -3,6 +3,7 @@ import { TabStrip } from '../components/TabStrip'
 import { TestGridSkeleton } from '../components/Skeleton'
 import { Dropdown } from '../components/Dropdown'
 import { Toast } from '../components/Toast'
+import { PaidSkillDialog } from '../components/PaidSkillDialog'
 import { SpeakingTaskGrid } from '../components/speaking/SpeakingTaskGrid'
 import { SpeakingCustomTab } from '../components/speaking/SpeakingCustomTab'
 import { AddCustomModal } from '../components/speaking/AddCustomModal'
@@ -43,6 +44,8 @@ export function SpeakingPage() {
   const [modal, setModal] = useState<{ partType: SpeakingPartType } | null>(null)
   const [toast, setToast] = useState(false)
   const { plan } = useAuth()
+  const locked = !hasPremiumAccess(plan)
+  const [paywall, setPaywall] = useState(false)
 
   const { items, isLoading, error } = useSpeakingItems(tab)
   // Attempts live in two stores that never overlap: ungraded ones locally, graded
@@ -103,7 +106,8 @@ export function SpeakingPage() {
           tab={tab}
           items={shown}
           attemptCount={attemptCount}
-          checkLocked={!hasPremiumAccess(plan)}
+          checkLocked={locked}
+          onBlocked={() => setPaywall(true)}
           onAddCustom={openAddCustom}
         />
       )}
@@ -115,6 +119,8 @@ export function SpeakingPage() {
           onCreated={onCreated}
         />
       )}
+      <PaidSkillDialog open={paywall} skill="Speaking" onClose={() => setPaywall(false)} />
+
       {toast && (
         <Toast
           title="New task added successfully"

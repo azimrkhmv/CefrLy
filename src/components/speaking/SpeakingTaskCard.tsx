@@ -21,12 +21,15 @@ export function SpeakingTaskCard({
    *  itself is always free — only the band score and feedback are paid, and
    *  saying so on the card beats letting them find out after speaking. */
   checkLocked = false,
+  onBlocked,
   onDelete,
 }: {
   item: SpeakingCatalogItem
   attempts: number
   inProgress?: boolean
   checkLocked?: boolean
+  /** Called instead of opening the paper when the plan cannot use it. */
+  onBlocked?: () => void
   onDelete?: () => void
 }) {
   const chip = item.scope === 'full' ? 'Full mock test' : PART_LABEL[item.partType!]
@@ -89,13 +92,26 @@ export function SpeakingTaskCard({
             'No attempts yet'
           )}
         </span>
-        <Link
-          to={`/speaking/task/${item.id}`}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-brand transition-colors hover:border-brand hover:bg-brand-soft"
-        >
-          <PlayIcon width={14} height={14} />
-          {cta}
-        </Link>
+        {/* Locked plans get the wall on the FIRST click, not after ten minutes
+            of speaking — the card stays browsable either way. */}
+        {checkLocked && onBlocked ? (
+          <button
+            type="button"
+            onClick={onBlocked}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-brand transition-colors hover:border-brand hover:bg-brand-soft"
+          >
+            <PlayIcon width={14} height={14} />
+            {cta}
+          </button>
+        ) : (
+          <Link
+            to={`/speaking/task/${item.id}`}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-brand transition-colors hover:border-brand hover:bg-brand-soft"
+          >
+            <PlayIcon width={14} height={14} />
+            {cta}
+          </Link>
+        )}
       </div>
     </div>
   )
