@@ -20,6 +20,14 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
+  // FROZEN (owner call 2026-08-31). The hand-off is not in use, and an unused
+  // door that can mint a session for any email address is a liability we don't
+  // need to carry. It stays off until HANDOFF_ENABLED is set to 'true' in this
+  // function's secrets — one dashboard toggle to bring it back, no redeploy.
+  if (Deno.env.get('HANDOFF_ENABLED') !== 'true') {
+    return json({ error: 'Hand-off is disabled.' }, 404)
+  }
+
   const secretValue = Deno.env.get('MILLIYMOCK_HANDOFF_SECRET')
   if (!secretValue) {
     return json({ error: 'Hand-off is not configured (missing MILLIYMOCK_HANDOFF_SECRET)' }, 503)
