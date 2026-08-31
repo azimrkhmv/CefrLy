@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Band, Skill, TestMode, TestSession, TestState } from '../types/test'
+import type { Band, OpenSession, Skill, TestMode, TestSession, TestState } from '../types/test'
 import type {
   AttemptResult,
   AttemptReview,
@@ -123,6 +123,15 @@ export async function fetchSamples(): Promise<Sample[]> {
  *  Replaces the separate session-status peek so a page load is ONE round-trip. */
 export function fetchTestState(testId: string): Promise<TestState> {
   return invokeFunction<TestState>('get-test', { testId, picker: true })
+}
+
+/** Every attempt the student still has open, newest per test. Drives the
+ *  catalog's "Resume · N min left" card state — leaving an exam with the
+ *  browser's Back button keeps the clock running, and nothing used to say so. */
+export function fetchOpenSessions(): Promise<{ sessions: OpenSession[]; serverNow: string }> {
+  return invokeFunction<{ sessions: OpenSession[]; serverNow: string }>('session-status', {
+    all: true,
+  })
 }
 
 /** Begin a session in the chosen mode (or resume the one already open).

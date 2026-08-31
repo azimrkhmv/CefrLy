@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { fetchMyAttempts, listTests } from '../lib/api'
+import { fetchMyAttempts, fetchOpenSessions, listTests } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { hasPremiumAccess } from '../lib/plans'
 import { skillMeta } from '../lib/skills'
@@ -42,6 +42,15 @@ export function TestCatalog({ skill }: { skill: Skill }) {
     queryFn: fetchMyAttempts,
     enabled: !!session,
   })
+  // Attempts whose clock is still running. Refetched on focus so a card stops
+  // saying "Resume" once the student finishes (or abandons) that attempt.
+  const { data: openSessions } = useQuery({
+    queryKey: ['open-sessions'],
+    queryFn: fetchOpenSessions,
+    enabled: !!session,
+    staleTime: 30_000,
+  })
+  const openByTest = new Map((openSessions?.sessions ?? []).map((s) => [s.testId, s]))
 
   // 'mock' = the full papers; a number = single-part drills for that part.
   const [tab, setTab] = useState<'mock' | number>('mock')
@@ -122,6 +131,7 @@ export function TestCatalog({ skill }: { skill: Skill }) {
               test={test}
               attemptInfo={attemptInfo.get(test.id)}
               locked={(test.access ?? 'premium') === 'premium' && !canOpenPremium}
+              openSession={openByTest.get(test.id)}
             />
           </div>
         ))}

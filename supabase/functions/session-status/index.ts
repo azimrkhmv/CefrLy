@@ -13,13 +13,20 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
+  // Two shapes: with a testId, the single-test peek this endpoint has always
+  // been. With `all: true` and no testId, every attempt the student still has
+  // open — the catalog needs it to show "Resume · 23 min left" instead of a
+  // plain "Start" on a test whose clock is quietly running.
   let testId: unknown
+  let all = false
   try {
-    ;({ testId } = await req.json())
+    const body = await req.json()
+    testId = body?.testId
+    all = body?.all === true
   } catch {
     return json({ error: 'Invalid JSON body' }, 400)
   }
-  if (typeof testId !== 'string' || testId.length === 0) {
+  if (!all && (typeof testId !== 'string' || testId.length === 0)) {
     return json({ error: 'testId is required' }, 400)
   }
 
@@ -40,6 +47,38 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
+
+  if (all) {
+    const { data: rows, error } = await admin
+      .from('test_sessions')
+      .select('test_id, started_at, expires_at, mode, duration_sec, paused_at')
+      .eq('user_id', user.id)
+      .is('submitted_at', null)
+      .order('started_at', { ascending: false })
+    if (error) return json({ error: error.message }, 500)
+
+    const now = Date.now()
+    const seen = new Set<string>()
+    // deno-lint-ignore no-explicit-any
+    const sessions = (rows ?? []).filter((s: any) => {
+      if (seen.has(s.test_id)) return false // newest per test only
+      const base = new Date(s.expires_at).getTime()
+      const deadline = s.paused_at ? base + (now - new Date(s.paused_at).getTime()) : base
+      if (now > deadline) return false // expired — not resumable
+      seen.add(s.test_id)
+      return true
+      // deno-lint-ignore no-explicit-any
+    }).map((s: any) => ({
+      testId: s.test_id,
+      startedAt: s.started_at,
+      expiresAt: s.expires_at,
+      mode: s.mode ?? 'simulation',
+      durationSec: s.duration_sec ?? null,
+      pausedAt: s.paused_at ?? null,
+    }))
+
+    return json({ sessions, serverNow: new Date().toISOString() })
+  }
 
   const { data: test, error: testError } = await admin
     .from('tests')

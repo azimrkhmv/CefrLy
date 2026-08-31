@@ -459,6 +459,16 @@ export interface NoOpenAttempt {
   expired?: ExpiredAttempt | null
 }
 
+/** An attempt still open on some test, as listed for the catalog. */
+export interface OpenSession {
+  testId: string
+  startedAt: string
+  expiresAt: string
+  mode: TestMode
+  durationSec: number | null
+  pausedAt: string | null
+}
+
 /** The ran-out-while-you-were-away attempt offered for a late hand-in. */
 export interface ExpiredAttempt {
   id: string

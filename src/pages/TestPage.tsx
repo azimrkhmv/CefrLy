@@ -334,6 +334,8 @@ export function TestPage() {
         /* storage unavailable */
       }
       queryClient.removeQueries({ queryKey: ['test', testId] })
+      // The catalog's "Resume · N min left" card must stop saying that now.
+      queryClient.invalidateQueries({ queryKey: ['open-sessions'] })
       // Reading opens its Analysis page directly; listening keeps the score
       // page (which carries the audio/transcript review link).
       navigate(
@@ -372,6 +374,8 @@ export function TestPage() {
       }
       navigate(catalogPath)
       queryClient.removeQueries({ queryKey: ['test', testId] })
+      // The catalog's "Resume · N min left" card must stop saying that now.
+      queryClient.invalidateQueries({ queryKey: ['open-sessions'] })
     },
   })
 
