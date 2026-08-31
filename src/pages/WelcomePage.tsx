@@ -31,7 +31,7 @@ type Draft = {
   lastName: string
   firstExam?: FirstExam
   selfLevel?: SelfLevel
-  targetBand: TargetBand
+  targetBand?: TargetBand
   studyTimeframe?: StudyTimeframe
   weakAreas: WeakArea[]
   dailyMinutes?: DailyMinutes
@@ -42,7 +42,6 @@ type Draft = {
 const EMPTY_DRAFT: Draft = {
   firstName: '',
   lastName: '',
-  targetBand: 'B2',
   weakAreas: [],
   heardFromNote: '',
 }
@@ -124,7 +123,7 @@ const STEP_META: { title: string; sub: string; quip?: string }[] = [
   },
   {
     title: 'What do you struggle with?',
-    sub: 'Pick as many as you like — or none.',
+    sub: 'Pick at least one — as many as apply.',
     quip: 'We all have our weak paws.',
   },
   {
@@ -192,15 +191,17 @@ export function WelcomePage() {
 
   const greetName = draft.firstName.trim()
 
+  // Every step is REQUIRED (owner call 2026-08-31): nothing here may be skipped,
+  // so Continue stays disabled until that step's answer exists.
   const canContinue = [
     !!draft.firstName.trim(),
     !!draft.firstExam,
     !!draft.selfLevel,
-    true, // goal has a default
+    !!draft.targetBand,
     !!draft.studyTimeframe,
-    true, // struggles may be empty
+    draft.weakAreas.length > 0,
     !!draft.dailyMinutes,
-    !!draft.heardFrom,
+    !!draft.heardFrom && (draft.heardFrom !== 'other' || !!draft.heardFromNote.trim()),
   ][step]
 
   async function finish() {
@@ -212,7 +213,7 @@ export function WelcomePage() {
       lastName: draft.lastName.trim() || null,
       firstExam: draft.firstExam!,
       selfLevel: draft.selfLevel!,
-      targetBand: draft.targetBand,
+      targetBand: draft.targetBand!,
       studyTimeframe: draft.studyTimeframe!,
       weakAreas: draft.weakAreas,
       dailyMinutes: draft.dailyMinutes!,
@@ -241,7 +242,7 @@ export function WelcomePage() {
         <main className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center text-center">
           <QuipBubble>{greetName ? `Nice to meet you, ${greetName}.` : 'Nice to meet you.'}</QuipBubble>
           <div className="mt-3">
-            <BandCat band={draft.targetBand} height={110} />
+            <BandCat band={draft.targetBand ?? 'B2'} height={110} />
           </div>
           <h1 className="mt-6 text-3xl font-extrabold text-heading">You’re all set!</h1>
           <p className="mt-2 max-w-sm text-sm text-ink-soft">
@@ -370,7 +371,7 @@ export function WelcomePage() {
 
             {step === 3 && (
               <GoalBandPicker
-                value={draft.targetBand}
+                value={draft.targetBand ?? null}
                 onChange={(band) => setDraft({ targetBand: band })}
               />
             )}
@@ -440,7 +441,7 @@ export function WelcomePage() {
                     value={draft.heardFromNote}
                     onChange={(e) => setDraft({ heardFromNote: e.target.value })}
                     maxLength={200}
-                    placeholder="Where was it? (optional)"
+                    placeholder="Where was it?"
                     className="mt-3 w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-brand"
                   />
                 )}

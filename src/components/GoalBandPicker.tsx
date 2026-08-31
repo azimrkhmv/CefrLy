@@ -23,12 +23,14 @@ export function GoalBandPicker({
   onChange,
   name = 'target-band',
 }: {
-  value: TargetBand
+  /** null = nothing chosen yet: the cat/fill preview dims and no stop is filled. */
+  value: TargetBand | null
   onChange: (band: TargetBand) => void
   /** Radio-group name — override when two pickers share a page. */
   name?: string
 }) {
   const sel = STOPS.find((s) => s.band === value) ?? STOPS[1]
+  const unset = value == null
   return (
     <div>
       <div
@@ -40,7 +42,9 @@ export function GoalBandPicker({
         {/* quip + cat ride the selected stop */}
         <span
           aria-hidden
-          className="pointer-events-none absolute z-[1] motion-safe:transition-[left] motion-safe:duration-500"
+          className={`pointer-events-none absolute z-[1] transition-opacity motion-safe:transition-[left,opacity] motion-safe:duration-500 ${
+            unset ? 'opacity-0' : 'opacity-100'
+          }`}
           style={{
             left: `clamp(80px, ${sel.pct}%, calc(100% - 80px))`,
             top: TRACK_Y - 76,
@@ -51,7 +55,9 @@ export function GoalBandPicker({
         </span>
         <span
           aria-hidden
-          className="pointer-events-none absolute z-[1] motion-safe:transition-[left] motion-safe:duration-500"
+          className={`pointer-events-none absolute z-[1] transition-opacity motion-safe:transition-[left,opacity] motion-safe:duration-500 ${
+            unset ? 'opacity-25' : 'opacity-100'
+          }`}
           style={{ left: `${sel.pct}%`, top: TRACK_Y + 2, transform: 'translate(-50%, -100%)' }}
         >
           <BandCat band={sel.band} height={64} />
@@ -68,7 +74,7 @@ export function GoalBandPicker({
           className="absolute h-1 rounded-full bg-brand motion-safe:transition-[width] motion-safe:duration-500"
           style={{
             left: `${STOPS[0].pct}%`,
-            width: `${sel.pct - STOPS[0].pct}%`,
+            width: unset ? 0 : `${sel.pct - STOPS[0].pct}%`,
             top: TRACK_Y - 1,
           }}
         />
@@ -107,7 +113,7 @@ export function GoalBandPicker({
         })}
       </div>
       <p className="mt-1 text-center text-sm text-ink-soft" aria-live="polite">
-        {sel.meaning}
+        {unset ? 'Choose the level you’re aiming for.' : sel.meaning}
       </p>
     </div>
   )
