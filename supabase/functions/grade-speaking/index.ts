@@ -32,12 +32,17 @@ import {
 
 const BUCKET = 'speaking-temp'
 // FLASH, NOT FLASH-LITE. On the cheap tier the marking was not reliable enough
-// to put a band on: it returned exactly one strength and one or two errors for
-// every answer regardless of what was said, and passed a two-minute answer that
-// never addressed its question as "on topic". Grading is the product here; the
-// difference in cost is a fraction of a cent per attempt. Override per
-// environment with GEMINI_MODEL.
-const MODEL = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.1-flash'
+// to put a band on: it returned a fixed quota of errors and strengths for every
+// answer regardless of what was said, passed unanswered questions as "on
+// topic", and its B1-vs-B2 calls flipped students' bands at the boundary.
+// Grading is the product here; the cost difference is a fraction of a cent.
+//
+// The env override is honoured EXCEPT for the retired lite tier: a stale
+// GEMINI_MODEL=gemini-3.1-flash-lite secret silently undid this upgrade once —
+// the first attempt through the "new" grader came back marked by the old model.
+// Secrets cannot be edited from this environment, so the guard lives here.
+const envModel = Deno.env.get('GEMINI_MODEL')
+const MODEL = envModel && envModel !== 'gemini-3.1-flash-lite' ? envModel : 'gemini-3.1-flash'
 /** A run still unfinished after this long is assumed dead, and may be retried.
  *  Anything younger is treated as in flight — see the double-grade guard. */
 const RUN_STALE_MS = 5 * 60 * 1000
