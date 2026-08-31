@@ -70,17 +70,18 @@ export function PaidSkillDialog({
         />
         <h2 id="paid-skill-title" className="mt-2 text-xl font-extrabold text-heading">
           {reason === 'used-up'
-            ? `No ${skill.toLowerCase()} checks left this month`
+            ? `You have used all your ${skill.toLowerCase()} checks`
             : `${skill} is for paid plans`}
         </h2>
         {reason === 'used-up' ? (
           <>
             <p className="mx-auto mt-2 max-w-sm text-sm text-ink-soft">
-              You have used every {skill.toLowerCase()} check on your plan this month. Your
-              allowance refreshes on the 1st.
+              Your Pro plan includes <strong className="font-bold text-ink">10</strong>{' '}
+              {skill.toLowerCase()} checks each month, and this month&rsquo;s are all used.
             </p>
-            <p className="mt-2 text-sm text-ink-soft">
-              Premium has unlimited checks if you need more now.
+            <p className="mx-auto mt-2 max-w-sm text-sm text-ink-soft">
+              Upgrade to <strong className="font-bold text-ink">Premium</strong> for unlimited
+              checks, or wait until the 1st when your allowance refreshes.
             </p>
           </>
         ) : (
@@ -100,7 +101,7 @@ export function PaidSkillDialog({
             to="/pricing"
             className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
           >
-            See plans
+            {reason === 'used-up' ? 'Get Premium' : 'See plans'}
           </Link>
           <button
             ref={closeRef}
