@@ -11,5 +11,9 @@
 -- RULE FOR ANY FUTURE VIEW IN `public`: it bypasses RLS and is exposed to anon
 -- unless you revoke it. Grant to `authenticated`, revoke from `anon`, always.
 
+-- `authenticated` had the full set (INSERT/UPDATE/DELETE/TRUNCATE) here too,
+-- from the same defaults. The view is not auto-updatable, so those writes would
+-- have failed anyway — but a read-only window should be granted read-only.
 revoke all on public.sample_prompts from anon;
+revoke all on public.sample_prompts from authenticated;
 grant select on public.sample_prompts to authenticated;
