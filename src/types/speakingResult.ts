@@ -35,19 +35,36 @@ export interface GradedAnswer {
 
 export type CefrCriterionLevel = 'below_A2' | 'A2' | 'B1' | 'B2' | 'C1'
 
+export type SpeakingCriteria = Record<
+  'grammar' | 'vocabulary' | 'pronunciation' | 'fluency' | 'coherence',
+  CefrCriterionLevel
+>
+
+/** ONE judgement of how well the student speaks, for the whole attempt — the
+ *  thing every block's mark is computed from. Judged per block, the same
+ *  speaker used to come out a level apart on two parts of one sitting. */
+export interface SpeakingProfile {
+  criteria: SpeakingCriteria
+  /** The quotes that put those levels where they are. */
+  evidence: string
+}
+
 export interface GradedBlock {
   key: 'q1_3' | 'q4_6' | 'q7' | 'q8'
   label: string
   max: number
   score: number
   reason: string
-  /** The levels the mark was CALCULATED from. The AI judges these; the score is
-   *  arithmetic on top of them, so this is the working behind the number.
-   *  Absent on attempts graded before that change. */
-  criteria?: Record<'grammar' | 'vocabulary' | 'pronunciation' | 'fluency' | 'coherence', CefrCriterionLevel>
-  /** How many of the block's questions were answered on topic, out of how many. */
+  /** The levels the mark was CALCULATED from — the attempt's profile, the same
+   *  on every block. Absent on attempts graded before that change. */
+  criteria?: SpeakingCriteria
+  /** How many of the block's questions were answered on topic, out of how many.
+   *  "On topic" means the grader could quote the words that answer it. */
   onTopicCount?: number
   questionCount?: number
+  /** Long turns: was the task covered fully, and (Part 3) both sides argued? */
+  coverage?: 'full' | 'partial'
+  balanced?: boolean
 }
 
 export interface SpeakingResult {
@@ -66,6 +83,8 @@ export interface SpeakingResult {
   cappedByPart?: boolean
   /** Which Gemini model graded it — kept so a re-grade can be compared. */
   model?: string
+  /** The single language judgement the whole mark rests on. */
+  profile?: SpeakingProfile
 }
 
 export interface SpeakingAttemptRow {

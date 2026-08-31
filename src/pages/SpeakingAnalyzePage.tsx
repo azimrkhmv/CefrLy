@@ -150,33 +150,52 @@ function Analysis({ attempt }: { attempt: SpeakingAttemptRow }) {
                 {b.onTopicCount} of {b.questionCount} answered on topic
               </p>
             )}
-            {b.reason && <p className="mt-2 text-sm text-ink-soft">{b.reason}</p>}
-            {/* The mark is arithmetic on these levels, not a number the AI
-                picked — so show them. A 4 the student can argue with beats a 5
-                they cannot check. */}
-            {b.criteria && (
-              <dl className="mt-3 space-y-1 border-t border-line pt-3">
-                {(
-                  [
-                    ['grammar', 'Grammar'],
-                    ['vocabulary', 'Vocabulary'],
-                    ['pronunciation', 'Pronunciation'],
-                    ['fluency', 'Fluency'],
-                    ['coherence', 'Linking ideas'],
-                  ] as const
-                ).map(([key, label]) => (
-                  <div key={key} className="flex items-center justify-between gap-2">
-                    <dt className="text-xs text-ink-soft">{label}</dt>
-                    <dd className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-bold text-brand">
-                      {b.criteria![key].replace('below_A2', 'below A2')}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
+            {b.coverage === 'partial' && (
+              <p className="mt-0.5 text-xs text-ink-soft">Task covered only in part</p>
             )}
+            {b.key === 'q8' && b.balanced === false && (
+              <p className="mt-0.5 text-xs text-ink-soft">Argued one side only</p>
+            )}
+            {b.reason && <p className="mt-2 text-sm text-ink-soft">{b.reason}</p>}
           </div>
         ))}
       </section>
+      )}
+
+      {/* The judgement every mark on this page was computed from. It is ONE view
+          of the speaker, not one per task, and it comes with the quotes behind
+          it — a band you can check beats a band you must accept. */}
+      {result.profile?.criteria && (
+        <section className="rounded-2xl border border-line bg-white p-6 shadow-card">
+          <h2 className="font-extrabold text-heading">Your English, criterion by criterion</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Every mark below was worked out from these five judgements.
+          </p>
+          <dl className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {(
+              [
+                ['grammar', 'Grammar'],
+                ['vocabulary', 'Vocabulary'],
+                ['pronunciation', 'Pronunciation'],
+                ['fluency', 'Fluency'],
+                ['coherence', 'Linking ideas'],
+              ] as const
+            ).map(([key, label]) => (
+              <div key={key} className="rounded-xl border border-line bg-page px-4 py-3">
+                <dt className="text-xs font-bold uppercase tracking-wide text-ink-soft">{label}</dt>
+                <dd className="mt-1 text-lg font-extrabold text-brand">
+                  {result.profile!.criteria[key].replace('below_A2', 'below A2')}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          {result.profile.evidence && (
+            <p className="mt-4 rounded-xl bg-brand-soft px-4 py-3 text-sm text-ink">
+              <strong className="font-bold">Why: </strong>
+              {result.profile.evidence}
+            </p>
+          )}
+        </section>
       )}
 
       {result.summary && (

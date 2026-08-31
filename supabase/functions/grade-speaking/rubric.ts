@@ -136,10 +136,30 @@ export const LEVEL_RANK: Record<CefrLevel, number> = {
 export const CRITERIA = ['grammar', 'vocabulary', 'pronunciation', 'fluency', 'coherence'] as const
 export type Criterion = (typeof CRITERIA)[number]
 
+/**
+ * ONE language profile per attempt, not one per block.
+ *
+ * The criteria used to be judged inside each block, and the same student came
+ * out A2 in Part 1 and B1 in Part 2 of the same sitting — the model was quietly
+ * rating the language against how hard the task was. Measured over students who
+ * sat a paper twice, their own two attempts landed an average of 18 rating
+ * points apart, once 28: more than a whole band, for the same speaker on the
+ * same day.
+ *
+ * A human examiner forms ONE view of how well somebody speaks and then asks,
+ * per task, whether they answered it. That is what this is.
+ */
+export interface SpeakingProfile {
+  criteria: Record<Criterion, CefrLevel>
+  /** Quotes from the transcripts that put the levels where they are. */
+  evidence: string
+}
+
 export interface BlockJudgement {
   block: BlockKey
   /** How many of the block's questions were answered on topic. */
   onTopicCount: number
+  /** The attempt's language profile — the SAME for every block. */
   criteria: Record<Criterion, CefrLevel>
   /** Long-turn blocks only (Q7, Q8): was the topic covered fully or in part? */
   coverage?: 'full' | 'partial'

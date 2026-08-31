@@ -27,10 +27,17 @@ import {
   scoreBlock,
   type BlockJudgement,
   type BlockKey,
+  type SpeakingProfile,
 } from './rubric.ts'
 
 const BUCKET = 'speaking-temp'
-const MODEL = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.1-flash-lite'
+// FLASH, NOT FLASH-LITE. On the cheap tier the marking was not reliable enough
+// to put a band on: it returned exactly one strength and one or two errors for
+// every answer regardless of what was said, and passed a two-minute answer that
+// never addressed its question as "on topic". Grading is the product here; the
+// difference in cost is a fraction of a cent per attempt. Override per
+// environment with GEMINI_MODEL.
+const MODEL = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.1-flash'
 /** A run still unfinished after this long is assumed dead, and may be retried.
  *  Anything younger is treated as in flight — see the double-grade guard. */
 const RUN_STALE_MS = 5 * 60 * 1000
@@ -315,9 +322,21 @@ interface AnswerOut {
   improved: string
 }
 
+/** What the model reports for one block: WHICH questions were answered, each
+ *  with the words that answer them. A count alone let a two-minute answer that
+ *  never named a decision pass as "on topic, 1 of 1". */
+interface BlockOut {
+  block: string
+  onTopic: { questionIndex: number; quote: string }[]
+  coverage: 'full' | 'partial'
+  balanced: boolean
+  reason: string
+}
+
 interface GeminiOut {
   answers: AnswerOut[]
-  blocks: BlockJudgement[]
+  profile: SpeakingProfile
+  blocks: BlockOut[]
   summary: string
   fixFirst: string
 }
@@ -389,55 +408,72 @@ const RESPONSE_SCHEMA = {
         ],
       },
     },
-    // NO SCORE HERE, DELIBERATELY. The model reports what it heard against the
-    // rubric's own criteria and we do the arithmetic (scoreBlock in rubric.ts) —
-    // see the note there. Asking for the number invited a top mark handed out
-    // over the model's own list of grammar errors.
+    // ONE profile for the whole attempt. Judged per block, the same speaker came
+    // out A2 in Part 1 and B1 in Part 2 of one sitting — see rubric.ts.
+    profile: {
+      type: 'object',
+      properties: {
+        criteria: {
+          type: 'object',
+          properties: {
+            grammar: { type: 'string', enum: LEVELS },
+            vocabulary: { type: 'string', enum: LEVELS },
+            pronunciation: { type: 'string', enum: LEVELS },
+            fluency: { type: 'string', enum: LEVELS },
+            coherence: { type: 'string', enum: LEVELS },
+          },
+          required: ['grammar', 'vocabulary', 'pronunciation', 'fluency', 'coherence'],
+          propertyOrdering: ['grammar', 'vocabulary', 'pronunciation', 'fluency', 'coherence'],
+        },
+        evidence: { type: 'string' },
+      },
+      required: ['criteria', 'evidence'],
+      propertyOrdering: ['criteria', 'evidence'],
+    },
+    // NO SCORE HERE, DELIBERATELY. The model reports what it heard and we do the
+    // arithmetic (scoreBlock in rubric.ts). Asking for the number invited a top
+    // mark handed out over the model's own list of grammar errors.
+    //
+    // "onTopic" is a LIST WITH QUOTES, not a count: an answer that talked around
+    // the question for two minutes without ever answering it used to be counted
+    // as answered, because counting is cheap and quoting is not.
     blocks: {
       type: 'array',
       items: {
         type: 'object',
         properties: {
           block: { type: 'string', enum: ['q1_3', 'q4_6', 'q7', 'q8'] },
-          onTopicCount: { type: 'integer' },
-          criteria: {
-            type: 'object',
-            properties: {
-              grammar: { type: 'string', enum: LEVELS },
-              vocabulary: { type: 'string', enum: LEVELS },
-              pronunciation: { type: 'string', enum: LEVELS },
-              fluency: { type: 'string', enum: LEVELS },
-              coherence: { type: 'string', enum: LEVELS },
+          onTopic: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                questionIndex: { type: 'integer' },
+                quote: { type: 'string' },
+              },
+              required: ['questionIndex', 'quote'],
+              propertyOrdering: ['questionIndex', 'quote'],
             },
-            required: ['grammar', 'vocabulary', 'pronunciation', 'fluency', 'coherence'],
-            propertyOrdering: [
-              'grammar',
-              'vocabulary',
-              'pronunciation',
-              'fluency',
-              'coherence',
-            ],
           },
           coverage: { type: 'string', enum: ['full', 'partial'] },
           balanced: { type: 'boolean' },
           reason: { type: 'string' },
         },
-        required: ['block', 'onTopicCount', 'criteria', 'reason'],
-        propertyOrdering: [
-          'block',
-          'onTopicCount',
-          'criteria',
-          'coverage',
-          'balanced',
-          'reason',
-        ],
+        // coverage and balanced are REQUIRED now. Left optional, the model simply
+        // omitted them, and the long turns lost the only thing that separates a
+        // full answer from half of one.
+        required: ['block', 'onTopic', 'coverage', 'balanced', 'reason'],
+        propertyOrdering: ['block', 'onTopic', 'coverage', 'balanced', 'reason'],
       },
     },
     summary: { type: 'string' },
     fixFirst: { type: 'string' },
   },
-  required: ['answers', 'blocks', 'summary', 'fixFirst'],
-  propertyOrdering: ['answers', 'blocks', 'summary', 'fixFirst'],
+  // Order matters: the transcripts are produced FIRST, then the profile is
+  // judged from them, then each block is checked against that profile. Asking
+  // for the judgement before the evidence exists invites a guess.
+  required: ['answers', 'profile', 'blocks', 'summary', 'fixFirst'],
+  propertyOrdering: ['answers', 'profile', 'blocks', 'summary', 'fixFirst'],
 }
 
 function buildPrompt(answers: AnswerIn[]): string {
@@ -464,31 +500,39 @@ official rubric below and return JSON only.
 ${RUBRIC_TEXT}
 
 YOU DO NOT AWARD MARKS. The mark is calculated from your judgement, so judge
-accurately and let the arithmetic happen elsewhere. Report ONE entry for each of
-these blocks — ${blocksPresent.join(', ')} — containing:
+accurately and let the arithmetic happen elsewhere.
 
-- "onTopicCount": how many of that block's questions were answered ON TOPIC. A
-  memorised or off-topic answer does not count, however fluent it was.
-- "criteria": the CEFR level of the speech itself on each of grammar,
-  vocabulary, pronunciation, fluency and coherence (below_A2 | A2 | B1 | B2 | C1).
-  Judge each one INDEPENDENTLY and from the audio and transcript in front of you —
-  not from an overall impression, and not from how hard the task was. Be exact:
+FIRST, "profile" — ONE judgement of how well THIS STUDENT speaks, covering the
+whole attempt. Not one per task. The same student must not come out A2 on an
+easy question and B1 on a hard one: you are rating the speaker, never the
+difficulty of what they were asked. Give the CEFR level
+(below_A2 | A2 | B1 | B2 | C1) for each of:
   · grammar — B1 means simple structures are right but complex ones break down;
     B2 means complex structures are attempted and mostly work; C1 means a range
-    of them is used accurately with only slips.
+    of them is used accurately with only slips. Errors in BASIC agreement
+    ("he love", "picture show") are A2 or below, whatever else is present.
   · vocabulary — B1 is enough for the topic with visible wrong choices; B2 covers
     the topic with occasional imprecision; C1 is precise and varied.
   · pronunciation — B1 is intelligible but mispronunciation sometimes obscures
     meaning; B2 rarely obscures it; C1 is clear throughout.
-  · fluency — count the pauses, repetition and self-correction you can hear.
+  · fluency — weigh the pauses, repetition and self-correction you can hear.
+    Speech that repeats a word or phrase to fill time is not B2 fluency.
   · coherence — B1 links ideas with simple connectives only; C1 links them well.
-  Every error you list under an answer is evidence about these levels. If you
-  listed systematic grammar errors, grammar is NOT B2 or C1.
-- "coverage" (Q7 and Q8 only): "full" if the response covers what the task asked,
-  "partial" if it covers it only in part.
-- "balanced" (Q8 only): true only if BOTH sides of the argument are genuinely
-  made; a well-spoken one-sided answer is not balanced.
-- "reason": one sentence naming the evidence behind those levels.
+Plus "evidence": the actual quotes that put those levels where they are. If your
+evidence contradicts a level, change the level.
+
+THEN one entry for each of these blocks — ${blocksPresent.join(', ')} — with:
+- "onTopic": the list of that block's questions the student ACTUALLY ANSWERED,
+  each with the exact words from their transcript that answer it. This is the
+  test: if you cannot quote the part of the answer that addresses the question,
+  it was NOT answered, and it does not belong in the list. Two minutes of talking
+  around a question — repeating it back, or saying it is important — is not an
+  answer. Neither is a memorised speech aimed at a different question.
+- "coverage": "full" if the response covers everything the task asked for,
+  "partial" if it covers it only in part. Required for every block.
+- "balanced": for Q8, true only if BOTH sides of the argument are genuinely made;
+  a well-spoken one-sided answer is not balanced. Send false for other blocks.
+- "reason": one sentence, naming what you heard.
 
 THE RECORDINGS, in the order they are attached:
 
@@ -502,15 +546,18 @@ Rules:
   so it can be highlighted. Never paraphrase a quote. Same for strengths, which
   are the genuinely good vocabulary or structures the student used — leave the
   list empty rather than inventing one.
+- List EVERY error you find, not a fixed number. A weak answer has many; a strong
+  one may have none. Returning one error and one strength for every answer
+  regardless of what was said is not marking, and it is obvious when it happens.
 - "improved" rewrites the student's OWN answer roughly one CEFR level above what
   they produced, keeping their ideas and their length. Do not write a perfect C2
   model answer: it has to be something this student could realistically reach.
-- Memorised or off-topic answers do not count towards "onTopicCount".
+- Memorised or off-topic answers do not go in "onTopic".
 - If a recording is silent or has no meaningful speech, give an empty transcript
-  and leave that question out of "onTopicCount".
+  and leave that question out of "onTopic".
 - A question marked NO ANSWER RECORDED was not attempted. Return it in "answers"
-  with an empty transcript, and leave it out of "onTopicCount" — the rubric turns
-  on HOW MANY questions were answered on topic, so a block with a missing answer
+  with an empty transcript, and leave it out of "onTopic" — the rubric turns on
+  HOW MANY questions were answered on topic, so a block with a missing answer
   cannot reach the top mark.
 - Write every comment in simple English; the students are Uzbek learners.
 - "fixFirst" is the single most valuable thing to work on next, in one sentence.`
@@ -630,19 +677,37 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
   const questionsIn = (key: BlockKey) =>
     answers.filter((a) => blockForPart(a.partType) === key).length
 
+  // The transcripts, to check the model's "they answered it" quotes against.
+  const transcriptFor = (questionIndex: number) =>
+    (out.answers?.find((a) => a.questionIndex === questionIndex)?.transcript ?? '').toLowerCase()
+
+  const profile = out.profile?.criteria ?? null
+
   const blocks = BLOCKS.filter((b) => present.includes(b.key)).map((b) => {
     const judged = out.blocks?.find((x) => x.block === b.key)
-    // The mark is OURS to compute (scoreBlock). A missing or malformed
-    // judgement scores 0 rather than guessing something flattering.
-    const judgement: BlockJudgement | null = judged?.criteria
+
+    // A question counts as answered only if the quote offered as proof is
+    // REALLY IN what the student said. Without this the quote requirement is
+    // just a prompt instruction, and prompt instructions get ignored under load.
+    const verified = (judged?.onTopic ?? []).filter((t) => {
+      const quote = (t?.quote ?? '').trim().toLowerCase()
+      if (quote.length < 3) return false
+      const said = transcriptFor(Number(t.questionIndex))
+      return said.length > 0 && said.includes(quote)
+    })
+    const questionCount = questionsIn(b.key)
+
+    // The mark is OURS to compute (scoreBlock). No profile means the model
+    // returned something unusable — score 0 rather than guess something
+    // flattering.
+    const judgement: BlockJudgement | null = profile
       ? {
-          ...judged,
           block: b.key,
-          // Never more on topic than the block actually has questions.
-          onTopicCount: Math.max(
-            0,
-            Math.min(questionsIn(b.key), Math.round(Number(judged.onTopicCount ?? 0))),
-          ),
+          criteria: profile,
+          onTopicCount: Math.min(questionCount, verified.length),
+          coverage: judged?.coverage === 'partial' ? 'partial' : 'full',
+          balanced: judged?.balanced === true,
+          reason: judged?.reason ?? '',
         }
       : null
     const score = judgement ? Math.max(0, Math.min(b.max, scoreBlock(judgement))) : 0
@@ -652,11 +717,12 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
       max: b.max,
       score,
       reason: judged?.reason ?? '',
-      // Stored so the analyze page can SHOW the working — the levels the mark
-      // was computed from, not just the mark.
-      criteria: judgement?.criteria,
+      // Stored so the analyze page can SHOW the working.
+      criteria: profile ?? undefined,
       onTopicCount: judgement?.onTopicCount,
-      questionCount: questionsIn(b.key),
+      questionCount,
+      coverage: judgement?.coverage,
+      balanced: b.key === 'q8' ? judgement?.balanced : undefined,
     }
   })
 
@@ -693,6 +759,9 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
       })),
       summary: out.summary ?? '',
       fixFirst: out.fixFirst ?? '',
+      // The one language judgement the whole mark rests on, shown to the student
+      // with the quotes behind it — so a band is something they can check.
+      profile: out.profile?.criteria ? out.profile : undefined,
       // Stored so the page never has to infer the denominator from the blocks
       // it happens to have: skipping a whole part would otherwise turn 12/21
       // into a flattering "12 of 15".
