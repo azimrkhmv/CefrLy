@@ -54,11 +54,12 @@ export function SendingCat({
 
       <p className="mt-3 font-extrabold text-heading">{title}</p>
 
-      {/* Indeterminate on purpose: we know the stages, never the percentage. */}
+      {/* Indeterminate on purpose: we know the stages, never the percentage —
+          and a bar that pretends to know sticks at 90% and reads as broken. */}
       <div
         role="progressbar"
         aria-label={title}
-        className="skeleton mx-auto mt-3 h-1.5 w-48 rounded-full"
+        className="progress-track mx-auto mt-3 h-2 w-56 max-w-full rounded-full"
       />
 
       {note && <p className="mx-auto mt-3 max-w-sm text-xs text-ink-soft">{note}</p>}

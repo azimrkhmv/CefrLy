@@ -88,6 +88,37 @@ body {
   transition: width 1s cubic-bezier(0.3, 0.5, 0.2, 1) 0.4s;
 }
 
+/* Indeterminate progress: a brand-coloured shuttle running along a soft track.
+   Used where we know the STAGES but never the percentage (sending a speaking
+   attempt, waiting for the AI to mark it). A skeleton shimmer was tried first
+   and read as "nothing is happening" — too faint to see it move at all. */
+@keyframes progress-shuttle {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+.progress-track {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--color-brand) 14%, white);
+}
+.progress-track::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 25%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--color-brand) 30%, transparent),
+    var(--color-brand),
+    color-mix(in oklab, var(--color-brand) 30%, transparent)
+  );
+  animation: progress-shuttle 1.5s ease-in-out infinite;
+  will-change: transform;
+}
+
 /* The mascot bobs gently where it celebrates. */
 @keyframes cat-bob {
   0%, 100% { transform: translateY(0); }
@@ -175,6 +206,7 @@ body {
   .page-enter,
   .ruler-draw,
   .cat-bob,
+  .progress-track::after,
   .cat-sleep,
   .cat-idle,
   .zzz-1,
