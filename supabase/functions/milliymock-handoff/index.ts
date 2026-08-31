@@ -39,6 +39,10 @@ Deno.serve(async (req) => {
   try {
     ;({ payload } = await jwtVerify(token, new TextEncoder().encode(secretValue), {
       algorithms: ['HS256'],
+      // exp is REQUIRED: without it jose happily accepts a token that never
+      // expires, and the lifetime check below silently skips (it only runs when
+      // exp AND iat are present). A hand-off link must die in 60 seconds.
+      requiredClaims: ['exp', 'iat', 'jti', 'email'],
     }))
   } catch {
     return json({ error: 'Invalid or expired hand-off token' }, 401)
@@ -49,11 +53,12 @@ Deno.serve(async (req) => {
   const mmUserId = payload.mm_user_id != null ? String(payload.mm_user_id) : null
   const jti = typeof payload.jti === 'string' ? payload.jti : null
   if (!email || !jti) return json({ error: 'Token must include email and jti' }, 401)
-  if (
-    typeof payload.exp === 'number' &&
-    typeof payload.iat === 'number' &&
-    payload.exp - payload.iat > MAX_TOKEN_LIFETIME_SEC
-  ) {
+  // Belt and braces: enforce the claims here too, so an older jose that ignores
+  // `requiredClaims` cannot let an eternal token through.
+  if (typeof payload.exp !== 'number' || typeof payload.iat !== 'number') {
+    return json({ error: 'Hand-off token must carry iat and exp' }, 401)
+  }
+  if (payload.exp - payload.iat > MAX_TOKEN_LIFETIME_SEC) {
     return json({ error: 'Hand-off token lifetime too long' }, 401)
   }
 
@@ -78,6 +83,22 @@ Deno.serve(async (req) => {
   if (lookupError) return json({ error: lookupError.message }, 500)
 
   let userId = existingId as string | null
+
+  // Staff accounts are NEVER reachable through the hand-off. Anyone holding the
+  // shared secret (or anyone who breaks into MilliyMock) could otherwise mint a
+  // token for the owner's email and land in Cefrly as super_admin. Staff sign in
+  // with their own password on this side.
+  if (userId) {
+    const { data: target } = await admin
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle()
+    if (target?.role === 'admin' || target?.role === 'super_admin') {
+      return json({ error: 'This account cannot be opened through the hand-off. Sign in directly.' }, 403)
+    }
+  }
+
   if (!userId) {
     const { data: created, error: createError } = await admin.auth.admin.createUser({
       email,

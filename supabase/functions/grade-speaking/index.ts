@@ -131,6 +131,17 @@ Deno.serve(async (req) => {
   if (!testId || !testTitle) return json({ error: 'This attempt cannot be graded again.' }, 400)
   if (answers.length === 0) return json({ error: 'No answers to grade' }, 400)
 
+  // The paths come from the browser, and this function reads AND DELETES them
+  // with the service_role key — which ignores the storage policy that pins a
+  // student to their own folder. Without this check, passing someone else's
+  // "<their id>/<attempt>/0.webm" would transcribe their recording into this
+  // result and then delete it. Every clip must live under the caller's folder.
+  const ownPrefix = `${user.id}/`
+  const foreign = answers.find(
+    (a: AnswerIn) => typeof a.path !== 'string' || !a.path.startsWith(ownPrefix) || a.path.includes('..'),
+  )
+  if (foreign) return json({ error: 'Invalid recording path' }, 400)
+
   const limit = isStaff ? null : PLAN_LIMITS[plan].speaking_check
   if (limit !== null) {
     // Only completed checks count. A failed grade cost the student nothing, so
