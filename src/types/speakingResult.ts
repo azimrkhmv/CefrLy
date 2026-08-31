@@ -72,6 +72,15 @@ export interface SpeakingAttemptRow {
   graded_at: string | null
 }
 
+/**
+ * An attempt as the LIST views need it — everything except `result`.
+ *
+ * The full row carries every transcript, correction and rewritten answer of an
+ * attempt. My results and the Speaking catalog render a score and a date, so
+ * they ask for this shape instead and leave the heavy column in the database.
+ */
+export type SpeakingAttemptSummary = Omit<SpeakingAttemptRow, 'result' | 'audio_manifest'>
+
 export const ERROR_LABEL: Record<SpeakingErrorType, string> = {
   grammar: 'Grammar',
   vocabulary: 'Vocabulary',

@@ -120,7 +120,11 @@ export function useRecorder() {
       }
 
       const chunks: BlobPart[] = []
-      const recorder = new MediaRecorder(stream)
+      // 24 kbps mono. Speech stays perfectly clear at this rate and the grader
+      // charges by the SECOND of audio, not the kilobyte — so the only thing a
+      // lower bitrate changes is how long the upload takes on a phone, which is
+      // the part the student actually waits for.
+      const recorder = new MediaRecorder(stream, { audioBitsPerSecond: 24000 })
       recorderRef.current = recorder
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunks.push(e.data)

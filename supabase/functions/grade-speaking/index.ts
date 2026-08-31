@@ -28,8 +28,17 @@ import {
 
 const BUCKET = 'speaking-temp'
 const MODEL = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.1-flash-lite'
-/** Clips left behind by an abandoned attempt are swept after this long. */
-const ORPHAN_MS = 60 * 60 * 1000
+/** A run still unfinished after this long is assumed dead, and may be retried.
+ *  Anything younger is treated as in flight — see the double-grade guard. */
+const RUN_STALE_MS = 5 * 60 * 1000
+/** Rate limits. A FAILED grade deliberately costs the student no allowance, so
+ *  without these a retry loop could burn tokens without limit. Staff bypass. */
+const MAX_RUNS_PER_ATTEMPT = 5
+const MAX_ATTEMPTS_PER_HOUR = 10
+/** Ceilings on the model call itself. Without a cap a runaway generation comes
+ *  back truncated, JSON.parse throws, and the retry pays full price again. */
+const MAX_OUTPUT_TOKENS = 8192
+const GEMINI_TIMEOUT_MS = 150_000
 
 interface AnswerIn {
   questionIndex: number
@@ -118,12 +127,45 @@ Deno.serve(async (req) => {
   const { data: existing } = await admin
     .from('speaking_attempts')
     .select(
-      'id, user_id, status, result, raw_score, rating, band, test_id, test_title, scope, part_type, audio_manifest',
+      'id, user_id, status, result, raw_score, rating, band, test_id, test_title, scope, part_type, audio_manifest, grading_started_at, grading_runs, created_at',
     )
     .eq('id', attemptId)
     .maybeSingle()
   if (existing && existing.user_id !== user.id) return json({ error: 'Not found' }, 404)
   if (existing?.status === 'done') return json({ attemptId, ...existing }, 200)
+
+  // DOUBLE-GRADE GUARD. An attempt already being graded is left alone: the page
+  // polls until the row turns 'done', so a second call has nothing to add and
+  // everything to break — it would pay Gemini twice for one exam, and whichever
+  // run finished first would delete the clips the other was still reading.
+  // A run older than RUN_STALE_MS is assumed dead (the function was killed
+  // mid-call) and may be started again.
+  if (existing?.status === 'grading') {
+    const startedAt = Date.parse(existing.grading_started_at ?? existing.created_at ?? '')
+    if (Number.isFinite(startedAt) && Date.now() - startedAt < RUN_STALE_MS) {
+      return json({ attemptId, status: 'grading' }, 202)
+    }
+  }
+
+  // Rate limits. Two shapes of abuse, two cheap checks: retrying ONE attempt
+  // forever, and starting endless new ones.
+  const runsSoFar = (existing?.grading_runs ?? 0) as number
+  if (!isStaff && runsSoFar >= MAX_RUNS_PER_ATTEMPT) {
+    return json(
+      { error: 'This attempt has been checked too many times. Please record it again.' },
+      429,
+    )
+  }
+  if (!isStaff && !existing) {
+    const { count: startedThisHour } = await admin
+      .from('speaking_attempts')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('created_at', new Date(Date.now() - 60 * 60 * 1000).toISOString())
+    if ((startedThisHour ?? 0) >= MAX_ATTEMPTS_PER_HOUR) {
+      return json({ error: 'Too many checks in the last hour. Please try again later.' }, 429)
+    }
+  }
 
   // A RETRY sends nothing but the id: the clips are still in the bucket and the
   // manifest on the row says which question each one answers. That is the whole
@@ -190,46 +232,68 @@ Deno.serve(async (req) => {
     error_message: null,
     // Written BEFORE the model call so a failure leaves enough behind to retry.
     audio_manifest: answers,
+    // Stamped here, not after grading: the guard above reads it to tell an
+    // in-flight run from a dead one.
+    grading_started_at: new Date().toISOString(),
+    grading_runs: runsSoFar + 1,
   })
 
   const ordered = [...answers].sort((a, b) => a.questionIndex - b.questionIndex)
 
-  try {
-    const graded = await gradeWithGemini(admin, apiKey, ordered)
-    const summary = score(ordered, graded, scope)
+  // GRADING RUNS IN THE BACKGROUND. The student used to hold this request open
+  // for the whole download + model call, watching a spinner, with the wall-clock
+  // limit as a hard deadline. The analyze page already polls while the row says
+  // 'grading', so answering 202 straight away puts them on their own results
+  // page immediately and takes the timeout off the table.
+  const work = (async () => {
+    try {
+      const graded = await gradeWithGemini(admin, apiKey, ordered)
+      const summary = score(ordered, graded, scope)
 
-    await admin
-      .from('speaking_attempts')
-      .update({
-        status: 'done',
-        raw_score: summary.rawScore,
-        rating: summary.rating,
-        // Drills store NULL: an estimate from one block is not a CEFR band and
-        // must never reach the dashboard's trend or best-band tiles.
-        band: scope === 'full' ? summary.band : null,
-        result: summary.result,
-        graded_at: new Date().toISOString(),
-        error_message: null,
-        // The clips are about to be deleted; the manifest points at nothing now.
-        audio_manifest: null,
-      })
-      .eq('id', attemptId)
+      await admin
+        .from('speaking_attempts')
+        .update({
+          status: 'done',
+          raw_score: summary.rawScore,
+          rating: summary.rating,
+          // Drills store NULL: an estimate from one block is not a CEFR band and
+          // must never reach the dashboard's trend or best-band tiles.
+          band: scope === 'full' ? summary.band : null,
+          result: summary.result,
+          graded_at: new Date().toISOString(),
+          error_message: null,
+          // The clips are about to be deleted; the manifest points at nothing now.
+          audio_manifest: null,
+        })
+        .eq('id', attemptId)
 
-    // Grading succeeded — the audio has served its only purpose.
-    await deleteClips(admin, ordered.map((a) => a.path))
-    await sweepOrphans(admin, user.id)
+      // Grading succeeded — the audio has served its only purpose.
+      await deleteClips(admin, ordered.map((a) => a.path))
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      await admin
+        .from('speaking_attempts')
+        .update({ status: 'failed', error_message: message.slice(0, 500) })
+        .eq('id', attemptId)
+      // Clips are deliberately KEPT on failure so a retry is possible; the
+      // hourly sweep removes them if the student never comes back.
+    }
+  })()
 
-    return json({ attemptId, status: 'done', ...summary }, 200)
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e)
-    await admin
-      .from('speaking_attempts')
-      .update({ status: 'failed', error_message: message.slice(0, 500) })
-      .eq('id', attemptId)
-    // Clips are deliberately KEPT on failure so a retry is possible; the sweep
-    // removes them within the hour if the student never comes back.
-    return json({ error: 'Grading failed. You can try again.', code: 'grading_failed' }, 502)
+  // Abandoned clips are the hourly sweep-speaking-audio job's business, NOT
+  // this request's — walking the whole bucket used to be added to the student's
+  // wait for no reason.
+  const runtime = (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } })
+    .EdgeRuntime
+  if (runtime?.waitUntil) {
+    runtime.waitUntil(work)
+  } else {
+    // Local `deno serve` has no EdgeRuntime; fall back to the old behaviour so
+    // development still works, just without the early answer.
+    await work
   }
+
+  return json({ attemptId, status: 'grading' }, 202)
 })
 
 // deno-lint-ignore no-explicit-any
@@ -397,44 +461,96 @@ async function gradeWithGemini(
   apiKey: string,
   answers: AnswerIn[],
 ): Promise<GeminiOut> {
-  const parts: unknown[] = [{ text: buildPrompt(answers) }]
-
-  for (const a of answers) {
-    if (a.missing || !a.path) continue // announced in the prompt; no audio to attach
-    const { data, error } = await admin.storage.from(BUCKET).download(a.path)
-    if (error || !data) throw new Error(`Missing recording for question ${a.questionIndex + 1}`)
-    parts.push({
-      inline_data: {
-        mime_type: a.mimeType || data.type || 'audio/webm',
-        data: base64(new Uint8Array(await data.arrayBuffer())),
-      },
-    })
-  }
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          responseSchema: RESPONSE_SCHEMA,
-          temperature: 0,
-          // Scoring against a fixed rubric needs no deliberation, and thinking
-          // tokens are billed as output.
-          thinkingConfig: { thinkingLevel: 'low' },
+  // Downloaded together, not one after another: eight clips fetched in series
+  // added seconds of pure waiting before the model even saw the first one. The
+  // ORDER of the attachments still matters (the prompt numbers them), so the
+  // results are mapped back in place rather than pushed as they arrive.
+  const clips = await Promise.all(
+    answers.map(async (a) => {
+      if (a.missing || !a.path) return null // announced in the prompt; no audio to attach
+      const { data, error } = await admin.storage.from(BUCKET).download(a.path)
+      if (error || !data) throw new Error(`Missing recording for question ${a.questionIndex + 1}`)
+      return {
+        inline_data: {
+          mime_type: a.mimeType || data.type || 'audio/webm',
+          data: base64(new Uint8Array(await data.arrayBuffer())),
         },
-      }),
-    },
+      }
+    }),
   )
 
-  if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 200)}`)
-  const payload = await res.json()
-  const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text
+  const parts: unknown[] = [{ text: buildPrompt(answers) }, ...clips.filter(Boolean)]
+
+  const body = JSON.stringify({
+    contents: [{ parts }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: RESPONSE_SCHEMA,
+      temperature: 0,
+      // Scoring against a fixed rubric needs no deliberation, and thinking
+      // tokens are billed as output.
+      thinkingConfig: { thinkingLevel: 'low' },
+      // A ceiling on the reply. Eight transcripts plus feedback land well under
+      // this; anything approaching it is the model looping, and an uncapped loop
+      // returns JSON cut off mid-object, which reads to the student as a failed
+      // check they then pay to retry.
+      maxOutputTokens: MAX_OUTPUT_TOKENS,
+    },
+  })
+
+  const payload = await callGemini(apiKey, body)
+
+  const candidate = payload?.candidates?.[0]
+  const text = candidate?.content?.parts?.[0]?.text
   if (!text) throw new Error('Gemini returned no content')
+  // MAX_TOKENS means the JSON is truncated. Say so plainly instead of letting
+  // JSON.parse fail with something meaningless.
+  if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
+    throw new Error(`The check was cut short (${candidate.finishReason})`)
+  }
   return JSON.parse(text) as GeminiOut
+}
+
+/**
+ * One Gemini call, with a deadline and a single retry.
+ *
+ * Without the deadline a hung connection ran until the platform killed the
+ * function, leaving the attempt stuck on 'grading' until the hourly sweep
+ * noticed. The retry covers the transient half of Gemini's failures (429, 5xx,
+ * dropped socket); a 400 is our bug and is not worth paying for twice.
+ */
+// deno-lint-ignore no-explicit-any
+async function callGemini(apiKey: string, body: string): Promise<any> {
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS)
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal: controller.signal,
+      })
+      if (res.ok) return await res.json()
+
+      const detail = (await res.text()).slice(0, 200)
+      const transient = res.status === 429 || res.status >= 500
+      if (!transient || attempt === 1) throw new Error(`Gemini ${res.status}: ${detail}`)
+    } catch (e) {
+      const aborted = e instanceof Error && e.name === 'AbortError'
+      if (attempt === 1) {
+        throw aborted ? new Error('The check timed out. Please try again.') : e
+      }
+    } finally {
+      clearTimeout(timer)
+    }
+    // A short pause before the second try; an overloaded model needs a moment.
+    await new Promise((r) => setTimeout(r, 1500))
+  }
+  throw new Error('Gemini could not be reached')
 }
 
 /** Chunked so a long clip cannot blow the argument limit of String.fromCharCode. */
@@ -499,21 +615,4 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
 async function deleteClips(admin: Client, paths: string[]) {
   if (paths.length === 0) return
   await admin.storage.from(BUCKET).remove(paths)
-}
-
-/** Remove clips from attempts that were uploaded but never graded. */
-async function sweepOrphans(admin: Client, userId: string) {
-  const { data: folders } = await admin.storage.from(BUCKET).list(userId, { limit: 100 })
-  const cutoff = Date.now() - ORPHAN_MS
-  const stale: string[] = []
-  for (const folder of (folders ?? []) as Client[]) {
-    const { data: files } = await admin.storage
-      .from(BUCKET)
-      .list(`${userId}/${folder.name}`, { limit: 100 })
-    for (const f of (files ?? []) as Client[]) {
-      const at = Date.parse(f.created_at ?? '')
-      if (Number.isFinite(at) && at < cutoff) stale.push(`${userId}/${folder.name}/${f.name}`)
-    }
-  }
-  if (stale.length > 0) await admin.storage.from(BUCKET).remove(stale)
 }

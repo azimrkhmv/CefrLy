@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { PlanLimitError } from './api'
-import type { SpeakingAttemptRow } from '../types/speakingResult'
+import type { SpeakingAttemptRow, SpeakingAttemptSummary } from '../types/speakingResult'
 import type { SpeakingStep } from './speakingQuestions'
 import type { StepAnswer } from '../components/speaking/QuestionRunner'
 
@@ -59,34 +59,41 @@ export async function gradeSpeakingAttempt({ test, steps, answers }: GradeInput)
     missing?: true
   }[] = []
 
-  for (const { step, index, clip } of answered) {
-    const blob = clip!.blob
-    const mimeType = blob.type || 'audio/webm'
-    // Path is scoped by user id — storage RLS refuses anything else.
-    const path = `${user.id}/${attemptId}/${index}.${extensionFor(mimeType)}`
-    // upsert MUST stay false. It compiles to INSERT ... ON CONFLICT DO UPDATE,
-    // and Postgres then demands an UPDATE policy on storage.objects even when
-    // nothing conflicts — so an upsert is rejected by RLS outright. Students get
-    // INSERT only, deliberately: they can neither overwrite nor read a clip back.
-    const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
-      contentType: mimeType,
-      upsert: false,
-    })
-    // A retry re-uploads answers that already made it; that is not a failure.
-    const alreadyThere =
-      error && ((error as { statusCode?: string }).statusCode === '409' || /exist/i.test(error.message))
-    if (error && !alreadyThere) {
-      throw new GradingError(`Could not upload answer ${index + 1}: ${error.message}`)
-    }
-    uploaded.push({
-      questionIndex: index,
-      partType: step.task.partType,
-      questionText: step.question.text,
-      durationSec: clip!.durationSec,
-      path,
-      mimeType,
-    })
-  }
+  // Uploaded together, not one at a time. Eight clips in series meant the
+  // student sat watching the slowest possible version of this — each upload
+  // waiting for the one before it to finish on a phone connection.
+  const uploads = await Promise.all(
+    answered.map(async ({ step, index, clip }) => {
+      const blob = clip!.blob
+      const mimeType = blob.type || 'audio/webm'
+      // Path is scoped by user id — storage RLS refuses anything else.
+      const path = `${user.id}/${attemptId}/${index}.${extensionFor(mimeType)}`
+      // upsert MUST stay false. It compiles to INSERT ... ON CONFLICT DO UPDATE,
+      // and Postgres then demands an UPDATE policy on storage.objects even when
+      // nothing conflicts — so an upsert is rejected by RLS outright. Students get
+      // INSERT only, deliberately: they can neither overwrite nor read a clip back.
+      const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
+        contentType: mimeType,
+        upsert: false,
+      })
+      // A retry re-uploads answers that already made it; that is not a failure.
+      const alreadyThere =
+        error &&
+        ((error as { statusCode?: string }).statusCode === '409' || /exist/i.test(error.message))
+      if (error && !alreadyThere) {
+        throw new GradingError(`Could not upload answer ${index + 1}: ${error.message}`)
+      }
+      return {
+        questionIndex: index,
+        partType: step.task.partType,
+        questionText: step.question.text,
+        durationSec: clip!.durationSec,
+        path,
+        mimeType,
+      }
+    }),
+  )
+  uploaded.push(...uploads)
 
   // Questions with NO recording are reported too, not quietly dropped. The
   // rubric scores a block by how many of its questions were answered on topic —
@@ -228,15 +235,23 @@ export async function fetchRecheck(attemptId: string): Promise<RecheckRequest | 
   return (data as RecheckRequest | null) ?? null
 }
 
-/** The student's graded speaking attempts, newest first. */
-export async function fetchSpeakingAttempts(): Promise<SpeakingAttemptRow[]> {
+/**
+ * The student's graded speaking attempts, newest first.
+ *
+ * `result` is DELIBERATELY not selected. It holds every transcript, every
+ * correction and every rewritten answer of an attempt, and the list views
+ * (My results, the Speaking catalog) show nothing but the score and the date —
+ * so fifty rows of it were being downloaded and thrown away. The analyze page
+ * fetches the full row by id when it actually needs the detail.
+ */
+export async function fetchSpeakingAttempts(): Promise<SpeakingAttemptSummary[]> {
   const { data, error } = await supabase
     .from('speaking_attempts')
     .select(
-      'id, test_id, test_title, scope, part_type, status, error_message, raw_score, rating, band, result, created_at, graded_at',
+      'id, test_id, test_title, scope, part_type, status, error_message, raw_score, rating, band, created_at, graded_at',
     )
     .order('created_at', { ascending: false })
     .limit(50)
   if (error) throw new Error(error.message)
-  return (data ?? []) as SpeakingAttemptRow[]
+  return (data ?? []) as SpeakingAttemptSummary[]
 }

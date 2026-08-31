@@ -104,6 +104,10 @@ function Analysis({ attempt }: { attempt: SpeakingAttemptRow }) {
         </section>
       )}
 
+      {/* A drill fills exactly one block, so its card just repeats the header's
+          score and the Overall text. Only a full mock has a breakdown worth
+          showing. */}
+      {!isDrill && (
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {result.blocks.map((b) => (
           <div key={b.key} className="rounded-2xl border border-line bg-white p-5 shadow-card">
@@ -116,6 +120,7 @@ function Analysis({ attempt }: { attempt: SpeakingAttemptRow }) {
           </div>
         ))}
       </section>
+      )}
 
       {result.summary && (
         <section className="rounded-2xl border border-line bg-white p-6 shadow-card">
