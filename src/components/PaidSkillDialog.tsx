@@ -24,10 +24,15 @@ import { Link } from 'react-router-dom'
 export function PaidSkillDialog({
   open,
   skill,
+  reason = 'plan',
   onClose,
 }: {
   open: boolean
   skill: 'Writing' | 'Speaking'
+  /** 'plan' = the plan has no checks at all; 'used-up' = a paid plan that has
+   *  spent this month's allowance. Both must be said BEFORE the student
+   *  speaks. */
+  reason?: 'plan' | 'used-up'
   onClose: () => void
 }) {
   const closeRef = useRef<HTMLButtonElement | null>(null)
@@ -64,15 +69,31 @@ export function PaidSkillDialog({
           className="mx-auto h-[150px] w-auto object-contain"
         />
         <h2 id="paid-skill-title" className="mt-2 text-xl font-extrabold text-heading">
-          {skill} is for paid plans
+          {reason === 'used-up'
+            ? `No ${skill.toLowerCase()} checks left this month`
+            : `${skill} is for paid plans`}
         </h2>
-        <p className="mx-auto mt-2 max-w-sm text-sm text-ink-soft">
-          {skill} answers are checked by AI — you get a CEFR band, your transcript, every mistake
-          and a stronger version of your answer. That is part of Pro and Premium.
-        </p>
-        <p className="mt-2 text-sm text-ink-soft">
-          Reading and Listening stay free, with unlimited practice.
-        </p>
+        {reason === 'used-up' ? (
+          <>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-ink-soft">
+              You have used every {skill.toLowerCase()} check on your plan this month. Your
+              allowance refreshes on the 1st.
+            </p>
+            <p className="mt-2 text-sm text-ink-soft">
+              Premium has unlimited checks if you need more now.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-ink-soft">
+              {skill} answers are checked by AI — you get a CEFR band, your transcript, every
+              mistake and a stronger version of your answer. That is part of Pro and Premium.
+            </p>
+            <p className="mt-2 text-sm text-ink-soft">
+              Reading and Listening stay free, with unlimited practice.
+            </p>
+          </>
+        )}
 
         <div className="mt-5 flex flex-wrap justify-center gap-3">
           <Link

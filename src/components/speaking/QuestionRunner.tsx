@@ -57,8 +57,19 @@ export function QuestionRunner({
   const [phase, setPhase] = useState<Phase>(existing ? 'review' : 'asking')
   const [prepLeft, setPrepLeft] = useState(step.prepSec)
   const [speaking, setSpeaking] = useState(false)
+  // The browser refused to make a sound (no gesture yet, or Chrome dropped the
+  // utterance). The student must be able to play it themselves — marching them
+  // into a recording for a question they never heard is the worst thing this
+  // screen could do.
+  const [needsTap, setNeedsTap] = useState(false)
   const [playingBack, setPlayingBack] = useState(false)
   const playbackRef = useRef<HTMLAudioElement | null>(null)
+
+  // Read inside the prep interval without restarting it on every tick.
+  const speakingRef = useRef(false)
+  const prepLeftRef = useRef(step.prepSec)
+  speakingRef.current = speaking
+  prepLeftRef.current = prepLeft
 
   const recorder = useRecorder()
   const { status, recording, start, stop, reset, level, elapsed, error } = recorder
@@ -69,7 +80,11 @@ export function QuestionRunner({
   /** Read the question aloud. Also the "replay" button's action. */
   const askAloud = useCallback(() => {
     setSpeaking(true)
+    setNeedsTap(false)
     const handle = speak(step.question.text)
+    void handle.started.then((ok) => {
+      if (!ok) setNeedsTap(true)
+    })
     void handle.done.then(() => setSpeaking(false))
     return handle
   }, [step.question.text])
@@ -79,7 +94,12 @@ export function QuestionRunner({
   useEffect(() => {
     if (phase !== 'asking') return
     const handle = askAloud()
-    void handle.done.then(() => setPhase(step.prepSec > 0 ? 'prep' : 'answering'))
+    void handle.started.then((ok) => {
+      // Silently refused: hold here with a play button instead of starting the
+      // clock on a question the student has not heard.
+      if (!ok) return
+      void handle.done.then(() => setPhase(step.prepSec > 0 ? 'prep' : 'answering'))
+    })
     return () => handle.cancel()
     // Only re-run when the step itself changes; askAloud is derived from it.
   }, [step.id, phase, step.prepSec, askAloud])
@@ -89,9 +109,17 @@ export function QuestionRunner({
   // Preparation countdown → recording, with no click in between.
   useEffect(() => {
     if (phase !== 'prep') return
-    const endsAt = Date.now() + step.prepSec * 1000
+    let endsAt = Date.now() + step.prepSec * 1000
     setPrepLeft(step.prepSec)
     const id = window.setInterval(() => {
+      // Replaying the question FREEZES preparation. Otherwise the countdown
+      // runs out mid-sentence, the microphone opens while the browser is still
+      // talking, and the recording captures the question off the speakers —
+      // exactly what the phase order exists to prevent.
+      if (speakingRef.current) {
+        endsAt = Date.now() + prepLeftRef.current * 1000
+        return
+      }
       const left = (endsAt - Date.now()) / 1000
       if (left <= 0) {
         window.clearInterval(id)
@@ -174,7 +202,45 @@ export function QuestionRunner({
       </section>
 
       <div className="mt-5 rounded-2xl border border-line bg-white p-8 text-center shadow-card">
-        {phase === 'asking' && <Waiting label="Listen to the question…" />}
+        {phase === 'asking' &&
+          (needsTap ? (
+            <div>
+              <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-brand-soft text-brand">
+                <HeadphonesIcon width={26} height={26} />
+              </span>
+              <p className="mt-3 text-sm font-bold text-ink">Your browser blocked the audio</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-ink-soft">
+                Press play to hear the question. Preparation starts after it finishes — you have
+                not lost any time.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  const handle = askAloud()
+                  void handle.started.then((ok) => {
+                    if (ok) {
+                      void handle.done.then(() =>
+                        setPhase(step.prepSec > 0 ? 'prep' : 'answering'),
+                      )
+                    }
+                  })
+                }}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+              >
+                <PlayIcon width={15} height={15} />
+                Play the question
+              </button>
+              <button
+                type="button"
+                onClick={() => setPhase(step.prepSec > 0 ? 'prep' : 'answering')}
+                className="mt-3 block w-full text-xs font-bold text-ink-soft hover:text-brand"
+              >
+                Skip the audio — I have read it
+              </button>
+            </div>
+          ) : (
+            <Waiting label="Listen to the question…" />
+          ))}
 
         {phase === 'prep' && (
           <div>

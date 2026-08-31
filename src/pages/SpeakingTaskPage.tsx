@@ -98,9 +98,17 @@ function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => 
   // A broken microphone discovered mid-exam costs the whole attempt, so every
   // attempt opens on the mic check.
   const [checked, setChecked] = useState(false)
-  const [draft, setDraft] = useState<SpeakingDraft>(
-    () => readSpeakingDraft(test.id) ?? { startedAt: Date.now(), recorded: {}, stepIndex: 0 },
-  )
+  // An interrupted attempt is DISCARDED, not resumed. The recordings live only
+  // in this page's memory, so restoring the question number without them would
+  // park the student past questions that are now silently empty — they would
+  // submit, score zero on those, and spend a check on a band that is not
+  // theirs. Better to say plainly that it has to be done again.
+  const [interrupted, setInterrupted] = useState(() => readSpeakingDraft(test.id) !== null)
+  const [draft, setDraft] = useState<SpeakingDraft>(() => ({
+    startedAt: Date.now(),
+    recorded: {},
+    stepIndex: 0,
+  }))
   const [confirm, setConfirm] = useState<Confirm>(null)
   const [submitted, setSubmitted] = useState(false)
   const [localAttemptId, setLocalAttemptId] = useState<string | null>(null)
@@ -119,12 +127,65 @@ function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => 
   // Nothing should still be talking once the exam screen goes away.
   useEffect(() => () => cancelSpeech(), [])
 
+  // Recordings live in memory only, so a reload or a closed tab destroys them.
+  // The browser's own "leave site?" prompt is the only thing that can stop a
+  // stray Ctrl+R from costing the student the whole paper.
+  useEffect(() => {
+    if (submitted || !checked) return
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [submitted, checked])
+
   // The catalog blocks locked plans on the Start button, but a bookmark or a
   // pasted link would walk straight past it.
   if (locked) {
     return (
       <ExamScreen center>
         <PaidSkillDialog open skill="Speaking" onClose={onLeave} />
+      </ExamScreen>
+    )
+  }
+
+  if (interrupted) {
+    return (
+      <ExamScreen>
+        <SpeakingTopBar title={test.title} subtitle="Unfinished attempt" onExit={onLeave} />
+        <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+          <div className="mx-auto max-w-lg rounded-2xl border border-line bg-white p-6 text-center shadow-card sm:p-8">
+            <h2 className="text-xl font-extrabold text-heading">This attempt has to restart</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-ink-soft">
+              You left this paper before submitting it. Recordings are never saved to your device,
+              so the answers you had already given are gone and the paper starts again from
+              question 1.
+            </p>
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  clearSpeakingDraft(test.id)
+                  setInterrupted(false)
+                }}
+                className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+              >
+                Start again
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  clearSpeakingDraft(test.id)
+                  onLeave()
+                }}
+                className="rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+              >
+                Back to Speaking
+              </button>
+            </div>
+          </div>
+        </div>
       </ExamScreen>
     )
   }

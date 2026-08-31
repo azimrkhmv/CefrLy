@@ -88,9 +88,12 @@ function Analysis({ attempt }: { attempt: SpeakingAttemptRow }) {
           </div>
         )}
 
+        {/* The paper's OWN total, not the sum of the blocks that came back: a
+            student who skipped a whole part must not see a smaller denominator
+            that makes the score look better than it is. */}
         <p className="tnum mt-4 text-sm text-ink-soft">
           Raw score {attempt.raw_score} of{' '}
-          {result.blocks.reduce((n, b) => n + b.max, 0)}
+          {result.maxRaw ?? result.blocks.reduce((n, b) => n + b.max, 0)}
         </p>
       </section>
 

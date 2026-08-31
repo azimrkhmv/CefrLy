@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CheckIcon, MicIcon, PlayIcon } from '../icons'
+import { primeSpeech } from '../../lib/speech'
 
 // ---------------------------------------------------------------------------
 // The mic check that gates every speaking task. A student cannot reach the paper
@@ -270,7 +271,13 @@ export function MicCheck({
 
         <button
           type="button"
-          onClick={onContinue}
+          onClick={() => {
+            // Spend this click on unlocking speech. Chrome will not speak until
+            // the page has had a user gesture, and the exam's first question is
+            // read automatically — without this it is silently skipped.
+            primeSpeech()
+            onContinue()
+          }}
           disabled={!ready}
           className={`mt-5 w-full rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
             ready

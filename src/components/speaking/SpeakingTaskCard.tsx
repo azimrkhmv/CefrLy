@@ -21,6 +21,7 @@ export function SpeakingTaskCard({
    *  itself is always free — only the band score and feedback are paid, and
    *  saying so on the card beats letting them find out after speaking. */
   checkLocked = false,
+  lockLabel = 'AI check on Pro',
   onBlocked,
   onDelete,
 }: {
@@ -28,13 +29,18 @@ export function SpeakingTaskCard({
   attempts: number
   inProgress?: boolean
   checkLocked?: boolean
+  /** Why it is locked, in three words. */
+  lockLabel?: string
   /** Called instead of opening the paper when the plan cannot use it. */
   onBlocked?: () => void
   onDelete?: () => void
 }) {
   const chip = item.scope === 'full' ? 'Full mock test' : PART_LABEL[item.partType!]
-  const resume = inProgress || hasSpeakingDraft(item.id)
-  const cta = resume ? 'Resume' : attempts > 0 ? 'Retake' : 'Start'
+  // NOT "Resume": speaking recordings never survive leaving the page, so an
+  // unfinished attempt restarts from question 1. Promising otherwise is a lie
+  // the student only discovers after submitting a half-empty paper.
+  const unfinished = inProgress || hasSpeakingDraft(item.id)
+  const cta = unfinished ? 'Start again' : attempts > 0 ? 'Retake' : 'Start'
 
   return (
     <div className="group relative flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-card transition-shadow hover:shadow-md motion-safe:transition-transform motion-safe:hover:-translate-y-0.5">
@@ -75,7 +81,7 @@ export function SpeakingTaskCard({
                 title="Practice is free. The AI band score and feedback need Pro or Premium."
               >
                 <LockIcon width={11} height={11} />
-                AI check on Pro
+                {lockLabel}
               </span>
             )}
           </div>

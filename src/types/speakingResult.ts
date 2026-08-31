@@ -46,6 +46,8 @@ export interface SpeakingResult {
   answers: GradedAnswer[]
   summary: string
   fixFirst: string
+  /** The paper's full raw total (21 for a mock). Older attempts lack it. */
+  maxRaw?: number
   /** Which Gemini model graded it — kept so a re-grade can be compared. */
   model?: string
 }

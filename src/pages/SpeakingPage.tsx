@@ -10,6 +10,7 @@ import { AddCustomModal } from '../components/speaking/AddCustomModal'
 import { useSpeakingItems } from '../lib/speakingCatalog'
 import { countAttempts, useSpeakingAttempts } from '../lib/speakingAttempts'
 import { fetchSpeakingAttempts } from '../lib/speakingGrading'
+import { fetchEntitlements } from '../lib/api'
 import { hasPremiumAccess } from '../lib/plans'
 import { useAuth } from '../lib/auth'
 import { useQuery } from '@tanstack/react-query'
@@ -44,7 +45,17 @@ export function SpeakingPage() {
   const [modal, setModal] = useState<{ partType: SpeakingPartType } | null>(null)
   const [toast, setToast] = useState(false)
   const { plan } = useAuth()
-  const locked = !hasPremiumAccess(plan)
+  // Two ways a check can be unavailable, and BOTH have to be said before the
+  // student speaks: no paid plan at all, or a paid plan whose monthly checks
+  // are gone. Finding out afterwards costs them ten minutes either way.
+  const { data: entitlements } = useQuery({
+    queryKey: ['entitlements'],
+    queryFn: fetchEntitlements,
+  })
+  const speakingUsage = entitlements?.usage?.speaking_check
+  const usedUp =
+    !!speakingUsage && speakingUsage.remaining !== null && speakingUsage.remaining <= 0
+  const locked = !hasPremiumAccess(plan) || usedUp
   const [paywall, setPaywall] = useState(false)
 
   const { items, isLoading, error } = useSpeakingItems(tab)
@@ -107,6 +118,7 @@ export function SpeakingPage() {
           items={shown}
           attemptCount={attemptCount}
           checkLocked={locked}
+          lockLabel={hasPremiumAccess(plan) ? 'No checks left' : 'AI check on Pro'}
           onBlocked={() => setPaywall(true)}
           onAddCustom={openAddCustom}
         />
@@ -119,7 +131,12 @@ export function SpeakingPage() {
           onCreated={onCreated}
         />
       )}
-      <PaidSkillDialog open={paywall} skill="Speaking" onClose={() => setPaywall(false)} />
+      <PaidSkillDialog
+        open={paywall}
+        skill="Speaking"
+        reason={hasPremiumAccess(plan) ? 'used-up' : 'plan'}
+        onClose={() => setPaywall(false)}
+      />
 
       {toast && (
         <Toast

@@ -9,9 +9,16 @@
 // and no mode to remember. That is why this draft is far smaller than the
 // writing one.
 //
-// The audio itself is NOT here — blobs cannot live in localStorage, so a
-// resumed attempt knows what was answered but cannot replay it. Durable clips
-// arrive with the upload-to-storage backend.
+// THE AUDIO IS NOT HERE, AND THAT IS WHY A DRAFT CANNOT BE RESUMED. Blobs
+// cannot live in localStorage, so a "resumed" attempt would come back with the
+// student parked on question 4 and questions 1-3 silently empty — they would
+// submit, those questions would score zero, and a paid check would be spent on
+// a band that is not theirs.
+//
+// So this draft exists ONLY to detect that an attempt was interrupted. The exam
+// screen restarts it from question 1 and says so. Resuming for real needs the
+// clips to survive the reload, which means uploading each answer as it is
+// recorded — a backend change, not a storage trick.
 // ---------------------------------------------------------------------------
 
 export interface SpeakingDraft {
@@ -19,7 +26,8 @@ export interface SpeakingDraft {
   startedAt: number
   /** stepId ("<taskId>-q<n>") → seconds recorded for that question. */
   recorded: Record<string, number>
-  /** Which question the student is on (index into the flattened step list). */
+  /** How far the student had got when the page went away. Used to TELL them
+   *  what was lost, never to skip back to that question. */
   stepIndex: number
 }
 

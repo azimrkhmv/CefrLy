@@ -9,19 +9,53 @@
 //      whatever the student's OS ships. This is the only option that can ever
 //      work for the questions students write themselves, which is why it exists.
 //
-// A paid TTS service can later be slotted in by giving authored questions an
-// `audio` path; nothing calling this file has to change.
+// speechSynthesis is far less reliable than it looks, and two of its failures
+// are silent — the question simply never gets read while the exam carries on:
+//
+//   * Chrome refuses to speak until the page has had a real user gesture. An
+//     auto-played question fails; the same question read from a button works.
+//     primeSpeech() spends the mic-check click on unlocking it.
+//   * cancel() immediately followed by speak() drops the new utterance on
+//     Chrome. We only cancel when something is actually speaking, and leave a
+//     gap before starting.
+//
+// So `speak()` also reports whether sound ACTUALLY started, and the caller
+// must not move on when it did not — see QuestionRunner's "Play the question".
 // ---------------------------------------------------------------------------
 
 export type SpeechHandle = {
   /** Resolves when speaking finished (or failed — never rejects). */
   done: Promise<void>
+  /**
+   * Resolves true once the utterance really started making sound, false if the
+   * browser silently refused. Never rejects.
+   */
+  started: Promise<boolean>
   /** Stop immediately. Safe to call after it already finished. */
   cancel: () => void
 }
 
 export function isSpeechSupported(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window
+}
+
+/**
+ * Unlock speech using a real user gesture — call from a click handler.
+ *
+ * Chrome treats speech like audio playback: the first utterance must belong to
+ * a gesture, and everything after inherits that permission. Without this the
+ * exam's first auto-read question is silently dropped. Speaking a single space
+ * at zero volume is inaudible but counts.
+ */
+export function primeSpeech(): void {
+  if (!isSpeechSupported()) return
+  try {
+    const utter = new SpeechSynthesisUtterance(' ')
+    utter.volume = 0
+    window.speechSynthesis.speak(utter)
+  } catch {
+    // Nothing to do — the question is on screen as text regardless.
+  }
 }
 
 /**
@@ -64,28 +98,46 @@ function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null 
   return gb ?? english[0]
 }
 
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/** How long to give the browser to actually make a sound before retrying. */
+const START_TIMEOUT_MS = 1400
+
 /**
- * Speak `text`. Returns immediately with a handle; await `.done` to know when
- * the student may start answering.
+ * Speak `text`. Returns immediately with a handle; await `.started` to know
+ * whether it is really being read, and `.done` to know when the student may
+ * answer.
  *
- * Never throws and never rejects: if speech is unavailable, `done` resolves at
- * once and the caller simply proceeds with the question shown as text.
+ * Never throws and never rejects.
  */
 export function speak(text: string, opts: { rate?: number } = {}): SpeechHandle {
   if (!isSpeechSupported() || !text.trim()) {
-    return { done: Promise.resolve(), cancel: () => {} }
+    return { done: Promise.resolve(), started: Promise.resolve(false), cancel: () => {} }
   }
 
   let cancelled = false
   let keepAlive: number | undefined
   let resolveDone: () => void = () => {}
+  let resolveStarted: (ok: boolean) => void = () => {}
+  let settledStart = false
+
   const done = new Promise<void>((resolve) => {
     resolveDone = resolve
   })
+  const started = new Promise<boolean>((resolve) => {
+    resolveStarted = resolve
+  })
+
+  const markStarted = (ok: boolean) => {
+    if (settledStart) return
+    settledStart = true
+    resolveStarted(ok)
+  }
 
   const cleanup = () => {
     if (keepAlive !== undefined) clearInterval(keepAlive)
     keepAlive = undefined
+    markStarted(false) // no-op if it already started
     resolveDone()
   }
 
@@ -94,33 +146,82 @@ export function speak(text: string, opts: { rate?: number } = {}): SpeechHandle 
     try {
       window.speechSynthesis.cancel()
     } catch {
-      // Nothing useful to do — the question is on screen as text regardless.
+      /* ignore */
     }
     cleanup()
   }
 
+  /** One attempt. Resolves true if the browser reported it started speaking. */
+  const attempt = (voice: SpeechSynthesisVoice | null): Promise<boolean> =>
+    new Promise((resolve) => {
+      const utter = new SpeechSynthesisUtterance(text)
+      if (voice) utter.voice = voice
+      utter.lang = voice?.lang ?? 'en-GB'
+      utter.rate = opts.rate ?? 0.95 // a touch slower than default: this is a test
+
+      let began = false
+      utter.onstart = () => {
+        began = true
+        markStarted(true)
+        resolve(true)
+      }
+      utter.onend = cleanup
+      utter.onerror = () => {
+        // 'not-allowed' (no gesture) and 'interrupted' both land here.
+        if (!began) resolve(false)
+        else cleanup()
+      }
+
+      try {
+        window.speechSynthesis.speak(utter)
+      } catch {
+        resolve(false)
+        return
+      }
+
+      // onstart is the only trustworthy signal that sound is happening; a
+      // silently-refused utterance fires nothing at all.
+      setTimeout(() => {
+        if (!began) resolve(false)
+      }, START_TIMEOUT_MS)
+    })
+
   void (async () => {
     const voices = await voicesReady()
     if (cancelled) return
+    const voice = pickVoice(voices)
 
-    // A previous question may still be speaking if the student advanced fast.
-    try {
-      window.speechSynthesis.cancel()
-    } catch {
-      /* ignore */
+    // Only cancel if something is actually speaking. Cancelling an idle queue
+    // and speaking in the same tick is the Chrome bug that eats the utterance.
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+      try {
+        window.speechSynthesis.cancel()
+      } catch {
+        /* ignore */
+      }
+      await wait(150)
+      if (cancelled) return
     }
 
-    const utter = new SpeechSynthesisUtterance(text)
-    const voice = pickVoice(voices)
-    if (voice) utter.voice = voice
-    utter.lang = voice?.lang ?? 'en-GB'
-    utter.rate = opts.rate ?? 0.95 // a touch slower than default: this is a test
-    utter.onend = cleanup
-    utter.onerror = cleanup
+    let ok = await attempt(voice)
 
-    try {
-      window.speechSynthesis.speak(utter)
-    } catch {
+    // One retry: a first utterance right after a cancel, or right after a route
+    // change, is the case that silently fails most often.
+    if (!ok && !cancelled) {
+      try {
+        window.speechSynthesis.cancel()
+      } catch {
+        /* ignore */
+      }
+      await wait(250)
+      if (cancelled) return
+      ok = await attempt(voice)
+    }
+
+    if (cancelled) return
+    if (!ok) {
+      // Give up quietly and tell the caller, which must offer a manual button
+      // rather than marching the student past a question they never heard.
       cleanup()
       return
     }
@@ -138,7 +239,7 @@ export function speak(text: string, opts: { rate?: number } = {}): SpeechHandle 
     window.setTimeout(cleanup, Math.max(4000, text.length * 120))
   })()
 
-  return { done, cancel }
+  return { done, started, cancel }
 }
 
 /** Stop anything currently being spoken — used when leaving the exam screen. */

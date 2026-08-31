@@ -36,9 +36,13 @@ interface AnswerIn {
   partType: string
   questionText: string
   durationSec: number
-  /** Object path inside the bucket, written by the browser. */
-  path: string
+  /** Object path inside the bucket, written by the browser. Absent when the
+   *  student never recorded this question. */
+  path?: string
   mimeType?: string
+  /** No recording. Sent anyway, so the rubric can see the question went
+   *  unanswered instead of judging a short block as a complete one. */
+  missing?: boolean
 }
 
 Deno.serve(async (req) => {
@@ -125,7 +129,7 @@ Deno.serve(async (req) => {
   // manifest on the row says which question each one answers. That is the whole
   // point of storing it — otherwise closing the tab stranded recoverable audio.
   const answers = ((body.answers?.length ? body.answers : existing?.audio_manifest) ?? [])
-    .filter((a: AnswerIn) => a && a.path)
+    .filter((a: AnswerIn) => a && (a.path || a.missing))
   const testId = body.testId ?? existing?.test_id
   const testTitle = body.testTitle ?? existing?.test_title
   if (!testId || !testTitle) return json({ error: 'This attempt cannot be graded again.' }, 400)
@@ -138,9 +142,12 @@ Deno.serve(async (req) => {
   // result and then delete it. Every clip must live under the caller's folder.
   const ownPrefix = `${user.id}/`
   const foreign = answers.find(
-    (a: AnswerIn) => typeof a.path !== 'string' || !a.path.startsWith(ownPrefix) || a.path.includes('..'),
+    (a: AnswerIn) =>
+      !a.missing &&
+      (typeof a.path !== 'string' || !a.path.startsWith(ownPrefix) || a.path.includes('..')),
   )
   if (foreign) return json({ error: 'Invalid recording path' }, 400)
+  if (!answers.some((a: AnswerIn) => a.path)) return json({ error: 'No answers to grade' }, 400)
 
   const limit = isStaff ? null : PLAN_LIMITS[plan].speaking_check
   if (limit !== null) {
@@ -335,11 +342,18 @@ const RESPONSE_SCHEMA = {
 
 function buildPrompt(answers: AnswerIn[]): string {
   const blocksPresent = [...new Set(answers.map((a) => blockForPart(a.partType)))]
+  // Recordings are numbered over the ANSWERED questions only, because that
+  // is the order they are attached in. Unanswered ones are listed in place
+  // with no recording, so the model sees the gap instead of a shorter paper.
+  let recordingNo = 0
   const list = answers
-    .map(
-      (a, i) =>
-        `Recording ${i + 1} — questionIndex ${a.questionIndex}, ${blockForPart(a.partType)}, ` +
-        `${Math.round(a.durationSec)}s\nQuestion: ${a.questionText}`,
+    .map((a) =>
+      a.missing || !a.path
+        ? `questionIndex ${a.questionIndex}, ${blockForPart(a.partType)} — NO ANSWER RECORDED\n` +
+          `Question: ${a.questionText}`
+        : `Recording ${++recordingNo} — questionIndex ${a.questionIndex}, ` +
+          `${blockForPart(a.partType)}, ${Math.round(a.durationSec)}s\n` +
+          `Question: ${a.questionText}`,
     )
     .join('\n\n')
 
@@ -369,6 +383,10 @@ Rules:
 - Score memorised or off-topic answers 0, as the rubric requires.
 - If a recording is silent or has no meaningful speech, give an empty transcript
   and reflect it in the block score.
+- A question marked NO ANSWER RECORDED was not attempted. Return it in "answers"
+  with an empty transcript, and count it as unanswered when scoring its block:
+  the rubric's levels turn on HOW MANY questions were answered on topic, so a
+  block with a missing answer cannot reach the top mark.
 - Write every comment in simple English; the students are Uzbek learners.
 - "fixFirst" is the single most valuable thing to work on next, in one sentence.`
 }
@@ -382,6 +400,7 @@ async function gradeWithGemini(
   const parts: unknown[] = [{ text: buildPrompt(answers) }]
 
   for (const a of answers) {
+    if (a.missing || !a.path) continue // announced in the prompt; no audio to attach
     const { data, error } = await admin.storage.from(BUCKET).download(a.path)
     if (error || !data) throw new Error(`Missing recording for question ${a.questionIndex + 1}`)
     parts.push({
@@ -468,6 +487,10 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
       })),
       summary: out.summary ?? '',
       fixFirst: out.fixFirst ?? '',
+      // Stored so the page never has to infer the denominator from the blocks
+      // it happens to have: skipping a whole part would otherwise turn 12/21
+      // into a flattering "12 of 15".
+      maxRaw: full ? MAX_RAW : (blocks[0]?.max ?? 0),
       model: MODEL,
     },
   }

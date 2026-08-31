@@ -43,9 +43,8 @@ export async function gradeSpeakingAttempt({ test, steps, answers }: GradeInput)
   if (!user) throw new GradingError('You need to be signed in for an AI check.')
 
   const attemptId = crypto.randomUUID()
-  const answered = steps
-    .map((step, index) => ({ step, index, clip: answers[step.id] }))
-    .filter((x) => x.clip)
+  const all = steps.map((step, index) => ({ step, index, clip: answers[step.id] }))
+  const answered = all.filter((x) => x.clip)
 
   if (answered.length === 0) throw new GradingError('There is nothing recorded to check.')
 
@@ -54,8 +53,10 @@ export async function gradeSpeakingAttempt({ test, steps, answers }: GradeInput)
     partType: string
     questionText: string
     durationSec: number
-    path: string
-    mimeType: string
+    path?: string
+    mimeType?: string
+    /** No recording for this question. Sent anyway — see below. */
+    missing?: true
   }[] = []
 
   for (const { step, index, clip } of answered) {
@@ -86,6 +87,22 @@ export async function gradeSpeakingAttempt({ test, steps, answers }: GradeInput)
       mimeType,
     })
   }
+
+  // Questions with NO recording are reported too, not quietly dropped. The
+  // rubric scores a block by how many of its questions were answered on topic —
+  // send only the answered ones and the grader sees a two-question block where
+  // the paper had three, and marks it as if nothing were missed. Skipping would
+  // raise the score.
+  for (const { step, index } of all.filter((x) => !x.clip)) {
+    uploaded.push({
+      questionIndex: index,
+      partType: step.task.partType,
+      questionText: step.question.text,
+      durationSec: 0,
+      missing: true,
+    })
+  }
+  uploaded.sort((a, b) => a.questionIndex - b.questionIndex)
 
   const { data, error } = await supabase.functions.invoke('grade-speaking', {
     body: {
