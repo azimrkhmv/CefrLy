@@ -934,3 +934,38 @@ The sections above still describe Writing/Speaking as "not built" and mark them
 "soon" on the roadmap chips — that copy is STALE for Speaking. Reconcile it when
 the Speaking backend lands (grading rubric work is in the gitignored
 `Speaking band score/` and `Sample for ai/` folders).
+
+## GRADE-SPEAKING is ASYNC now (audit + rework 2026-08-31, deployed v8)
+An efficiency audit answered the "are we re-sending the prompt every time?"
+question: YES and it does not matter — audio is ~86% of the input (435s of speech
+× 32 tok/s ≈ 13.9k tokens) against ~1.5k for rubric+rules and ~600 for the
+response schema. Static text ALREADY sits first in the prompt (preamble +
+RUBRIC_TEXT, dynamic list after), which is what implicit caching needs; NEVER
+move dynamic text above RUBRIC_TEXT. Explicit cachedContent is not worth it at
+this volume. What was actually wrong, all fixed:
+- ASYNC BY DEFAULT: the function returns **202 {attemptId, status:'grading'}**
+  immediately and finishes inside `EdgeRuntime.waitUntil` (falls back to awaiting
+  when EdgeRuntime is absent, i.e. local `deno serve`). SpeakingAnalyzePage's
+  existing 3s poll is the delivery mechanism — do not "fix" the client to expect
+  a graded body.
+- DOUBLE-GRADE GUARD: migration 0024 adds `grading_started_at` + `grading_runs`.
+  status 'grading' younger than RUN_STALE_MS (5 min) → 202, no second model call.
+  Older = assumed dead, retryable. Before this, auto-send + a reload paid twice
+  and the faster run deleted the other's clips.
+- RATE LIMITS: MAX_RUNS_PER_ATTEMPT 5, MAX_ATTEMPTS_PER_HOUR 10 (429), staff
+  exempt. Failed grades still cost no plan allowance — these are what stops a
+  free retry loop burning tokens.
+- MODEL CALL: maxOutputTokens 8192, 150s AbortController, one retry on 429/5xx,
+  and a finishReason !== 'STOP' check (truncated JSON used to surface as a
+  meaningless parse error the student paid to retry).
+- Clips download in parallel (Promise.all, order preserved) and upload in
+  parallel client-side; MediaRecorder records at 24 kbps (Gemini bills per SECOND
+  of audio, so bitrate only buys upload speed).
+- `sweepOrphans` REMOVED from the success path — sweep-speaking-audio does it
+  hourly; it was N+1 storage list calls inside the student's wait.
+- fetchSpeakingAttempts no longer selects `result` (returns SpeakingAttemptSummary
+  = Omit<Row,'result'|'audio_manifest'>) — same bug class as fetchMyAttempts.
+NOTE: the Supabase CLI has no access token in this environment (`supabase login`
+needs a TTY); grade-speaking v8 was deployed via the Supabase MCP
+deploy_edge_function with all four files inline, and verified byte-for-byte
+against the local copy afterwards.
