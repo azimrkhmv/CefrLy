@@ -19,6 +19,42 @@ export interface GradeInput {
   test: { id: string; title: string; scope: 'full' | 'part'; partType?: string | null }
   steps: SpeakingStep[]
   answers: Record<string, StepAnswer>
+  /** The id this sitting is graded under. Fixed when the exam starts and kept in
+   *  the draft, so clips uploaded before a reload belong to the same attempt as
+   *  the ones after it. */
+  attemptId: string
+}
+
+/**
+ * Put ONE answer in the bucket, the moment it is recorded.
+ *
+ * This is what makes a speaking attempt survive a reload: by the time the
+ * student presses Submit the audio is already on the server, so a stray Ctrl+R
+ * costs nothing and the finish is instant. Every take gets its own filename —
+ * a retake must not collide with the take it replaces (students may only INSERT
+ * into this bucket, so overwriting is refused by RLS anyway), and the loser of
+ * the race is swept within the hour.
+ */
+export async function uploadAnswerClip(
+  attemptId: string,
+  questionIndex: number,
+  blob: Blob,
+): Promise<{ path: string; mimeType: string }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new GradingError('You need to be signed in.')
+
+  const mimeType = blob.type || 'audio/webm'
+  const take = crypto.randomUUID().slice(0, 8)
+  // Path is scoped by user id — storage RLS refuses anything else.
+  const path = `${user.id}/${attemptId}/${questionIndex}-${take}.${extensionFor(mimeType)}`
+  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
+    contentType: mimeType,
+    upsert: false,
+  })
+  if (error) throw new GradingError(error.message)
+  return { path, mimeType }
 }
 
 /** Thrown when grading itself failed (not a plan problem) — retryable. */
@@ -36,13 +72,17 @@ const extensionFor = (mime: string) =>
  * Upload every recorded answer, then ask the server to grade them.
  * Returns the attempt id; the analyze page reads the row it wrote.
  */
-export async function gradeSpeakingAttempt({ test, steps, answers }: GradeInput): Promise<string> {
+export async function gradeSpeakingAttempt({
+  test,
+  steps,
+  answers,
+  attemptId,
+}: GradeInput): Promise<string> {
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) throw new GradingError('You need to be signed in for an AI check.')
 
-  const attemptId = crypto.randomUUID()
   const all = steps.map((step, index) => ({ step, index, clip: answers[step.id] }))
   const answered = all.filter((x) => x.clip)
 
@@ -59,38 +99,22 @@ export async function gradeSpeakingAttempt({ test, steps, answers }: GradeInput)
     missing?: true
   }[] = []
 
-  // Uploaded together, not one at a time. Eight clips in series meant the
-  // student sat watching the slowest possible version of this — each upload
-  // waiting for the one before it to finish on a phone connection.
+  // Almost every clip is already up here — uploadAnswerClip sent it the moment
+  // it was recorded. What is left is the rare answer whose upload failed or was
+  // still in flight when Submit was pressed, and those go together rather than
+  // one after another.
   const uploads = await Promise.all(
     answered.map(async ({ step, index, clip }) => {
-      const blob = clip!.blob
-      const mimeType = blob.type || 'audio/webm'
-      // Path is scoped by user id — storage RLS refuses anything else.
-      const path = `${user.id}/${attemptId}/${index}.${extensionFor(mimeType)}`
-      // upsert MUST stay false. It compiles to INSERT ... ON CONFLICT DO UPDATE,
-      // and Postgres then demands an UPDATE policy on storage.objects even when
-      // nothing conflicts — so an upsert is rejected by RLS outright. Students get
-      // INSERT only, deliberately: they can neither overwrite nor read a clip back.
-      const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
-        contentType: mimeType,
-        upsert: false,
-      })
-      // A retry re-uploads answers that already made it; that is not a failure.
-      const alreadyThere =
-        error &&
-        ((error as { statusCode?: string }).statusCode === '409' || /exist/i.test(error.message))
-      if (error && !alreadyThere) {
-        throw new GradingError(`Could not upload answer ${index + 1}: ${error.message}`)
-      }
-      return {
+      const row = {
         questionIndex: index,
         partType: step.task.partType,
         questionText: step.question.text,
         durationSec: clip!.durationSec,
-        path,
-        mimeType,
       }
+      if (clip!.path) return { ...row, path: clip!.path, mimeType: clip!.mimeType }
+      if (!clip!.blob) throw new GradingError(`Answer ${index + 1} was lost before it was saved.`)
+      const { path, mimeType } = await uploadAnswerClip(attemptId, index, clip!.blob)
+      return { ...row, path, mimeType }
     }),
   )
   uploaded.push(...uploads)

@@ -16,6 +16,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders, json } from './cors.ts'
 import { effectivePlan, hasPremiumAccess, monthStartUTC, PLAN_LIMITS, type PlanId } from './plans.ts'
 import {
+  BLOCK_RATING_CAP,
   BLOCKS,
   bandForRating,
   blockForPart,
@@ -23,6 +24,8 @@ import {
   MAX_RAW,
   ratingForRaw,
   RUBRIC_TEXT,
+  scoreBlock,
+  type BlockJudgement,
   type BlockKey,
 } from './rubric.ts'
 
@@ -314,10 +317,12 @@ interface AnswerOut {
 
 interface GeminiOut {
   answers: AnswerOut[]
-  blocks: { block: string; score: number; reason: string }[]
+  blocks: BlockJudgement[]
   summary: string
   fixFirst: string
 }
+
+const LEVELS = ['below_A2', 'A2', 'B1', 'B2', 'C1']
 
 const RESPONSE_SCHEMA = {
   type: 'object',
@@ -384,17 +389,48 @@ const RESPONSE_SCHEMA = {
         ],
       },
     },
+    // NO SCORE HERE, DELIBERATELY. The model reports what it heard against the
+    // rubric's own criteria and we do the arithmetic (scoreBlock in rubric.ts) —
+    // see the note there. Asking for the number invited a top mark handed out
+    // over the model's own list of grammar errors.
     blocks: {
       type: 'array',
       items: {
         type: 'object',
         properties: {
           block: { type: 'string', enum: ['q1_3', 'q4_6', 'q7', 'q8'] },
-          score: { type: 'integer' },
+          onTopicCount: { type: 'integer' },
+          criteria: {
+            type: 'object',
+            properties: {
+              grammar: { type: 'string', enum: LEVELS },
+              vocabulary: { type: 'string', enum: LEVELS },
+              pronunciation: { type: 'string', enum: LEVELS },
+              fluency: { type: 'string', enum: LEVELS },
+              coherence: { type: 'string', enum: LEVELS },
+            },
+            required: ['grammar', 'vocabulary', 'pronunciation', 'fluency', 'coherence'],
+            propertyOrdering: [
+              'grammar',
+              'vocabulary',
+              'pronunciation',
+              'fluency',
+              'coherence',
+            ],
+          },
+          coverage: { type: 'string', enum: ['full', 'partial'] },
+          balanced: { type: 'boolean' },
           reason: { type: 'string' },
         },
-        required: ['block', 'score', 'reason'],
-        propertyOrdering: ['block', 'score', 'reason'],
+        required: ['block', 'onTopicCount', 'criteria', 'reason'],
+        propertyOrdering: [
+          'block',
+          'onTopicCount',
+          'criteria',
+          'coverage',
+          'balanced',
+          'reason',
+        ],
       },
     },
     summary: { type: 'string' },
@@ -422,12 +458,37 @@ function buildPrompt(answers: AnswerIn[]): string {
     .join('\n\n')
 
   return `You are an examiner for the Uzbek Multilevel (CEFR) English speaking exam.
-You are given the student's recorded answers, in order. Grade them against the
+You are given the student's recorded answers, in order. Judge them against the
 official rubric below and return JSON only.
 
 ${RUBRIC_TEXT}
 
-Score ONLY these blocks: ${blocksPresent.join(', ')}. Give exactly one score per block.
+YOU DO NOT AWARD MARKS. The mark is calculated from your judgement, so judge
+accurately and let the arithmetic happen elsewhere. Report ONE entry for each of
+these blocks — ${blocksPresent.join(', ')} — containing:
+
+- "onTopicCount": how many of that block's questions were answered ON TOPIC. A
+  memorised or off-topic answer does not count, however fluent it was.
+- "criteria": the CEFR level of the speech itself on each of grammar,
+  vocabulary, pronunciation, fluency and coherence (below_A2 | A2 | B1 | B2 | C1).
+  Judge each one INDEPENDENTLY and from the audio and transcript in front of you —
+  not from an overall impression, and not from how hard the task was. Be exact:
+  · grammar — B1 means simple structures are right but complex ones break down;
+    B2 means complex structures are attempted and mostly work; C1 means a range
+    of them is used accurately with only slips.
+  · vocabulary — B1 is enough for the topic with visible wrong choices; B2 covers
+    the topic with occasional imprecision; C1 is precise and varied.
+  · pronunciation — B1 is intelligible but mispronunciation sometimes obscures
+    meaning; B2 rarely obscures it; C1 is clear throughout.
+  · fluency — count the pauses, repetition and self-correction you can hear.
+  · coherence — B1 links ideas with simple connectives only; C1 links them well.
+  Every error you list under an answer is evidence about these levels. If you
+  listed systematic grammar errors, grammar is NOT B2 or C1.
+- "coverage" (Q7 and Q8 only): "full" if the response covers what the task asked,
+  "partial" if it covers it only in part.
+- "balanced" (Q8 only): true only if BOTH sides of the argument are genuinely
+  made; a well-spoken one-sided answer is not balanced.
+- "reason": one sentence naming the evidence behind those levels.
 
 THE RECORDINGS, in the order they are attached:
 
@@ -444,13 +505,13 @@ Rules:
 - "improved" rewrites the student's OWN answer roughly one CEFR level above what
   they produced, keeping their ideas and their length. Do not write a perfect C2
   model answer: it has to be something this student could realistically reach.
-- Score memorised or off-topic answers 0, as the rubric requires.
+- Memorised or off-topic answers do not count towards "onTopicCount".
 - If a recording is silent or has no meaningful speech, give an empty transcript
-  and reflect it in the block score.
+  and leave that question out of "onTopicCount".
 - A question marked NO ANSWER RECORDED was not attempted. Return it in "answers"
-  with an empty transcript, and count it as unanswered when scoring its block:
-  the rubric's levels turn on HOW MANY questions were answered on topic, so a
-  block with a missing answer cannot reach the top mark.
+  with an empty transcript, and leave it out of "onTopicCount" — the rubric turns
+  on HOW MANY questions were answered on topic, so a block with a missing answer
+  cannot reach the top mark.
 - Write every comment in simple English; the students are Uzbek learners.
 - "fixFirst" is the single most valuable thing to work on next, in one sentence.`
 }
@@ -566,25 +627,54 @@ function base64(bytes: Uint8Array): string {
 /** Turn the model's block scores into the exam's raw / rating / band. */
 function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
   const present = [...new Set(answers.map((a) => blockForPart(a.partType)))]
+  const questionsIn = (key: BlockKey) =>
+    answers.filter((a) => blockForPart(a.partType) === key).length
+
   const blocks = BLOCKS.filter((b) => present.includes(b.key)).map((b) => {
-    const got = out.blocks?.find((x) => x.block === b.key)
-    // Clamp: the model must not be able to invent a score outside the rubric.
-    const raw = Math.round(Number(got?.score ?? 0))
+    const judged = out.blocks?.find((x) => x.block === b.key)
+    // The mark is OURS to compute (scoreBlock). A missing or malformed
+    // judgement scores 0 rather than guessing something flattering.
+    const judgement: BlockJudgement | null = judged?.criteria
+      ? {
+          ...judged,
+          block: b.key,
+          // Never more on topic than the block actually has questions.
+          onTopicCount: Math.max(
+            0,
+            Math.min(questionsIn(b.key), Math.round(Number(judged.onTopicCount ?? 0))),
+          ),
+        }
+      : null
+    const score = judgement ? Math.max(0, Math.min(b.max, scoreBlock(judgement))) : 0
     return {
       key: b.key,
       label: b.label,
       max: b.max,
-      score: Math.max(0, Math.min(b.max, Number.isFinite(raw) ? raw : 0)),
-      reason: got?.reason ?? '',
+      score,
+      reason: judged?.reason ?? '',
+      // Stored so the analyze page can SHOW the working — the levels the mark
+      // was computed from, not just the mark.
+      criteria: judgement?.criteria,
+      onTopicCount: judgement?.onTopicCount,
+      questionCount: questionsIn(b.key),
     }
   })
 
   const rawScore = blocks.reduce((n, b) => n + b.score, 0)
   const full = scope === 'full'
+  const drillKey = blocks[0]?.key as BlockKey | undefined
   const rating = full
     ? ratingForRaw(rawScore)
-    : estimateRatingFromBlock(blocks[0]?.key as BlockKey, blocks[0]?.score ?? 0)
+    : estimateRatingFromBlock(drillKey as BlockKey, blocks[0]?.score ?? 0)
   const band = bandForRating(rating)
+  // A drill's estimate is clamped to what its block can demonstrate (Part 1.1
+  // cannot show C1 however well it goes). Say so on the page rather than
+  // quietly showing a lower number than the arithmetic suggests.
+  const capRating = !full && drillKey ? BLOCK_RATING_CAP[drillKey] : null
+  const cappedByPart =
+    !full && drillKey
+      ? ratingForRaw(((blocks[0]?.score ?? 0) / (blocks[0]?.max || 1)) * MAX_RAW) > capRating!
+      : false
 
   return {
     rawScore,
@@ -607,6 +697,12 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
       // it happens to have: skipping a whole part would otherwise turn 12/21
       // into a flattering "12 of 15".
       maxRaw: full ? MAX_RAW : (blocks[0]?.max ?? 0),
+      // Drills only: the ceiling this part can prove, and whether the student
+      // actually hit it. The page explains the cap instead of showing a band
+      // the paper never tested.
+      capRating,
+      capBand: capRating === null ? undefined : bandForRating(capRating),
+      cappedByPart,
       model: MODEL,
     },
   }

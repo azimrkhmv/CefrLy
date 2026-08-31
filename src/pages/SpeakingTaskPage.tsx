@@ -6,11 +6,13 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import { MicCheck } from '../components/speaking/MicCheck'
 import { QuestionRunner, type StepAnswer } from '../components/speaking/QuestionRunner'
 import { SpeakingTopBar } from '../components/speaking/SpeakingTopBar'
+import { SendingCat } from '../components/speaking/SendingCat'
 import { CheckIcon, PlayIcon } from '../components/icons'
 import { useSpeakingTest } from '../lib/speakingCatalog'
 import { questionCount, speakingSteps, type SpeakingStep } from '../lib/speakingQuestions'
 import {
   clearSpeakingDraft,
+  isResumable,
   readSpeakingDraft,
   saveSpeakingDraft,
   type SpeakingDraft,
@@ -20,7 +22,7 @@ import {
   removeSpeakingAttempt,
   type SpeakingAnswer,
 } from '../lib/speakingAttempts'
-import { gradeSpeakingAttempt } from '../lib/speakingGrading'
+import { gradeSpeakingAttempt, uploadAnswerClip } from '../lib/speakingGrading'
 import { PlanLimitError } from '../lib/api'
 import { PaidSkillDialog } from '../components/PaidSkillDialog'
 import { hasPremiumAccess } from '../lib/plans'
@@ -98,24 +100,49 @@ function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => 
   // A broken microphone discovered mid-exam costs the whole attempt, so every
   // attempt opens on the mic check.
   const [checked, setChecked] = useState(false)
-  // An interrupted attempt is DISCARDED, not resumed. The recordings live only
-  // in this page's memory, so restoring the question number without them would
-  // park the student past questions that are now silently empty — they would
-  // submit, score zero on those, and spend a check on a band that is not
-  // theirs. Better to say plainly that it has to be done again.
-  const [interrupted, setInterrupted] = useState(() => readSpeakingDraft(test.id) !== null)
-  const [draft, setDraft] = useState<SpeakingDraft>(() => ({
-    startedAt: Date.now(),
-    recorded: {},
-    stepIndex: 0,
-  }))
+  // An interrupted attempt is picked up where it was left, because the answers
+  // are on the server rather than in this page — each one was uploaded as it was
+  // recorded. Only a draft whose clips have been swept (or that never got one
+  // up) has to restart, and that screen says so.
+  const saved = useRef(readSpeakingDraft(test.id)).current
+  const resumable = isResumable(saved)
+  const [interrupted, setInterrupted] = useState(() => saved !== null && !resumable)
+  const [resuming, setResuming] = useState(resumable)
+  const [draft, setDraft] = useState<SpeakingDraft>(() =>
+    resumable && saved
+      ? saved
+      : {
+          startedAt: Date.now(),
+          attemptId: crypto.randomUUID(),
+          recorded: {},
+          uploaded: {},
+          stepIndex: 0,
+        },
+  )
+  // Fixed for the whole sitting: clips recorded before a reload and after it
+  // have to land in the same attempt folder to be graded together.
+  const attemptId = draft.attemptId!
   const [confirm, setConfirm] = useState<Confirm>(null)
   const [submitted, setSubmitted] = useState(false)
   const [localAttemptId, setLocalAttemptId] = useState<string | null>(null)
 
-  // Recorded audio lives here, NOT in the draft: blobs cannot go in
-  // localStorage, so they last only as long as this page does.
-  const [answers, setAnswers] = useState<Record<string, StepAnswer>>({})
+  // Answers recorded in THIS page carry their audio; answers restored from a
+  // draft carry only the path to the clip already on the server. Both are
+  // graded identically — only playback needs the local copy.
+  const [answers, setAnswers] = useState<Record<string, StepAnswer>>(() =>
+    Object.fromEntries(
+      Object.entries((resumable && saved?.uploaded) || {}).map(([stepId, clip]) => [
+        stepId,
+        { durationSec: clip.durationSec, path: clip.path, mimeType: clip.mimeType },
+      ]),
+    ),
+  )
+  /** Answers whose upload has not landed yet, so Submit can wait for them. */
+  const pendingUploads = useRef(new Set<string>())
+  // Read by the upload callback to tell whether the take it just sent is still
+  // the one on screen.
+  const answersRef = useRef(answers)
+  answersRef.current = answers
 
   const steps = useMemo(() => speakingSteps(test), [test])
 
@@ -158,9 +185,8 @@ function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => 
           <div className="mx-auto max-w-lg rounded-2xl border border-line bg-white p-6 text-center shadow-card sm:p-8">
             <h2 className="text-xl font-extrabold text-heading">This attempt has to restart</h2>
             <p className="mx-auto mt-2 max-w-md text-sm text-ink-soft">
-              You left this paper before submitting it. Recordings are never saved to your device,
-              so the answers you had already given are gone and the paper starts again from
-              question 1.
+              You left this paper too long ago. Recordings are deleted an hour after they are made,
+              so there is nothing left to carry over and the paper starts again from question 1.
             </p>
             <div className="mt-5 flex flex-wrap justify-center gap-3">
               <button
@@ -182,6 +208,59 @@ function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => 
                 className="rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
               >
                 Back to Speaking
+              </button>
+            </div>
+          </div>
+        </div>
+      </ExamScreen>
+    )
+  }
+
+  // Came back to an attempt whose answers are safe on the server. Offer to carry
+  // on rather than silently resuming: the student needs to know what survived.
+  if (resuming && saved) {
+    const done = Object.keys(saved.uploaded ?? {}).length
+    return (
+      <ExamScreen>
+        <SpeakingTopBar title={test.title} subtitle="Unfinished attempt" onExit={onLeave} />
+        <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+          <div className="mx-auto max-w-lg rounded-2xl border border-line bg-white p-6 text-center shadow-card sm:p-8">
+            <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-50 text-emerald-800">
+              <CheckIcon width={28} height={28} />
+            </span>
+            <h2 className="mt-4 text-xl font-extrabold text-heading">Your answers are safe</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-ink-soft">
+              This paper was interrupted, but {done} answer{done === 1 ? '' : 's'} had already been
+              saved. Carry on from question {Math.min(saved.stepIndex + 1, steps.length)} — nothing
+              you recorded is lost.
+            </p>
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setResuming(false)}
+                className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+              >
+                Continue the paper
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // Starting over abandons the saved clips; the hourly sweep
+                  // clears them.
+                  clearSpeakingDraft(test.id)
+                  setAnswers({})
+                  setDraft({
+                    startedAt: Date.now(),
+                    attemptId: crypto.randomUUID(),
+                    recorded: {},
+                    uploaded: {},
+                    stepIndex: 0,
+                  })
+                  setResuming(false)
+                }}
+                className="rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+              >
+                Start again from question 1
               </button>
             </div>
           </div>
@@ -213,10 +292,47 @@ function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => 
         test={test}
         steps={steps}
         answers={answers}
+        attemptId={attemptId}
         localAttemptId={localAttemptId}
         onLeave={onLeave}
       />
     )
+  }
+
+  /**
+   * Send one answer to the server the moment it is recorded.
+   *
+   * This is the whole reason a reload no longer costs the paper. It runs in the
+   * background — the student moves on to the next question while it travels —
+   * and a failure is not fatal: the blob is still in the page, and Submit
+   * uploads whatever never made it.
+   */
+  const sendClip = async (stepId: string, questionIndex: number, answer: StepAnswer) => {
+    if (!answer.blob) return
+    pendingUploads.current.add(stepId)
+    try {
+      const clip = await uploadAnswerClip(attemptId, questionIndex, answer.blob)
+      // Only if this is still the take on screen. A slow upload from a discarded
+      // take must not resurrect itself over the one the student kept.
+      setAnswers((prev) =>
+        prev[stepId]?.takeId === answer.takeId ? { ...prev, [stepId]: { ...prev[stepId], ...clip } } : prev,
+      )
+      setDraft((d) =>
+        answersRef.current[stepId]?.takeId === answer.takeId
+          ? {
+              ...d,
+              uploaded: {
+                ...d.uploaded,
+                [stepId]: { ...clip, durationSec: answer.durationSec },
+              },
+            }
+          : d,
+      )
+    } catch {
+      // Left for Submit to retry; the recording is still here in the page.
+    } finally {
+      pendingUploads.current.delete(stepId)
+    }
   }
 
   const index = Math.min(draft.stepIndex, steps.length - 1)
@@ -295,8 +411,13 @@ function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => 
           existing={answers[step.id]}
           isLast={isLast}
           onAnswered={(a) => {
-            setAnswers((prev) => ({ ...prev, [step.id]: a }))
+            // Every take gets an id, so the upload that finishes last cannot
+            // overwrite an answer the student has since re-recorded.
+            const takeId = crypto.randomUUID()
+            const answer = { ...a, takeId }
+            setAnswers((prev) => ({ ...prev, [step.id]: answer }))
             setDraft((d) => ({ ...d, recorded: { ...d.recorded, [step.id]: a.durationSec } }))
+            void sendClip(step.id, index, answer)
           }}
           onNext={() => {
             if (isLast) handleSubmitClick()
@@ -365,12 +486,15 @@ function Finished({
   test,
   steps,
   answers,
+  attemptId,
   localAttemptId,
   onLeave,
 }: {
   test: SpeakingTest
   steps: SpeakingStep[]
   answers: Record<string, StepAnswer>
+  /** The id the clips were uploaded under, fixed since the exam began. */
+  attemptId: string
   /** The local record of this sitting, dropped once the server grades it. */
   localAttemptId: string | null
   onLeave: () => void
@@ -392,7 +516,7 @@ function Finished({
     setState('sending')
     setMessage(null)
     try {
-      const attemptId = await gradeSpeakingAttempt({
+      const gradedId = await gradeSpeakingAttempt({
         test: {
           id: test.id,
           title: test.title,
@@ -401,13 +525,14 @@ function Finished({
         },
         steps,
         answers,
+        attemptId,
       })
       // The server now owns this sitting; drop the local copy so My Results and
       // the catalog never count it twice.
       if (localAttemptId) removeSpeakingAttempt(localAttemptId)
       void queryClient.invalidateQueries({ queryKey: ['speaking-attempts'] })
       // replace(): the exam screen is finished, so Back should not return to it.
-      navigate(`/speaking/analyze/${attemptId}`, { replace: true })
+      navigate(`/speaking/analyze/${gradedId}`, { replace: true })
     } catch (e) {
       if (e instanceof PlanLimitError) {
         setLocked(e)
@@ -417,7 +542,7 @@ function Finished({
       setMessage(e instanceof Error ? e.message : 'The AI check failed.')
       setState('error')
     }
-  }, [test, steps, answers, navigate, localAttemptId, queryClient])
+  }, [test, steps, answers, attemptId, navigate, localAttemptId, queryClient])
 
   // Send once, automatically — the recordings only live in this page, so
   // waiting for a click risks losing them to a stray reload.
@@ -451,9 +576,15 @@ function Finished({
             </p>
 
             {state === 'sending' && (
-              <p className="mt-4 text-sm font-bold text-brand">
-                Sending your answers to be checked…
-              </p>
+              <SendingCat
+                title="Sending your answers…"
+                lines={[
+                  'Packing up your answers…',
+                  'Almost all of this was already sent while you spoke.',
+                  'Taking them to the examiner…',
+                ]}
+                note="This takes a few seconds. Your results page opens by itself."
+              />
             )}
 
             {state === 'error' && (
@@ -527,14 +658,22 @@ function AnswerRow({ n, text, answer }: { n: number; text: string; answer?: Step
           <p className="text-sm font-bold text-ink">{text}</p>
           {answer ? (
             <div className="mt-2.5 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => void new Audio(answer.url).play().catch(() => {})}
-                className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-3.5 py-2 text-xs font-bold text-ink transition-colors hover:border-ink-faint"
-              >
-                <PlayIcon width={14} height={14} />
-                Play
-              </button>
+              {/* No url = recorded before a reload. It is on the server and will
+                  be marked; this page just cannot play it. */}
+              {answer.url ? (
+                <button
+                  type="button"
+                  onClick={() => void new Audio(answer.url).play().catch(() => {})}
+                  className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-3.5 py-2 text-xs font-bold text-ink transition-colors hover:border-ink-faint"
+                >
+                  <PlayIcon width={14} height={14} />
+                  Play
+                </button>
+              ) : (
+                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800">
+                  Saved
+                </span>
+              )}
               <span className="tnum text-xs text-ink-soft">{Math.round(answer.durationSec)}s</span>
             </div>
           ) : (

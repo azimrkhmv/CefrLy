@@ -75,15 +75,136 @@ export function bandForRating(rating: number): Band {
 }
 
 /**
+ * The highest rating a single block can HONESTLY demonstrate.
+ *
+ * Scaling a block straight to /75 produces nonsense: Part 1.1 is anchored at A2
+ * and its top mark means only "speech above A2", so three well-answered
+ * questions about your favourite films used to report 75/75 and C1 — a perfect
+ * exam score for the easiest task on the paper. What a block proves is bounded
+ * by what it ASKS. Part 1.1 can show a student is past A2 and no more; only
+ * Parts 2 and 3 put them in a position to show C1.
+ *
+ * So a drill's estimate is clamped here: 49 = top of B1, 64 = top of B2, 71 =
+ * a solid C1 (never the perfect 75, which no single block can earn).
+ */
+export const BLOCK_RATING_CAP: Record<BlockKey, number> = {
+  q1_3: 49,
+  q4_6: 64,
+  q7: 71,
+  q8: 75,
+}
+
+/**
  * A single-part drill only fills one block, so it has no honest /75. We scale
- * that block to the full raw scale to show an ESTIMATE — clearly labelled as
- * one in the UI, and never written to the attempt's `band` column, so it stays
- * out of the student's real CEFR history.
+ * that block to the full raw scale to show an ESTIMATE — capped at what the
+ * block can actually demonstrate, clearly labelled in the UI, and never written
+ * to the attempt's `band` column, so it stays out of the student's real CEFR
+ * history.
  */
 export function estimateRatingFromBlock(blockKey: BlockKey, score: number): number {
   const block = BLOCKS.find((b) => b.key === blockKey)
   if (!block || block.max === 0) return 0
-  return ratingForRaw((score / block.max) * MAX_RAW)
+  const scaled = ratingForRaw((score / block.max) * MAX_RAW)
+  return Math.min(scaled, BLOCK_RATING_CAP[blockKey])
+}
+
+// ---------------------------------------------------------------------------
+// SCORING IS OURS, JUDGEMENT IS THE MODEL'S.
+//
+// Asking a model for "0-5 for this block" produces a number with no working
+// shown, and it anchors high — it would list two grammar errors and still award
+// the top mark. So it no longer scores anything. It reports what it heard, at
+// the level of the rubric's own criteria (grammar, vocabulary, pronunciation,
+// fluency, coherence) plus how many answers were on topic, and the mark is
+// computed from that here, by the rules below.
+//
+// Two things follow. The score becomes auditable — a student can be shown WHY
+// it is a 4 — and it becomes impossible for a block to take the top mark while
+// the criteria underneath it say B1.
+// ---------------------------------------------------------------------------
+
+export type CefrLevel = 'below_A2' | 'A2' | 'B1' | 'B2' | 'C1'
+
+export const LEVEL_RANK: Record<CefrLevel, number> = {
+  below_A2: 0,
+  A2: 1,
+  B1: 2,
+  B2: 3,
+  C1: 4,
+}
+
+export const CRITERIA = ['grammar', 'vocabulary', 'pronunciation', 'fluency', 'coherence'] as const
+export type Criterion = (typeof CRITERIA)[number]
+
+export interface BlockJudgement {
+  block: BlockKey
+  /** How many of the block's questions were answered on topic. */
+  onTopicCount: number
+  criteria: Record<Criterion, CefrLevel>
+  /** Long-turn blocks only (Q7, Q8): was the topic covered fully or in part? */
+  coverage?: 'full' | 'partial'
+  /** Q8 only: were both sides genuinely argued? The rubric's 5 demands it. */
+  balanced?: boolean
+  reason: string
+}
+
+/** The level the speech as a whole sits at: the MIDDLE of the five criteria.
+ *  Not the average (which invents half-levels the rubric has no words for) and
+ *  not the minimum (one weak accent would drag a fluent speaker to A2). */
+export function overallLevel(criteria: Record<Criterion, CefrLevel>): number {
+  const ranks = CRITERIA.map((c) => LEVEL_RANK[criteria[c]] ?? 0).sort((a, b) => a - b)
+  return ranks[Math.floor(ranks.length / 2)]
+}
+
+/**
+ * The rubric, as arithmetic.
+ *
+ * Each block is anchored at a level: the top mark means "above the anchor", the
+ * next mark down means "at the anchor, everything on topic", and it falls from
+ * there as fewer answers stay on topic or the language drops a level.
+ */
+export function scoreBlock(j: BlockJudgement): number {
+  const level = overallLevel(j.criteria)
+  const on = Math.max(0, Math.round(j.onTopicCount))
+
+  // Nothing on topic — or nothing said at all — is 0 in every block. Speech
+  // BELOW the anchor still scores, but only the bottom marks, handled per block.
+  if (on === 0) return 0
+
+  switch (j.block) {
+    // Three short answers, anchored A2. 5 = above A2.
+    case 'q1_3':
+      if (level >= LEVEL_RANK.B1) return on >= 3 ? 5 : on === 2 ? 4 : 3
+      if (level === LEVEL_RANK.A2) return on >= 3 ? 4 : on === 2 ? 3 : 2
+      return on >= 2 ? 2 : 1
+
+    // Photo comparison, three answers, anchored B1. 5 = above B1.
+    case 'q4_6':
+      if (level >= LEVEL_RANK.B2) return on >= 3 ? 5 : on === 2 ? 4 : 3
+      if (level === LEVEL_RANK.B1) return on >= 3 ? 4 : on === 2 ? 3 : 2
+      if (level === LEVEL_RANK.A2) return on >= 2 ? 2 : 1
+      return 1
+
+    // One two-minute turn, anchored B2. 5 = above B2.
+    case 'q7':
+      if (on === 0) return 0
+      if (level >= LEVEL_RANK.C1) return j.coverage === 'partial' ? 4 : 5
+      if (level === LEVEL_RANK.B2) return j.coverage === 'partial' ? 3 : 4
+      if (level === LEVEL_RANK.B1) return j.coverage === 'partial' ? 1 : 2
+      return 0 // below B1 is 0 here, as the rubric says in so many words
+
+    // For-and-against, anchored C1, worth 6. 6 = above C1; 5 needs BOTH sides.
+    case 'q8': {
+      if (on === 0) return 0
+      if (level >= LEVEL_RANK.C1) {
+        if (j.balanced === false) return 4 // one-sided caps it, however good
+        return j.coverage === 'partial' ? 5 : 6
+      }
+      if (level === LEVEL_RANK.B2) return j.balanced === false ? 3 : 4
+      if (level === LEVEL_RANK.B1) return 2
+      return 1
+    }
+  }
 }
 
 /** The descriptors, condensed from the papers — the grader's actual criteria. */

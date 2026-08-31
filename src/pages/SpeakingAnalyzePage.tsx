@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { BandRuler } from '../components/BandRuler'
 import { Skeleton } from '../components/Skeleton'
 import { CheckIcon, MicIcon } from '../components/icons'
+import { SendingCat } from '../components/speaking/SendingCat'
 import {
   fetchRecheck,
   fetchSpeakingAttempt,
@@ -11,7 +12,12 @@ import {
   retrySpeakingAttempt,
 } from '../lib/speakingGrading'
 import { BAND_INFO } from '../lib/bands'
-import { ERROR_LABEL, type GradedAnswer, type SpeakingAttemptRow } from '../types/speakingResult'
+import {
+  ERROR_LABEL,
+  type GradedAnswer,
+  type SpeakingAttemptRow,
+  type SpeakingResult,
+} from '../types/speakingResult'
 
 // ---------------------------------------------------------------------------
 // The speaking analysis. There is no audio here and there never will be — the
@@ -78,10 +84,33 @@ function Analysis({ attempt }: { attempt: SpeakingAttemptRow }) {
         </div>
 
         {isDrill ? (
-          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            This is an <strong>estimate</strong> from one part only. A real CEFR band needs all four
-            parts, so this score is not saved to your results history.
-          </p>
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <p>
+              This is an <strong>estimate</strong> from one part only. A real CEFR band needs all
+              four parts, so this score is not saved to your results history.
+            </p>
+            {/* The honest ceiling. Each part is anchored at a level — Part 1.1
+                asks A2-level questions — so a part can only ever show that the
+                student is past its own anchor. Without this, full marks on the
+                easiest part reported a perfect 75/75 and C1. */}
+            {result.capBand && (
+              <p className="mt-2">
+                {result.cappedByPart ? (
+                  <>
+                    You answered this part as well as it can be answered. Even so,{' '}
+                    <strong>{blockLabel(result)} tops out at {BAND_INFO[result.capBand].label}</strong>{' '}
+                    — the harder parts are where a higher level is shown.
+                  </>
+                ) : (
+                  <>
+                    {blockLabel(result)} can show up to{' '}
+                    <strong>{BAND_INFO[result.capBand].label}</strong>; the harder parts are where a
+                    higher level is shown.
+                  </>
+                )}
+              </p>
+            )}
+          </div>
         ) : (
           <div className="mt-5">
             <BandRuler band={band} score={ratingToRulerScore(rating)} animate />
@@ -116,7 +145,35 @@ function Analysis({ attempt }: { attempt: SpeakingAttemptRow }) {
               {b.score}
               <span className="text-base text-ink-soft">/{b.max}</span>
             </p>
+            {b.questionCount !== undefined && b.onTopicCount !== undefined && (
+              <p className="tnum mt-0.5 text-xs text-ink-soft">
+                {b.onTopicCount} of {b.questionCount} answered on topic
+              </p>
+            )}
             {b.reason && <p className="mt-2 text-sm text-ink-soft">{b.reason}</p>}
+            {/* The mark is arithmetic on these levels, not a number the AI
+                picked — so show them. A 4 the student can argue with beats a 5
+                they cannot check. */}
+            {b.criteria && (
+              <dl className="mt-3 space-y-1 border-t border-line pt-3">
+                {(
+                  [
+                    ['grammar', 'Grammar'],
+                    ['vocabulary', 'Vocabulary'],
+                    ['pronunciation', 'Pronunciation'],
+                    ['fluency', 'Fluency'],
+                    ['coherence', 'Linking ideas'],
+                  ] as const
+                ).map(([key, label]) => (
+                  <div key={key} className="flex items-center justify-between gap-2">
+                    <dt className="text-xs text-ink-soft">{label}</dt>
+                    <dd className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-bold text-brand">
+                      {b.criteria![key].replace('below_A2', 'below A2')}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
           </div>
         ))}
       </section>
@@ -329,6 +386,9 @@ const Panel = ({ title, children }: { title: string; children: ReactNode }) => (
   </div>
 )
 
+/** "Part 1.1" etc — the drill's one block, for the ceiling note. */
+const blockLabel = (result: SpeakingResult) => result.blocks[0]?.label ?? 'This part'
+
 /** The ruler works in exam marks, not rating points; map 0-75 onto its scale. */
 function ratingToRulerScore(rating: number): number {
   if (rating >= 65) return 28 + Math.round(((rating - 65) / 10) * 7)
@@ -353,14 +413,21 @@ const LoadingState = () => (
 )
 
 const GradingState = () => (
-  <div className="rounded-2xl border border-line bg-white p-10 text-center shadow-card">
-    <span className="mx-auto grid h-16 w-16 animate-pulse place-items-center rounded-full bg-brand-soft text-brand">
-      <MicIcon width={26} height={26} />
+  <div className="rounded-2xl border border-line bg-white p-6 text-center shadow-card sm:p-8">
+    <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-brand-soft text-brand">
+      <MicIcon width={24} height={24} />
     </span>
-    <h1 className="mt-4 text-xl font-extrabold text-heading">Checking your speaking…</h1>
-    <p className="mt-1 text-sm text-ink-soft">
-      This usually takes under a minute. The page updates by itself.
-    </p>
+    <h1 className="mt-3 text-xl font-extrabold text-heading">Your answers are with the examiner</h1>
+    <SendingCat
+      title="Checking your speaking…"
+      lines={[
+        'Listening to your answers…',
+        'Writing down what you said…',
+        'Marking against the exam rubric…',
+        'Finding what to fix first…',
+      ]}
+      note="This usually takes under a minute. The page updates by itself — you can leave it open."
+    />
   </div>
 )
 

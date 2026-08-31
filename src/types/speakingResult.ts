@@ -33,12 +33,21 @@ export interface GradedAnswer {
   improved: string
 }
 
+export type CefrCriterionLevel = 'below_A2' | 'A2' | 'B1' | 'B2' | 'C1'
+
 export interface GradedBlock {
   key: 'q1_3' | 'q4_6' | 'q7' | 'q8'
   label: string
   max: number
   score: number
   reason: string
+  /** The levels the mark was CALCULATED from. The AI judges these; the score is
+   *  arithmetic on top of them, so this is the working behind the number.
+   *  Absent on attempts graded before that change. */
+  criteria?: Record<'grammar' | 'vocabulary' | 'pronunciation' | 'fluency' | 'coherence', CefrCriterionLevel>
+  /** How many of the block's questions were answered on topic, out of how many. */
+  onTopicCount?: number
+  questionCount?: number
 }
 
 export interface SpeakingResult {
@@ -48,6 +57,13 @@ export interface SpeakingResult {
   fixFirst: string
   /** The paper's full raw total (21 for a mock). Older attempts lack it. */
   maxRaw?: number
+  /** DRILLS ONLY. One part cannot demonstrate the whole scale — Part 1.1 is
+   *  anchored at A2, so however well it goes it proves the student is past A2
+   *  and nothing more. The estimate is clamped to `capRating` (`capBand` is the
+   *  band that lands in), and `cappedByPart` says the clamp actually bit. */
+  capRating?: number | null
+  capBand?: Band
+  cappedByPart?: boolean
   /** Which Gemini model graded it — kept so a re-grade can be compared. */
   model?: string
 }

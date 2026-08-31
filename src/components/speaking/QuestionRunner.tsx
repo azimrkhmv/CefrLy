@@ -26,9 +26,19 @@ type Phase =
   | 'review' // turn over; play it back, retake, or continue
 
 export interface StepAnswer {
-  url: string
-  blob: Blob
+  /** Object URL for playback. ABSENT on an answer restored after a reload: the
+   *  clip is safe on the server, but this page never held the audio itself. */
+  url?: string
+  /** The recording as made here. Absent once only the server copy survives. */
+  blob?: Blob
   durationSec: number
+  /** Where the clip lives in the `speaking-temp` bucket, once uploaded. Its
+   *  presence is what makes an answer survive a reload. */
+  path?: string
+  mimeType?: string
+  /** Identifies THIS take, so a slow upload from a discarded take cannot
+   *  overwrite the answer the student actually kept. */
+  takeId?: string
 }
 
 const mmss = (sec: number) => {
@@ -152,7 +162,9 @@ export function QuestionRunner({
   }, [status, recording])
 
   const playBack = () => {
-    if (!answer) return
+    // No url = an answer restored after a reload. It is safely on the server and
+    // will be graded; this page simply has nothing to play.
+    if (!answer?.url) return
     const el = playbackRef.current ?? new Audio()
     playbackRef.current = el
     el.src = answer.url
@@ -301,20 +313,30 @@ export function QuestionRunner({
             <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-50 text-emerald-800">
               <CheckIcon width={28} height={28} />
             </span>
-            <p className="mt-3 font-extrabold text-heading">Answer recorded</p>
+            <p className="mt-3 font-extrabold text-heading">
+              {answer.url ? 'Answer recorded' : 'Answer saved'}
+            </p>
             <p className="tnum mt-1 text-sm text-ink-soft">
               {mmss(answer.durationSec)} of {mmss(step.speakSec)} used
             </p>
+            {!answer.url && (
+              <p className="mx-auto mt-1 max-w-xs text-xs text-ink-soft">
+                Recorded before the page reloaded. It is safe with us and will be marked — it just
+                cannot be played back here.
+              </p>
+            )}
 
             <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={playBack}
-                className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
-              >
-                <PlayIcon width={15} height={15} />
-                {playingBack ? 'Playing…' : 'Play back'}
-              </button>
+              {answer.url && (
+                <button
+                  type="button"
+                  onClick={playBack}
+                  className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+                >
+                  <PlayIcon width={15} height={15} />
+                  {playingBack ? 'Playing…' : 'Play back'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={retake}
