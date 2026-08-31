@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { fetchMyAttempts } from '../lib/api'
+import { fetchMyAttempts, fetchOpenSessions } from '../lib/api'
 import { useWritingAttempts, type WritingAttempt } from '../lib/writingAttempts'
 import { TASK_LABEL } from '../lib/writingFixtures'
 import { fetchSpeakingAttempts } from '../lib/speakingGrading'
 import { useSpeakingAttempts, type SpeakingAttempt } from '../lib/speakingAttempts'
 import { PART_LABEL } from '../lib/speakingFixtures'
-import type { SpeakingAttemptRow } from '../types/speakingResult'
+import type { SpeakingAttemptSummary } from '../types/speakingResult'
 import type { SpeakingPartType } from '../types/test'
 import { BAND_INFO } from '../lib/bands'
 import { skillMeta } from '../lib/skills'
@@ -289,7 +289,7 @@ function SpeakingResults({
   attempts,
   ungraded,
 }: {
-  attempts: SpeakingAttemptRow[]
+  attempts: SpeakingAttemptSummary[]
   /** Sittings with no AI check — a Free plan, or a check that never ran. */
   ungraded: SpeakingAttempt[]
 }) {
@@ -389,7 +389,7 @@ function SpeakingAttemptCard({
   attempt,
   isBest,
 }: {
-  attempt: SpeakingAttemptRow
+  attempt: SpeakingAttemptSummary
   isBest: boolean
 }) {
   const done = attempt.status === 'done'
@@ -464,6 +464,61 @@ function SpeakingAttemptCard({
   )
 }
 
+// Tests the student started but never handed in. A practice attempt pauses
+// itself when its page goes away, so it waits here with its time intact;
+// simulation keeps counting down, which is the point of a mock exam.
+function UnfinishedPanel() {
+  const { data } = useQuery({
+    queryKey: ['open-sessions'],
+    queryFn: fetchOpenSessions,
+    staleTime: 30_000,
+  })
+  const sessions = data?.sessions ?? []
+  if (sessions.length === 0) return null
+
+  return (
+    <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:p-6">
+      <h2 className="text-base font-extrabold text-heading">Unfinished tests</h2>
+      <p className="mt-1 text-[13px] text-ink-soft">
+        Pick up where you left off — your answers are still there.
+      </p>
+      <ul className="mt-4 space-y-2.5">
+        {sessions.map((s) => {
+          const base = new Date(s.expiresAt).getTime()
+          const at = s.pausedAt ? new Date(s.pausedAt).getTime() : Date.now()
+          const minutes = Math.max(0, Math.round((base - at) / 60000))
+          const isListening = s.skill === 'listening'
+          return (
+            <li
+              key={s.testId}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-white px-4 py-3"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-extrabold text-heading">{s.title}</p>
+                <p className="tnum mt-0.5 text-[13px] text-ink-soft">
+                  {s.mode === 'practice' ? 'Practice' : 'Simulation'}
+                  {s.scope === 'part' ? ` · Part ${s.partNumber}` : ''}
+                  {isListening
+                    ? ' · no time limit'
+                    : s.pausedAt
+                      ? ` · paused with ${minutes} min left`
+                      : ` · ${minutes} min left`}
+                </p>
+              </div>
+              <Link
+                to={`/test/${s.testId}`}
+                className="shrink-0 rounded-xl bg-brand px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+              >
+                Continue
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
 export function DashboardPage() {
   const {
     data: attempts,
@@ -535,6 +590,10 @@ export function DashboardPage() {
           Take a test
         </Link>
       </div>
+
+      {/* Above everything else: an attempt you can still walk back into matters
+          more than the history below it. */}
+      <UnfinishedPanel />
 
       {isLoading ? (
         <AttemptListSkeleton />

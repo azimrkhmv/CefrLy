@@ -125,6 +125,28 @@ export function fetchTestState(testId: string): Promise<TestState> {
   return invokeFunction<TestState>('get-test', { testId, picker: true })
 }
 
+/** Pause a practice attempt as the page is going away (tab closed, navigated
+ *  off). It cannot use the normal client: that unload moment is too late for a
+ *  promise chain, so this is a raw `keepalive` fetch the browser finishes on its
+ *  own after the page is gone. Failure is silent by design — the worst case is
+ *  the clock kept running, which is exactly what used to happen every time. */
+export function pauseSessionOnLeave(sessionId: string, accessToken: string): void {
+  try {
+    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/session-control`, {
+      method: 'POST',
+      keepalive: true,
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ sessionId, action: 'pause' }),
+    }).catch(() => {})
+  } catch {
+    /* never let leaving the page throw */
+  }
+}
+
 /** Every attempt the student still has open, newest per test. Drives the
  *  catalog's "Resume · N min left" card state — leaving an exam with the
  *  browser's Back button keeps the clock running, and nothing used to say so. */

@@ -51,7 +51,9 @@ Deno.serve(async (req) => {
   if (all) {
     const { data: rows, error } = await admin
       .from('test_sessions')
-      .select('test_id, started_at, expires_at, mode, duration_sec, paused_at')
+      .select(
+        'test_id, started_at, expires_at, mode, duration_sec, paused_at, tests(title, skill, scope, part_number, status)',
+      )
       .eq('user_id', user.id)
       .is('submitted_at', null)
       .order('started_at', { ascending: false })
@@ -59,23 +61,32 @@ Deno.serve(async (req) => {
 
     const now = Date.now()
     const seen = new Set<string>()
-    // deno-lint-ignore no-explicit-any
-    const sessions = (rows ?? []).filter((s: any) => {
-      if (seen.has(s.test_id)) return false // newest per test only
-      const base = new Date(s.expires_at).getTime()
-      const deadline = s.paused_at ? base + (now - new Date(s.paused_at).getTime()) : base
-      if (now > deadline) return false // expired — not resumable
-      seen.add(s.test_id)
-      return true
+    const sessions = (rows ?? [])
       // deno-lint-ignore no-explicit-any
-    }).map((s: any) => ({
-      testId: s.test_id,
-      startedAt: s.started_at,
-      expiresAt: s.expires_at,
-      mode: s.mode ?? 'simulation',
-      durationSec: s.duration_sec ?? null,
-      pausedAt: s.paused_at ?? null,
-    }))
+      .filter((s: any) => {
+        if (seen.has(s.test_id)) return false // newest per test only
+        if (!s.tests || s.tests.status !== 'published') return false
+        const base = new Date(s.expires_at).getTime()
+        const deadline = s.paused_at ? base + (now - new Date(s.paused_at).getTime()) : base
+        if (now > deadline) return false // expired — not resumable
+        seen.add(s.test_id)
+        return true
+      })
+      // deno-lint-ignore no-explicit-any
+      .map((s: any) => ({
+        testId: s.test_id,
+        // Carried so "Unfinished tests" on the results page can name the paper
+        // without a second round-trip through the catalog.
+        title: s.tests.title as string,
+        skill: s.tests.skill as string,
+        scope: (s.tests.scope ?? 'full') as string,
+        partNumber: s.tests.part_number ?? null,
+        startedAt: s.started_at,
+        expiresAt: s.expires_at,
+        mode: s.mode ?? 'simulation',
+        durationSec: s.duration_sec ?? null,
+        pausedAt: s.paused_at ?? null,
+      }))
 
     return json({ sessions, serverNow: new Date().toISOString() })
   }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode, type SVGProps } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode, type SVGProps } from 'react'
 import { createPortal } from 'react-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -6,10 +6,12 @@ import {
   cancelSession,
   controlSession,
   fetchTestState,
+  pauseSessionOnLeave,
   PlanLimitError,
   startSession,
   submitTest,
 } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { ACTION_LABEL_ONE } from '../lib/plans'
 import { useAnswersStore } from '../store/answers'
 import { useAudioStore } from '../store/audio'
@@ -133,6 +135,9 @@ export function TestPage() {
   const { testId } = useParams<{ testId: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  // Needed for the auto-pause below: it fires as the page unloads, too late for
+  // the normal client, so it carries the access token on a raw keepalive fetch.
+  const { session } = useAuth()
   const [partIndex, setPartIndex] = useState(0)
   const reset = useAnswersStore((s) => s.reset)
   const answeredCount = useAnswersStore(
@@ -230,6 +235,74 @@ export function TestPage() {
     },
   })
 
+  // ---- Practice auto-pause ---------------------------------------------------
+  // Practice is meant to be pausable, so a student who closes the tab to eat
+  // lunch should not lose 20 minutes to a clock they never asked to run. When a
+  // practice attempt's page goes away WITHOUT the student pressing Pause, we
+  // pause it for them; arriving back on the exam resumes it, so a refresh feels
+  // like nothing happened while a two-hour absence costs nothing.
+  //
+  // SIMULATION IS DELIBERATELY EXCLUDED: its clock running down while you are
+  // gone is the whole point of a mock exam. Listening has no clock in either
+  // mode, so there is nothing to pause there either.
+  const autoPauseKey = sessionId ? `cefrly-autopause-${sessionId}` : null
+  const finishedRef = useRef(false)
+  const accessToken = session?.access_token ?? null
+  const canAutoPause =
+    !!test && test.session.mode === 'practice' && test.skill !== 'listening' && !!accessToken
+
+  useEffect(() => {
+    if (!canAutoPause || !sessionId || !accessToken || !autoPauseKey) return
+    const pauseNow = () => {
+      // Submitted or cancelled attempts are finished — nothing to pause.
+      if (finishedRef.current) return
+      // Already paused by hand: leave the student's own pause alone (and do not
+      // claim it as ours, or coming back would auto-resume a deliberate pause).
+      if (isPausedRightNow()) return
+      try {
+        localStorage.setItem(autoPauseKey, '1')
+      } catch {
+        /* storage unavailable — the pause still happens, it just won't auto-resume */
+      }
+      pauseSessionOnLeave(sessionId, accessToken)
+    }
+    // Reads the CURRENT pausedAt at fire time, not the value captured when this
+    // effect ran — the student may have paused by hand since.
+    function isPausedRightNow(): boolean {
+      const cached = queryClient.getQueryData<TestState>(['test', testId])
+      return !!(cached && cached.session !== null && cached.session.pausedAt)
+    }
+    // pagehide covers tab close, navigation away and refresh (bfcache included);
+    // the unmount cleanup covers leaving to another page inside the app.
+    window.addEventListener('pagehide', pauseNow)
+    return () => {
+      window.removeEventListener('pagehide', pauseNow)
+      pauseNow()
+    }
+  }, [canAutoPause, sessionId, accessToken, autoPauseKey, queryClient, testId])
+
+  // Coming back: an attempt WE paused resumes itself, so "continue" is just
+  // opening the test again. A pause the student pressed stays paused.
+  useEffect(() => {
+    if (!test || !sessionId || !autoPauseKey) return
+    if (!test.session.pausedAt) return
+    let ours = false
+    try {
+      ours = localStorage.getItem(autoPauseKey) === '1'
+    } catch {
+      /* storage unavailable */
+    }
+    if (!ours || control.isPending) return
+    try {
+      localStorage.removeItem(autoPauseKey)
+    } catch {
+      /* storage unavailable */
+    }
+    control.mutate('resume')
+    // `control` is stable per mount (useMutation).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test?.session.pausedAt, sessionId, autoPauseKey])
+
   // Restore the saved draft for this session (survives page refreshes);
   // drop drafts from older sessions. NO cleanup here: clearing the store on
   // unmount belongs to the SAVER effect below, after it unsubscribes — a
@@ -321,6 +394,8 @@ export function TestPage() {
     mutationFn: (opts: { answers: Record<string, string>; late: true } | null) =>
       submitTest(testId!, opts?.answers ?? useAnswersStore.getState().answers, opts?.late ?? false),
     onSuccess: (result) => {
+      // Graded — the unmount that follows must not try to pause this attempt.
+      finishedRef.current = true
       // reset() BEFORE removing the draft: the saver subscription reacts to
       // the reset by writing {} — deleting afterwards leaves no orphan key.
       reset()
@@ -330,6 +405,7 @@ export function TestPage() {
         // The rescue path has no live session, so clear the expired one's draft.
         const done = sessionId ?? expired?.id
         if (done) localStorage.removeItem(draftKey(done))
+        if (autoPauseKey) localStorage.removeItem(autoPauseKey)
       } catch {
         /* storage unavailable */
       }
@@ -358,7 +434,11 @@ export function TestPage() {
   // restart/expiry). Order: reset() first so the saver's reaction is the {}
   // write, THEN remove the key — leaving no orphan draft behind.
   const abandon = useMutation({
-    mutationFn: () => cancelSession(sessionId!),
+    mutationFn: () => {
+      // Cancelled on purpose — never auto-pause it on the way out.
+      finishedRef.current = true
+      return cancelSession(sessionId!)
+    },
     onSettled: () => {
       // Navigate away FIRST so TestPage unmounts and drops its ['test'] observer;
       // removing the query then can't trigger a stray refetch. (Even if one did,

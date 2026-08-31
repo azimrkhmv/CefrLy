@@ -462,6 +462,11 @@ export interface NoOpenAttempt {
 /** An attempt still open on some test, as listed for the catalog. */
 export interface OpenSession {
   testId: string
+  /** Carried by the listing so "Unfinished tests" can name the paper. */
+  title: string
+  skill: Skill
+  scope: TestScope
+  partNumber: number | null
   startedAt: string
   expiresAt: string
   mode: TestMode
