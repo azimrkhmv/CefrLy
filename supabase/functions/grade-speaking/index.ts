@@ -37,12 +37,15 @@ const BUCKET = 'speaking-temp'
 // topic", and its B1-vs-B2 calls flipped students' bands at the boundary.
 // Grading is the product here; the cost difference is a fraction of a cent.
 //
-// The env override is honoured EXCEPT for the retired lite tier: a stale
+// The env override is honoured EXCEPT for retired models: a stale
 // GEMINI_MODEL=gemini-3.1-flash-lite secret silently undid this upgrade once —
 // the first attempt through the "new" grader came back marked by the old model.
-// Secrets cannot be edited from this environment, so the guard lives here.
+// gemini-3.1-flash itself was later retired by Google (404 from generateContent,
+// 2026-09-01), so it is on the blocklist too. Secrets cannot be edited from this
+// environment, so the guard lives here.
+const RETIRED_MODELS = ['gemini-3.1-flash-lite', 'gemini-3.1-flash']
 const envModel = Deno.env.get('GEMINI_MODEL')
-const MODEL = envModel && envModel !== 'gemini-3.1-flash-lite' ? envModel : 'gemini-3.1-flash'
+const MODEL = envModel && !RETIRED_MODELS.includes(envModel) ? envModel : 'gemini-3.7-flash'
 /** A run still unfinished after this long is assumed dead, and may be retried.
  *  Anything younger is treated as in flight — see the double-grade guard. */
 const RUN_STALE_MS = 5 * 60 * 1000
