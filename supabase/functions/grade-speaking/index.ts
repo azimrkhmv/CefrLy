@@ -628,45 +628,84 @@ async function gradeWithGemini(
 }
 
 /**
- * One Gemini call, with a deadline and a single retry.
+ * One Gemini call, with a deadline, backoff, and a drop to an older flash model.
  *
  * Without the deadline a hung connection ran until the platform killed the
  * function, leaving the attempt stuck on 'grading' until the hourly sweep
- * noticed. The retry covers the transient half of Gemini's failures (429, 5xx,
+ * noticed. Retries cover the transient half of Gemini's failures (429, 5xx,
  * dropped socket); a 400 is our bug and is not worth paying for twice.
+ *
+ * ONE retry 1.5s apart was not enough. The newest flash tier answers 503
+ * "high demand" in bursts that outlast a couple of seconds, and every one of
+ * those was shown to a student as a failed check. So: three tries per model
+ * with growing gaps, then the same again on the previous flash generation,
+ * which is rarely busy at the same moment. Marking on 3.6 or 3.5 is worse than
+ * on 3.7 but far better than telling a student to record their exam again.
  */
+const FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash']
+const TRIES_PER_MODEL = 3
+const BACKOFF_MS = [2000, 6000]
+/** Whole-call budget. The grade runs in waitUntil, which the platform still
+ *  kills at its own wall-clock limit — retrying past this just loses the row. */
+const TOTAL_BUDGET_MS = 240_000
+
 // deno-lint-ignore no-explicit-any
 async function callGemini(apiKey: string, body: string): Promise<any> {
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`
+  const deadline = Date.now() + TOTAL_BUDGET_MS
+  // The fallbacks are only worth trying if they are not the model that just
+  // failed, and a retired name must never come back through this door.
+  const models = [MODEL, ...FALLBACK_MODELS.filter((m) => m !== MODEL && !RETIRED_MODELS.includes(m))]
+  let lastError: Error = new Error('Gemini could not be reached')
 
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS)
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-        signal: controller.signal,
-      })
-      if (res.ok) return await res.json()
+  for (const model of models) {
+    for (let attempt = 0; attempt < TRIES_PER_MODEL; attempt++) {
+      const remaining = deadline - Date.now()
+      if (remaining <= 0) throw lastError
 
-      const detail = (await res.text()).slice(0, 200)
-      const transient = res.status === 429 || res.status >= 500
-      if (!transient || attempt === 1) throw new Error(`Gemini ${res.status}: ${detail}`)
-    } catch (e) {
-      const aborted = e instanceof Error && e.name === 'AbortError'
-      if (attempt === 1) {
-        throw aborted ? new Error('The check timed out. Please try again.') : e
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), Math.min(GEMINI_TIMEOUT_MS, remaining))
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body,
+            signal: controller.signal,
+          },
+        )
+        if (res.ok) return await res.json()
+
+        const detail = (await res.text()).slice(0, 200)
+        const err = new Error(`Gemini ${res.status}: ${detail}`)
+        // A 4xx that is not a rate limit will not fix itself on a retry: either
+        // the body is wrong or this model does not exist. Give up on THIS model
+        // and move to the next one rather than sleeping between identical
+        // failures — a retired name in the fallback list must cost one call, not
+        // three, and must never abort the models still worth trying.
+        if (res.status !== 429 && res.status < 500) {
+          lastError = err
+          break
+        }
+        lastError = res.status === 503 || res.status === 429
+          ? new Error('The AI examiner is busy right now. Please try the check again in a few minutes.')
+          : err
+      } catch (e) {
+        lastError = e instanceof Error && e.name === 'AbortError'
+          ? new Error('The check timed out. Please try again.')
+          : e instanceof Error
+            ? e
+            : new Error(String(e))
+      } finally {
+        clearTimeout(timer)
       }
-    } finally {
-      clearTimeout(timer)
+
+      const pause = BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)]
+      if (Date.now() + pause >= deadline) throw lastError
+      await new Promise((r) => setTimeout(r, pause))
     }
-    // A short pause before the second try; an overloaded model needs a moment.
-    await new Promise((r) => setTimeout(r, 1500))
   }
-  throw new Error('Gemini could not be reached')
+  throw lastError
 }
 
 /** Chunked so a long clip cannot blow the argument limit of String.fromCharCode. */
