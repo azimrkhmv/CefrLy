@@ -59,9 +59,11 @@ const MAX_OUTPUT_TOKENS = 8192
 /** One block's share of that ceiling. Each call now writes three transcripts at
  *  most, so the old whole-paper budget would only ever hide a runaway. */
 const BLOCK_OUTPUT_TOKENS = 4096
-/** Per-call ceiling. Deliberately far below the platform's wall-clock limit:
- *  the calls run side by side, so one slow block must not eat the whole run. */
-const GEMINI_TIMEOUT_MS = 60_000
+/** Per-call ceiling. The calls run side by side, so this is a whole block's
+ *  budget, not the paper's. Set to 60s it was the failure: a long Part 2 turn
+ *  needs longer than that on a busy day, and the call was cut off, retried on
+ *  the SAME model, and cut off again until the run budget was gone. */
+const GEMINI_TIMEOUT_MS = 95_000
 
 interface AnswerIn {
   questionIndex: number
@@ -81,18 +83,29 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader) return json({ error: 'Unauthorized' }, 401)
+  // OPS RESCUE PATH (2026-09-02): a matching x-rescue-secret header may regrade
+  // an EXISTING attempt on its owner's behalf — used to restart checks server-
+  // side during the Gemini outage instead of asking a student to press retry.
+  // It can only re-run an attempt that already exists, as its real owner, and
+  // the secret lives only in this function's env. Requires verify_jwt off, so
+  // ordinary requests are authenticated by getUser() below exactly as before.
+  const rescueSecret = Deno.env.get('RESCUE_SECRET')
+  const isRescue = !!rescueSecret && req.headers.get('x-rescue-secret') === rescueSecret
 
-  const userClient = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
-    { global: { headers: { Authorization: authHeader } } },
-  )
-  const {
-    data: { user },
-  } = await userClient.auth.getUser()
-  if (!user) return json({ error: 'Unauthorized' }, 401)
+  let user: { id: string } | null = null
+  if (!isRescue) {
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) return json({ error: 'Unauthorized' }, 401)
+
+    const userClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    )
+    const { data } = await userClient.auth.getUser()
+    if (!data.user) return json({ error: 'Unauthorized' }, 401)
+    user = { id: data.user.id }
+  }
 
   const apiKey = Deno.env.get('GEMINI_API_KEY')
   if (!apiKey) return json({ error: 'Grading is not configured yet.', code: 'no_grader' }, 503)
@@ -118,6 +131,22 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
+
+  // Fetched before the plan gate: the rescue path grades as the attempt's real
+  // owner, so the owner has to be known before their plan can be checked.
+  const { data: existing } = await admin
+    .from('speaking_attempts')
+    .select(
+      'id, user_id, status, result, raw_score, rating, band, test_id, test_title, scope, part_type, audio_manifest, grading_started_at, grading_runs, created_at',
+    )
+    .eq('id', attemptId)
+    .maybeSingle()
+  if (isRescue) {
+    if (!existing) return json({ error: 'Not found' }, 404)
+    user = { id: existing.user_id }
+  }
+  if (!user) return json({ error: 'Unauthorized' }, 401)
+  if (existing && existing.user_id !== user.id) return json({ error: 'Not found' }, 404)
 
   // --- Plan gate. Runs BEFORE any download or model call, so a free-plan user
   // never costs a token. -----------------------------------------------------
@@ -146,15 +175,7 @@ Deno.serve(async (req) => {
   }
 
   // An attempt already graded is returned as-is: calling twice must not charge
-  // the student twice or re-run the model.
-  const { data: existing } = await admin
-    .from('speaking_attempts')
-    .select(
-      'id, user_id, status, result, raw_score, rating, band, test_id, test_title, scope, part_type, audio_manifest, grading_started_at, grading_runs, created_at',
-    )
-    .eq('id', attemptId)
-    .maybeSingle()
-  if (existing && existing.user_id !== user.id) return json({ error: 'Not found' }, 404)
+  // the student twice or re-run the model. (Row fetched above, pre-plan-gate.)
   if (existing?.status === 'done') return json({ attemptId, ...existing }, 200)
 
   // DOUBLE-GRADE GUARD. An attempt already being graded is left alone: the page
@@ -270,7 +291,15 @@ Deno.serve(async (req) => {
   // page immediately and takes the timeout off the table.
   const work = (async () => {
     try {
-      const graded = await gradeWithGemini(admin, apiKey, ordered)
+      // ONE CLOCK FOR THE WHOLE RUN, anchored at the request, not per call.
+      // Each model call carrying its own fresh budget was the failure: the four
+      // block calls finished at ~100s of the platform's 150s, and the profile
+      // call then started with a full budget of its own on a 50s runway — the
+      // platform killed the process mid-call and the attempt froze on
+      // 'grading'. Everything downstream spends from THIS deadline, and the
+      // profile pass falls back to arithmetic when too little of it is left.
+      const deadline = Date.now() + 135_000
+      const graded = await gradeWithGemini(admin, apiKey, ordered, deadline)
       const summary = score(ordered, graded, scope)
 
       await admin
@@ -621,6 +650,7 @@ async function gradeWithGemini(
   admin: Client,
   apiKey: string,
   answers: AnswerIn[],
+  deadline: number,
 ): Promise<GeminiOut> {
   // Grouped in the order the blocks appear, so the merged output stays in paper
   // order without a second sort of anything but the answers.
@@ -633,7 +663,7 @@ async function gradeWithGemini(
   }
 
   const parts = await Promise.all(
-    [...groups.entries()].map(([key, list]) => gradeBlock(admin, apiKey, key, list)),
+    [...groups.entries()].map(([key, list]) => gradeBlock(admin, apiKey, key, list, deadline)),
   )
 
   const mergedAnswers = parts
@@ -641,7 +671,7 @@ async function gradeWithGemini(
     .sort((a, b) => a.questionIndex - b.questionIndex)
   const mergedBlocks = parts.flatMap((p) => p.blocks ?? [])
 
-  const overall = await judgeSpeaker(apiKey, mergedAnswers, parts)
+  const overall = await judgeSpeaker(apiKey, mergedAnswers, parts, deadline)
 
   return {
     answers: mergedAnswers,
@@ -658,6 +688,7 @@ async function gradeBlock(
   apiKey: string,
   blockKey: string,
   answers: AnswerIn[],
+  deadline: number,
 ): Promise<GeminiOut> {
   // A block nobody recorded costs no call: the paper still has to show the
   // questions as unanswered, which is arithmetic, not judgement.
@@ -689,19 +720,32 @@ async function gradeBlock(
     }
   }
 
-  const payload = await callModel(
-    apiKey,
-    JSON.stringify({
-      contents: [{ parts: await promptParts(admin, answers) }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: BLOCK_CALL_SCHEMA,
-        temperature: 0,
-        thinkingConfig: { thinkingLevel: 'low' },
-        maxOutputTokens: BLOCK_OUTPUT_TOKENS,
-      },
-    }),
-  )
+  const parts = await promptParts(admin, answers)
+  const body = JSON.stringify({
+    contents: [{ parts }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: BLOCK_CALL_SCHEMA,
+      temperature: 0,
+      thinkingConfig: { thinkingLevel: 'low' },
+      maxOutputTokens: BLOCK_OUTPUT_TOKENS,
+    },
+  })
+  // The same request in provider-neutral form, for the OpenRouter fallback.
+  // deno-lint-ignore no-explicit-any
+  const typed = parts as any[]
+  const neutral: NeutralRequest = {
+    prompt: typed[0].text,
+    clips: typed.slice(1).map((p) => ({
+      data: p.inline_data.data,
+      format: /mp4|m4a/.test(p.inline_data.mime_type ?? '') ? 'mp4' : 'webm',
+    })),
+    schema: BLOCK_CALL_SCHEMA,
+    maxTokens: BLOCK_OUTPUT_TOKENS,
+  }
+  // Spend from the run's clock, minus what the profile fallback and the final
+  // row update still need after us. Downloads above already ate into it.
+  const payload = await callModel(apiKey, body, deadline - Date.now() - 15_000, neutral)
   return payload as GeminiOut
 }
 
@@ -730,19 +774,116 @@ async function promptParts(admin: Client, answers: AnswerIn[]): Promise<unknown[
 
 /** Call Gemini and hand back the parsed JSON, or throw something a student can
  *  read. Every call in this function goes through here. */
-// deno-lint-ignore no-explicit-any
-async function callModel(apiKey: string, body: string): Promise<any> {
-  const payload = await callGemini(apiKey, body)
+/** Provider-neutral shape of one grading request, so a second provider can
+ *  retry it when Google cannot be reached at all. */
+interface NeutralRequest {
+  prompt: string
+  clips: { data: string; format: string }[]
+  schema: unknown
+  maxTokens: number
+}
 
-  const candidate = payload?.candidates?.[0]
-  const text = candidate?.content?.parts?.[0]?.text
-  if (!text) throw new Error('Gemini returned no content')
-  // MAX_TOKENS means the JSON is truncated. Say so plainly instead of letting
-  // JSON.parse fail with something meaningless.
-  if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
-    throw new Error(`The check was cut short (${candidate.finishReason})`)
+// deno-lint-ignore no-explicit-any
+async function callModel(
+  apiKey: string,
+  body: string,
+  budgetMs?: number,
+  neutral?: NeutralRequest,
+): Promise<any> {
+  const started = Date.now()
+  try {
+    const payload = await callGemini(apiKey, body, budgetMs)
+
+    const candidate = payload?.candidates?.[0]
+    const text = candidate?.content?.parts?.[0]?.text
+    if (!text) throw new Error('Gemini returned no content')
+    // MAX_TOKENS means the JSON is truncated. Say so plainly instead of letting
+    // JSON.parse fail with something meaningless.
+    if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
+      throw new Error(`The check was cut short (${candidate.finishReason})`)
+    }
+    return JSON.parse(text)
+  } catch (e) {
+    // SECOND PROVIDER, AUTOMATIC. Google's whole ladder failing (all models,
+    // all retries — a real outage, 2026-09-02) used to be the end of the road.
+    // OpenRouter reaches the same models through separately provisioned
+    // capacity, so it regularly answers while the direct lane is jammed.
+    const orKey = Deno.env.get('OPENROUTER_API_KEY')
+    const remaining = budgetMs != null ? budgetMs - (Date.now() - started) : 60_000
+    if (!orKey || !neutral || remaining < 10_000) throw e
+    console.log(`gemini lane exhausted (${String(e).slice(0, 80)}); trying OpenRouter`)
+    return await callOpenRouter(orKey, neutral, remaining)
   }
-  return JSON.parse(text)
+}
+
+/** ChatGPT's audio models reject webm (tested against a real clip, 2026-09-02:
+ *  400 from openai/gpt-audio however the format is labelled), so recordings can
+ *  only fall back to Gemini via OpenRouter's capacity. Text-only calls have no
+ *  such constraint and try ChatGPT first — a different vendor entirely. */
+const OR_AUDIO_MODELS = ['google/gemini-3.7-flash', 'google/gemini-3.6-flash', 'google/gemini-2.5-flash']
+const OR_TEXT_MODELS = ['openai/gpt-audio', 'google/gemini-3.7-flash', 'google/gemini-2.5-flash']
+
+// deno-lint-ignore no-explicit-any
+async function callOpenRouter(orKey: string, req: NeutralRequest, budgetMs: number): Promise<any> {
+  const deadline = Date.now() + budgetMs
+  const models = req.clips.length ? OR_AUDIO_MODELS : OR_TEXT_MODELS
+  let lastError: Error = new Error('The backup grader could not be reached')
+
+  for (const model of models) {
+    const remaining = deadline - Date.now()
+    if (remaining < 8_000) throw lastError
+    const t0 = Date.now()
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${orKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    `${req.prompt}\n\nReturn ONLY a JSON object matching this exact schema, ` +
+                    `with no prose around it:\n${JSON.stringify(req.schema)}`,
+                },
+                ...req.clips.map((c) => ({
+                  type: 'input_audio',
+                  input_audio: { data: c.data, format: c.format },
+                })),
+              ],
+            },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0,
+          max_tokens: req.maxTokens,
+        }),
+        signal: AbortSignal.timeout(Math.min(95_000, remaining)),
+      })
+      const payload = await res.json().catch(() => null)
+      if (!res.ok) {
+        lastError = new Error(
+          `OpenRouter ${model} ${res.status}: ${String(payload?.error?.message ?? '').slice(0, 150)}`,
+        )
+        console.log(`openrouter fail ${model} ${res.status} in ${Date.now() - t0}ms`)
+        continue
+      }
+      const text = payload?.choices?.[0]?.message?.content
+      if (!text) {
+        lastError = new Error(`OpenRouter ${model} returned no content`)
+        continue
+      }
+      console.log(`openrouter ok ${model} in ${Date.now() - t0}ms`)
+      // Some models wrap JSON in a markdown fence despite instructions.
+      return JSON.parse(text.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, ''))
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e))
+      console.log(`openrouter error ${model} after ${Date.now() - t0}ms: ${String(e).slice(0, 80)}`)
+    }
+  }
+  throw lastError
 }
 
 /**
@@ -758,11 +899,27 @@ async function judgeSpeaker(
   apiKey: string,
   answers: AnswerOut[],
   parts: GeminiOut[],
+  deadline: number,
 ): Promise<{ profile: SpeakingProfile; summary: string; fixFirst: string }> {
   const heard = parts
     .map((p) => p.profile?.criteria)
     .filter(Boolean) as SpeakingProfile['criteria'][]
   if (heard.length === 0) throw new Error('Gemini returned no judgement of the speaker')
+
+  // This pass is a REFINEMENT, not a requirement — the block judgements already
+  // hold a defensible profile. On a slow Gemini day the blocks use most of the
+  // run, and starting one more model call on the leftovers is how a finished
+  // grade got killed at the platform's wall-clock limit. Too little time left →
+  // take the arithmetic fallback and SAVE THE PAPER.
+  const remaining = deadline - Date.now() - 10_000
+  if (remaining < 15_000) {
+    console.log(`judgeSpeaker skipped, ${remaining}ms left`)
+    return {
+      profile: averageProfile(heard, parts),
+      summary: parts.map((p) => p.blocks?.[0]?.reason ?? '').filter(Boolean).join(' '),
+      fixFirst: '',
+    }
+  }
 
   const transcripts = answers
     .map((a) => `questionIndex ${a.questionIndex}: ${a.transcript || '(nothing said)'}`)
@@ -775,15 +932,7 @@ async function judgeSpeaker(
     )
     .join('\n')
 
-  try {
-    const out = await callModel(
-      apiKey,
-      JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: `You are an examiner for the Uzbek Multilevel (CEFR) English speaking exam.
+  const judgePrompt = `You are an examiner for the Uzbek Multilevel (CEFR) English speaking exam.
 
 ${RUBRIC_TEXT}
 
@@ -813,11 +962,13 @@ ${transcripts}
 
 WHAT EACH TASK'S EXAMINER JUDGED:
 
-${listened}`,
-              },
-            ],
-          },
-        ],
+${listened}`
+
+  try {
+    const out = await callModel(
+      apiKey,
+      JSON.stringify({
+        contents: [{ parts: [{ text: judgePrompt }] }],
         generationConfig: {
           responseMimeType: 'application/json',
           responseSchema: PROFILE_CALL_SCHEMA,
@@ -826,6 +977,8 @@ ${listened}`,
           maxOutputTokens: MAX_OUTPUT_TOKENS,
         },
       }),
+      remaining,
+      { prompt: judgePrompt, clips: [], schema: PROFILE_CALL_SCHEMA, maxTokens: MAX_OUTPUT_TOKENS },
     )
     if (!out?.profile?.criteria) throw new Error('no profile')
     return {
@@ -890,11 +1043,11 @@ const BACKOFF_MS = [2000, 6000]
  *  mid-fetch, so the catch that writes 'failed' never ran and the attempt sat on
  *  'grading' forever with no error and no retry button (2026-09-02, two real
  *  students' papers). Everything here now has to finish well inside it. */
-const TOTAL_BUDGET_MS = 110_000
+const TOTAL_BUDGET_MS = 132_000
 
 // deno-lint-ignore no-explicit-any
-async function callGemini(apiKey: string, body: string): Promise<any> {
-  const deadline = Date.now() + TOTAL_BUDGET_MS
+async function callGemini(apiKey: string, body: string, budgetMs?: number): Promise<any> {
+  const deadline = Date.now() + Math.min(budgetMs ?? TOTAL_BUDGET_MS, TOTAL_BUDGET_MS)
   // The fallbacks are only worth trying if they are not the model that just
   // failed, and a retired name must never come back through this door.
   const models = [MODEL, ...FALLBACK_MODELS.filter((m) => m !== MODEL && !RETIRED_MODELS.includes(m))]
@@ -905,6 +1058,7 @@ async function callGemini(apiKey: string, body: string): Promise<any> {
       const remaining = deadline - Date.now()
       if (remaining <= 0) throw lastError
 
+      const startedAt = Date.now()
       const controller = new AbortController()
       const timer = setTimeout(() => controller.abort(), Math.min(GEMINI_TIMEOUT_MS, remaining))
       try {
@@ -917,7 +1071,13 @@ async function callGemini(apiKey: string, body: string): Promise<any> {
             signal: controller.signal,
           },
         )
-        if (res.ok) return await res.json()
+        // Logged because there is no other way to see where a run's time went:
+        // the model call is the only slow thing here, and when it overruns the
+        // platform kills the process before anything can be written down.
+        if (res.ok) {
+          console.log(`gemini ok ${model} in ${Date.now() - startedAt}ms`)
+          return await res.json()
+        }
 
         const detail = (await res.text()).slice(0, 200)
         const err = new Error(`Gemini ${res.status}: ${detail}`)
@@ -934,11 +1094,21 @@ async function callGemini(apiKey: string, body: string): Promise<any> {
           ? new Error('The AI examiner is busy right now. Please try the check again in a few minutes.')
           : err
       } catch (e) {
-        lastError = e instanceof Error && e.name === 'AbortError'
+        const abort = e instanceof Error && e.name === 'AbortError'
+        console.log(
+          `gemini ${abort ? 'timeout' : 'error'} ${model} after ${Date.now() - startedAt}ms`,
+        )
+        lastError = abort
           ? new Error('The check timed out. Please try again.')
           : e instanceof Error
             ? e
             : new Error(String(e))
+        // A TIMEOUT IS NOT A BUSY SIGNAL. 503 and 429 pass in a second or two,
+        // so they are worth sitting out on the same model; a model that did not
+        // answer inside the whole per-call budget will not answer faster on an
+        // identical retry. Three of those in a row ate the run before the
+        // faster fallbacks were ever reached. Time out once, change model.
+        if (abort) break
       } finally {
         clearTimeout(timer)
       }

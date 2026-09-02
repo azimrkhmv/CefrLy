@@ -13,8 +13,10 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders, json } from './cors.ts'
 
 const BUCKET = 'speaking-temp'
-/** Clips older than this are nobody's any more. */
-const ORPHAN_MS = 60 * 60 * 1000
+/** Clips older than this are nobody's any more. TEMPORARILY 3h (2026-09-02):
+ *  a Gemini slowdown is failing checks and students need the retry window to
+ *  outlive the incident. Put back to 1h when grading is stable. */
+const ORPHAN_MS = 3 * 60 * 60 * 1000
 /** An attempt still "grading" after this long is never finishing — the function
  *  died mid-call, leaving the student watching a spinner forever. */
 const STUCK_MS = 15 * 60 * 1000
