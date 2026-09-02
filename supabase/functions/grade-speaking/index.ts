@@ -59,11 +59,15 @@ const MAX_OUTPUT_TOKENS = 8192
 /** One block's share of that ceiling. Each call now writes three transcripts at
  *  most, so the old whole-paper budget would only ever hide a runaway. */
 const BLOCK_OUTPUT_TOKENS = 4096
-/** Per-call ceiling. The calls run side by side, so this is a whole block's
- *  budget, not the paper's. Set to 60s it was the failure: a long Part 2 turn
- *  needs longer than that on a busy day, and the call was cut off, retried on
- *  the SAME model, and cut off again until the run budget was gone. */
-const GEMINI_TIMEOUT_MS = 95_000
+/** Per-TRY ceiling, deliberately impatient. At 95s one hanging primary model
+ *  consumed the whole runway: every block waited the full 95s, the fallback
+ *  models got scraps, and OpenRouter never got a turn (run 7, 2026-09-02).
+ *  A model that hasn't answered in 40s is not about to; move down the ladder —
+ *  the healthy lanes answer in 7-25s. */
+const GEMINI_TIMEOUT_MS = 40_000
+/** Time callGemini must LEAVE for the OpenRouter fallback after it. The ladder
+ *  is worthless if the direct lane is allowed to spend the reserve too. */
+const OR_RESERVE_MS = 40_000
 
 interface AnswerIn {
   questionIndex: number
@@ -791,8 +795,23 @@ async function callModel(
   neutral?: NeutralRequest,
 ): Promise<any> {
   const started = Date.now()
+  // OPENROUTER_FIRST=1 flips the ladder during a Google-direct incident: the
+  // OpenRouter lane answers in seconds while the direct lane hangs for its
+  // whole timeout, so leading with it removes a ~40s tax from every check.
+  // Unset the secret when Google recovers — the direct lane is cheaper.
+  const orKey = Deno.env.get('OPENROUTER_API_KEY')
+  const orFirst = Deno.env.get('OPENROUTER_FIRST') === '1'
+  let orSpent = false
+  if (orFirst && orKey && neutral) {
+    orSpent = true
+    try {
+      return await callOpenRouter(orKey, neutral, Math.max(30_000, (budgetMs ?? 95_000) - 40_000))
+    } catch (e) {
+      console.log(`openrouter-first failed (${String(e).slice(0, 80)}); trying Gemini direct`)
+    }
+  }
   try {
-    const payload = await callGemini(apiKey, body, budgetMs)
+    const payload = await callGemini(apiKey, body, budgetMs != null ? budgetMs - (Date.now() - started) : undefined)
 
     const candidate = payload?.candidates?.[0]
     const text = candidate?.content?.parts?.[0]?.text
@@ -808,9 +827,9 @@ async function callModel(
     // all retries — a real outage, 2026-09-02) used to be the end of the road.
     // OpenRouter reaches the same models through separately provisioned
     // capacity, so it regularly answers while the direct lane is jammed.
-    const orKey = Deno.env.get('OPENROUTER_API_KEY')
+    // (Skipped when the OpenRouter-first path above already spent its shot.)
     const remaining = budgetMs != null ? budgetMs - (Date.now() - started) : 60_000
-    if (!orKey || !neutral || remaining < 10_000) throw e
+    if (orSpent || !orKey || !neutral || remaining < 10_000) throw e
     console.log(`gemini lane exhausted (${String(e).slice(0, 80)}); trying OpenRouter`)
     return await callOpenRouter(orKey, neutral, remaining)
   }
@@ -1047,7 +1066,14 @@ const TOTAL_BUDGET_MS = 132_000
 
 // deno-lint-ignore no-explicit-any
 async function callGemini(apiKey: string, body: string, budgetMs?: number): Promise<any> {
-  const deadline = Date.now() + Math.min(budgetMs ?? TOTAL_BUDGET_MS, TOTAL_BUDGET_MS)
+  // Reserve the fallback's share up front (when a fallback exists to reserve
+  // for): the direct lane gets the rest, floor 30s so it can still try once.
+  const granted = Math.min(budgetMs ?? TOTAL_BUDGET_MS, TOTAL_BUDGET_MS)
+  // No reserve when OpenRouter led and already had its turn — the direct lane
+  // is the LAST resort then and may spend everything that is left.
+  const orWaiting =
+    Deno.env.get('OPENROUTER_API_KEY') && Deno.env.get('OPENROUTER_FIRST') !== '1'
+  const deadline = Date.now() + Math.max(30_000, granted - (orWaiting ? OR_RESERVE_MS : 0))
   // The fallbacks are only worth trying if they are not the model that just
   // failed, and a retired name must never come back through this door.
   const models = [MODEL, ...FALLBACK_MODELS.filter((m) => m !== MODEL && !RETIRED_MODELS.includes(m))]
