@@ -56,7 +56,12 @@ const MAX_ATTEMPTS_PER_HOUR = 10
 /** Ceilings on the model call itself. Without a cap a runaway generation comes
  *  back truncated, JSON.parse throws, and the retry pays full price again. */
 const MAX_OUTPUT_TOKENS = 8192
-const GEMINI_TIMEOUT_MS = 150_000
+/** One block's share of that ceiling. Each call now writes three transcripts at
+ *  most, so the old whole-paper budget would only ever hide a runaway. */
+const BLOCK_OUTPUT_TOKENS = 4096
+/** Per-call ceiling. Deliberately far below the platform's wall-clock limit:
+ *  the calls run side by side, so one slow block must not eat the whole run. */
+const GEMINI_TIMEOUT_MS = 60_000
 
 interface AnswerIn {
   questionIndex: number
@@ -510,10 +515,12 @@ ${RUBRIC_TEXT}
 YOU DO NOT AWARD MARKS. The mark is calculated from your judgement, so judge
 accurately and let the arithmetic happen elsewhere.
 
-FIRST, "profile" — ONE judgement of how well THIS STUDENT speaks, covering the
-whole attempt. Not one per task. The same student must not come out A2 on an
-easy question and B1 on a hard one: you are rating the speaker, never the
-difficulty of what they were asked. Give the CEFR level
+You are given ONE task of a longer paper. Judge only what is here; another pass
+puts the whole sitting together afterwards.
+
+FIRST, "profile" — ONE judgement of how well THIS STUDENT speaks, from what you
+can hear in these recordings. Not one per question. You are rating the speaker,
+never the difficulty of what they were asked. Give the CEFR level
 (below_A2 | A2 | B1 | B2 | C1) for each of:
   · grammar — B1 means simple structures are right but complex ones break down;
     B2 means complex structures are attempted and mostly work; C1 means a range
@@ -567,16 +574,139 @@ Rules:
   with an empty transcript, and leave it out of "onTopic" — the rubric turns on
   HOW MANY questions were answered on topic, so a block with a missing answer
   cannot reach the top mark.
-- Write every comment in simple English; the students are Uzbek learners.
-- "fixFirst" is the single most valuable thing to work on next, in one sentence.`
+- Write every comment in simple English; the students are Uzbek learners.`
 }
 
-/** Download the clips and ask Gemini once. */
+/** The pieces of the full schema, reused by the per-block and profile calls. */
+const BLOCK_CALL_SCHEMA = {
+  type: 'object',
+  properties: {
+    answers: RESPONSE_SCHEMA.properties.answers,
+    profile: RESPONSE_SCHEMA.properties.profile,
+    blocks: RESPONSE_SCHEMA.properties.blocks,
+  },
+  required: ['answers', 'profile', 'blocks'],
+  propertyOrdering: ['answers', 'profile', 'blocks'],
+}
+
+const PROFILE_CALL_SCHEMA = {
+  type: 'object',
+  properties: {
+    profile: RESPONSE_SCHEMA.properties.profile,
+    summary: { type: 'string' },
+    fixFirst: { type: 'string' },
+  },
+  required: ['profile', 'summary', 'fixFirst'],
+  propertyOrdering: ['profile', 'summary', 'fixFirst'],
+}
+
+/**
+ * ONE CALL PER BLOCK, RUN SIDE BY SIDE — and the whole paper's transcripts are
+ * then read back in ONE text-only call that fixes the single profile.
+ *
+ * The rubric still forbids judging an answer alone (a block's mark depends on
+ * how many of ITS questions were answered), and it still forbids judging the
+ * same speaker twice (a profile per block made one student A2 in Part 1 and B1
+ * in Part 2). A block is the smallest unit that satisfies the first rule, and
+ * the profile pass satisfies the second.
+ *
+ * The reason for splitting is time, and it is not a nicety: eight recordings in
+ * one call meant one model response writing eight transcripts plus all the
+ * feedback, and the platform kills this function at 150 seconds. Past that the
+ * process dies mid-fetch — no error, no 'failed' row, the student watching
+ * "checking…" forever. Four smaller responses generated in parallel finish in
+ * roughly the time of the longest one.
+ */
 async function gradeWithGemini(
   admin: Client,
   apiKey: string,
   answers: AnswerIn[],
 ): Promise<GeminiOut> {
+  // Grouped in the order the blocks appear, so the merged output stays in paper
+  // order without a second sort of anything but the answers.
+  const groups = new Map<string, AnswerIn[]>()
+  for (const a of answers) {
+    const key = blockForPart(a.partType)
+    const list = groups.get(key)
+    if (list) list.push(a)
+    else groups.set(key, [a])
+  }
+
+  const parts = await Promise.all(
+    [...groups.entries()].map(([key, list]) => gradeBlock(admin, apiKey, key, list)),
+  )
+
+  const mergedAnswers = parts
+    .flatMap((p) => p.answers ?? [])
+    .sort((a, b) => a.questionIndex - b.questionIndex)
+  const mergedBlocks = parts.flatMap((p) => p.blocks ?? [])
+
+  const overall = await judgeSpeaker(apiKey, mergedAnswers, parts)
+
+  return {
+    answers: mergedAnswers,
+    blocks: mergedBlocks,
+    profile: overall.profile,
+    summary: overall.summary,
+    fixFirst: overall.fixFirst,
+  }
+}
+
+/** Grade ONE block: its clips, its questions, its own reading of the speaker. */
+async function gradeBlock(
+  admin: Client,
+  apiKey: string,
+  blockKey: string,
+  answers: AnswerIn[],
+): Promise<GeminiOut> {
+  // A block nobody recorded costs no call: the paper still has to show the
+  // questions as unanswered, which is arithmetic, not judgement.
+  if (!answers.some((a) => a.path && !a.missing)) {
+    return {
+      answers: answers.map((a) => ({
+        questionIndex: a.questionIndex,
+        transcript: '',
+        wordsPerMinute: 0,
+        fillerCount: 0,
+        pronunciation: '',
+        fluency: '',
+        errors: [],
+        strengths: [],
+        improved: '',
+      })),
+      profile: null as unknown as SpeakingProfile,
+      blocks: [
+        {
+          block: blockKey,
+          onTopic: [],
+          coverage: 'partial',
+          balanced: false,
+          reason: 'No answer was recorded for this task.',
+        },
+      ],
+      summary: '',
+      fixFirst: '',
+    }
+  }
+
+  const payload = await callModel(
+    apiKey,
+    JSON.stringify({
+      contents: [{ parts: await promptParts(admin, answers) }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: BLOCK_CALL_SCHEMA,
+        temperature: 0,
+        thinkingConfig: { thinkingLevel: 'low' },
+        maxOutputTokens: BLOCK_OUTPUT_TOKENS,
+      },
+    }),
+  )
+  return payload as GeminiOut
+}
+
+/** The prompt plus this block's audio, in the order the prompt numbers them. */
+async function promptParts(admin: Client, answers: AnswerIn[]): Promise<unknown[]> {
   // Downloaded together, not one after another: eight clips fetched in series
   // added seconds of pure waiting before the model even saw the first one. The
   // ORDER of the attachments still matters (the prompt numbers them), so the
@@ -595,25 +725,13 @@ async function gradeWithGemini(
     }),
   )
 
-  const parts: unknown[] = [{ text: buildPrompt(answers) }, ...clips.filter(Boolean)]
+  return [{ text: buildPrompt(answers) }, ...clips.filter(Boolean)]
+}
 
-  const body = JSON.stringify({
-    contents: [{ parts }],
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: RESPONSE_SCHEMA,
-      temperature: 0,
-      // Scoring against a fixed rubric needs no deliberation, and thinking
-      // tokens are billed as output.
-      thinkingConfig: { thinkingLevel: 'low' },
-      // A ceiling on the reply. Eight transcripts plus feedback land well under
-      // this; anything approaching it is the model looping, and an uncapped loop
-      // returns JSON cut off mid-object, which reads to the student as a failed
-      // check they then pay to retry.
-      maxOutputTokens: MAX_OUTPUT_TOKENS,
-    },
-  })
-
+/** Call Gemini and hand back the parsed JSON, or throw something a student can
+ *  read. Every call in this function goes through here. */
+// deno-lint-ignore no-explicit-any
+async function callModel(apiKey: string, body: string): Promise<any> {
   const payload = await callGemini(apiKey, body)
 
   const candidate = payload?.candidates?.[0]
@@ -624,7 +742,126 @@ async function gradeWithGemini(
   if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
     throw new Error(`The check was cut short (${candidate.finishReason})`)
   }
-  return JSON.parse(text) as GeminiOut
+  return JSON.parse(text)
+}
+
+/**
+ * ONE judgement of the speaker, over the whole paper.
+ *
+ * Text only, so it is quick: the transcripts are already written, and the two
+ * things that genuinely need ears — pronunciation and fluency — are carried in
+ * as the levels each block's own listening produced. If this call fails the
+ * grade is NOT lost: the block readings are averaged instead, which is a worse
+ * profile but an honest one, and losing the paper is worse than either.
+ */
+async function judgeSpeaker(
+  apiKey: string,
+  answers: AnswerOut[],
+  parts: GeminiOut[],
+): Promise<{ profile: SpeakingProfile; summary: string; fixFirst: string }> {
+  const heard = parts
+    .map((p) => p.profile?.criteria)
+    .filter(Boolean) as SpeakingProfile['criteria'][]
+  if (heard.length === 0) throw new Error('Gemini returned no judgement of the speaker')
+
+  const transcripts = answers
+    .map((a) => `questionIndex ${a.questionIndex}: ${a.transcript || '(nothing said)'}`)
+    .join('\n\n')
+  const listened = heard
+    .map(
+      (c, i) =>
+        `Task ${i + 1}: pronunciation ${c.pronunciation}, fluency ${c.fluency}, ` +
+        `grammar ${c.grammar}, vocabulary ${c.vocabulary}, coherence ${c.coherence}`,
+    )
+    .join('\n')
+
+  try {
+    const out = await callModel(
+      apiKey,
+      JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `You are an examiner for the Uzbek Multilevel (CEFR) English speaking exam.
+
+${RUBRIC_TEXT}
+
+Below is EVERYTHING one student said in one sitting, task by task, followed by
+what the examiner who listened to each task judged.
+
+Give ONE judgement of how well THIS STUDENT speaks — grammar, vocabulary,
+pronunciation, fluency, coherence, each as below_A2 | A2 | B1 | B2 | C1 — plus
+"evidence": the quotes from these transcripts that put those levels where they
+are. You are rating the speaker, never the difficulty of the task: the same
+student must not come out A2 on an easy question and B1 on a hard one. Where the
+tasks disagree, weigh the longer answers more heavily.
+
+You cannot hear the recordings. For PRONUNCIATION and FLUENCY, take the levels
+from the per-task judgements below — those were made with the audio. For
+grammar, vocabulary and coherence, judge the transcripts yourself. Errors in
+basic agreement ("he love", "picture show") are A2 or below, whatever else is
+present.
+
+Then "summary": a few sentences to the student about their speaking overall, and
+"fixFirst": the single most valuable thing to work on next, in one sentence.
+Write both in simple English; the students are Uzbek learners.
+
+WHAT THEY SAID:
+
+${transcripts}
+
+WHAT EACH TASK'S EXAMINER JUDGED:
+
+${listened}`,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: PROFILE_CALL_SCHEMA,
+          temperature: 0,
+          thinkingConfig: { thinkingLevel: 'low' },
+          maxOutputTokens: MAX_OUTPUT_TOKENS,
+        },
+      }),
+    )
+    if (!out?.profile?.criteria) throw new Error('no profile')
+    return {
+      profile: out.profile as SpeakingProfile,
+      summary: out.summary ?? '',
+      fixFirst: out.fixFirst ?? '',
+    }
+  } catch {
+    return {
+      profile: averageProfile(heard, parts),
+      summary: parts.map((p) => p.blocks?.[0]?.reason ?? '').filter(Boolean).join(' '),
+      fixFirst: '',
+    }
+  }
+}
+
+/** Fallback only: the middle of what each task's examiner heard. Rounded DOWN
+ *  on a tie, because inventing half a level upwards is a mark we cannot defend. */
+function averageProfile(
+  heard: SpeakingProfile['criteria'][],
+  parts: GeminiOut[],
+): SpeakingProfile {
+  const dims = ['grammar', 'vocabulary', 'pronunciation', 'fluency', 'coherence'] as const
+  const criteria = {} as SpeakingProfile['criteria']
+  for (const dim of dims) {
+    const ranks = heard
+      .map((c) => LEVELS.indexOf(c[dim]))
+      .filter((n) => n >= 0)
+      .sort((a, b) => a - b)
+    const middle = ranks.length ? ranks[Math.floor((ranks.length - 1) / 2)] : 0
+    criteria[dim] = LEVELS[middle] as SpeakingProfile['criteria'][typeof dim]
+  }
+  return {
+    criteria,
+    evidence: parts.map((p) => p.profile?.evidence ?? '').filter(Boolean).join(' '),
+  }
 }
 
 /**
@@ -646,8 +883,14 @@ const FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash']
 const TRIES_PER_MODEL = 3
 const BACKOFF_MS = [2000, 6000]
 /** Whole-call budget. The grade runs in waitUntil, which the platform still
- *  kills at its own wall-clock limit — retrying past this just loses the row. */
-const TOTAL_BUDGET_MS = 240_000
+ *  kills at its own wall-clock limit — retrying past this just loses the row.
+ *
+ *  THE LIMIT IS 150 SECONDS, NOT 240. Set above it, this budget was decoration:
+ *  a full mock whose single model call ran long was killed by the platform
+ *  mid-fetch, so the catch that writes 'failed' never ran and the attempt sat on
+ *  'grading' forever with no error and no retry button (2026-09-02, two real
+ *  students' papers). Everything here now has to finish well inside it. */
+const TOTAL_BUDGET_MS = 110_000
 
 // deno-lint-ignore no-explicit-any
 async function callGemini(apiKey: string, body: string): Promise<any> {

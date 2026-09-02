@@ -586,9 +586,15 @@ function FailedState({
 }) {
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
-  const retryable =
-    !!attempt.audio_manifest?.length &&
-    Date.now() - new Date(attempt.created_at).getTime() < 60 * 60 * 1000
+  // THE MANIFEST IS THE EVIDENCE, NOT THE CLOCK. This used to hide the button an
+  // hour after the attempt was recorded, on the assumption the sweep had run —
+  // but the sweep runs hourly, on its own schedule, and grade-speaking clears
+  // the manifest the moment it succeeds. So a student whose check had failed sat
+  // in front of "your recordings have been deleted" while all eight clips were
+  // still in the bucket, an hour of their exam thrown away for nothing
+  // (2026-09-02). If the audio really is gone the retry says so, from the server,
+  // which is the only place that knows.
+  const retryable = !!attempt.audio_manifest?.length
 
   const retry = async () => {
     setBusy(true)

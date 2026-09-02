@@ -65,6 +65,13 @@ Deno.serve(async (req) => {
 
   // A crashed grade leaves the row spinning. Fail it so the student sees what
   // happened (and can retry, if the clips are still inside the hour).
+  //
+  // AGE OF THE RUN, NOT OF THE ATTEMPT. Keyed on created_at this killed live
+  // retries: a student retrying an attempt recorded an hour ago was already
+  // past STUCK_MS the instant the run began, so the next sweep marked their
+  // healthy in-flight check as failed and they never got a score.
+  // grading_started_at is stamped at the top of every run for exactly this.
+  const runCutoff = new Date(Date.now() - STUCK_MS).toISOString()
   const { data: unstuck } = await admin
     .from('speaking_attempts')
     .update({
@@ -72,7 +79,10 @@ Deno.serve(async (req) => {
       error_message: 'The check stopped unexpectedly. Please try again.',
     })
     .eq('status', 'grading')
-    .lt('created_at', new Date(Date.now() - STUCK_MS).toISOString())
+    .or(
+      `grading_started_at.lt.${runCutoff},` +
+        `and(grading_started_at.is.null,created_at.lt.${runCutoff})`,
+    )
     .select('id')
 
   return json({ deleted, unstuck: unstuck?.length ?? 0 })
