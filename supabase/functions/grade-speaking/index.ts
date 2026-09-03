@@ -571,7 +571,9 @@ evidence contradicts a level, change the level.
 
 THEN one entry for each of these blocks — ${blocksPresent.join(', ')} — with:
 - "onTopic": the list of that block's questions the student ACTUALLY ANSWERED,
-  each with the exact words from their transcript that answer it. This is the
+  each with its questionIndex EXACTLY AS PRINTED in the list below (never
+  renumber from 0 or 1) and the exact words from their transcript that answer
+  it. This is the
   test: if you cannot quote the part of the answer that addresses the question,
   it was NOT answered, and it does not belong in the list. Two minutes of talking
   around a question — repeating it back, or saying it is important — is not an
@@ -1163,9 +1165,26 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
   const questionsIn = (key: BlockKey) =>
     answers.filter((a) => blockForPart(a.partType) === key).length
 
-  // The transcripts, to check the model's "they answered it" quotes against.
-  const transcriptFor = (questionIndex: number) =>
-    (out.answers?.find((a) => a.questionIndex === questionIndex)?.transcript ?? '').toLowerCase()
+  // Case and punctuation must not decide a mark: the model writes the quote and
+  // the transcript in the same response, but an apostrophe or a comma rendered
+  // differently between the two used to fail the substring check.
+  const normalize = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+
+  // ALL of a block's transcripts pooled, because the model's onTopic
+  // questionIndex is not trustworthy: graded one block per call since the
+  // parallel split, it numbers the block's questions relative to the call
+  // (0/1) instead of the paper (6/7), so a REAL quote was checked against the
+  // WRONG question's transcript and whole blocks of C1 speech scored 0. A
+  // quote found anywhere in the block's own speech proves the answer; the
+  // index only ever chose which transcript to search, so pooling loses nothing
+  // a wrong index hadn't already lost.
+  const blockTranscript = (key: BlockKey) =>
+    normalize(
+      answers
+        .filter((a) => blockForPart(a.partType) === key)
+        .map((a) => out.answers?.find((x) => x.questionIndex === a.questionIndex)?.transcript ?? '')
+        .join('\n'),
+    )
 
   const profile = out.profile?.criteria ?? null
 
@@ -1175,11 +1194,18 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
     // A question counts as answered only if the quote offered as proof is
     // REALLY IN what the student said. Without this the quote requirement is
     // just a prompt instruction, and prompt instructions get ignored under load.
+    // Duplicate quotes count once — one sentence cannot answer three questions.
+    const pool = blockTranscript(b.key)
+    const seenQuotes = new Set<string>()
     const verified = (judged?.onTopic ?? []).filter((t) => {
-      const quote = (t?.quote ?? '').trim().toLowerCase()
-      if (quote.length < 3) return false
-      const said = transcriptFor(Number(t.questionIndex))
-      return said.length > 0 && said.includes(quote)
+      const quote = normalize(t?.quote ?? '')
+      if (quote.length < 3 || seenQuotes.has(quote)) return false
+      seenQuotes.add(quote)
+      if (pool.includes(quote)) return true
+      // Logged because a failed verification is silent otherwise: it presents
+      // as "off topic" and nobody can tell a lying model from a broken check.
+      console.log(`quote verify FAILED ${b.key}: "${(t?.quote ?? '').slice(0, 80)}"`)
+      return false
     })
     const questionCount = questionsIn(b.key)
 
