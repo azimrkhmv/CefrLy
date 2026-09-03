@@ -968,4 +968,53 @@ this volume. What was actually wrong, all fixed:
 NOTE: the Supabase CLI has no access token in this environment (`supabase login`
 needs a TTY); grade-speaking v8 was deployed via the Supabase MCP
 deploy_edge_function with all four files inline, and verified byte-for-byte
-against the local copy afterwards.
+against the local copy afterwards. WHEN THE SUPABASE MCP TOKEN EXPIRES, both
+deploys and writes still work through the management API with the
+SUPABASE_ACCESS_TOKEN in .env.local: `POST /v1/projects/<ref>/functions/deploy
+?slug=grade-speaking` (multipart: a `metadata` JSON part + one `file` part per
+.ts file) and `POST /v1/projects/<ref>/database/query` ({"query": "..."} — this
+one accepts WRITES, unlike the MCP's execute_sql which is read-only).
+
+## SPEAKING MARKS: two defects found and fixed 2026-09-03 (v27, v28)
+A student who answered every question at B2 was shown **35/75 Below B1**, then
+briefly **75/75 C1**. Both numbers were wrong, for two unrelated reasons.
+1. QUOTE VERIFICATION LOOKED IN THE WRONG PLACE (v27, commit d5e254b). A block
+   only scores if the model can quote the words that answer each question, and
+   the server checks that quote against the transcript of the questionIndex the
+   model attached. Since the per-block parallel split each call numbers its own
+   questions from 0, so Part 2's quote (real index 6) was searched inside Part
+   1's answer, failed, and `scoreBlock` hard-zeroed a fully-answered block.
+   Verification now normalises case/punctuation, searches ALL of that block's
+   transcripts (the index only ever chose where to look), dedupes quotes, and
+   LOGS every failure — silent failure was indistinguishable from "off topic".
+   Never restore the per-index lookup.
+2. ONE OPINION DECIDED THE WHOLE PAPER (v28). With everything answered the mark
+   came entirely from `overallLevel`, the MEDIAN of the five criteria — so the
+   paper had four possible outcomes (75/64/49/32) and the two weakest criteria
+   were discarded outright: A2 grammar + A2 vocabulary behind C1 pronunciation,
+   fluency and coherence scored a flawless 75/75. Three changes:
+   · `overallLevel` = min(median, weakest + 1). One criterion may lag a level
+     for free (good speakers are uneven); a two-level gap pulls the reading down.
+   · The long turns' top marks (q7's 5 = "above B2", q8's 6 = "above C1") now
+     require `allAtLeast(criteria, C1)` — every criterion, not just the median.
+     q8's 6 is the only mark that can carry a paper to 21/21; it was automatic.
+   · `judgeSpeaker` runs TWICE in parallel (temperature 0 and 0.4 — identical
+     settings give one opinion twice) and takes the per-criterion LOWER, with
+     the shown summary/evidence from whichever judge marked lower. Both judges'
+     readings plus the per-task audio readings are stored in `result.review`,
+     because the recordings are deleted seconds after a successful grade and
+     without it a challenged mark cannot be re-examined at all.
+   Measured effect: uniform C1 still scores 75; C1 with B2 grammar 67 (still
+   C1); A2 grammar+vocabulary behind a C1 surface drops 75 → 49.
+OWNER'S CALLS (2026-09-03, do not undo): NO automatic penalty for error density
+— "high level students also make silly mistakes"; the prompt's old line
+("errors in basic agreement are A2 or below, whatever else is present") was
+softened to judge the PATTERN and treat basic-agreement errors as A2 evidence
+only when SYSTEMATIC. NO human review queue for high scores — rejected.
+STILL OPEN, and nothing about the grader is measurable until it is done: there
+is NO calibration set. Grade 20-30 of the owner's real papers that carry
+official human marks (the gitignored `Speaking band score/` folder,
+Multilevelzonemock) and compare, or every future tuning is guesswork. Related:
+successful grades delete their audio within seconds (`deleteClips`), so a
+disputed mark can never be re-heard — only failed/abandoned clips survive, for
+3h (`ORPHAN_MS` in sweep-speaking-audio).

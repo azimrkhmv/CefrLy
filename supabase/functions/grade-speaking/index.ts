@@ -379,12 +379,23 @@ interface BlockOut {
   reason: string
 }
 
+/** The audit trail behind a profile: what each judge said, where they split,
+ *  and what the examiners who heard the audio made of each task. Stored on the
+ *  attempt because the recordings are gone minutes later — without it a
+ *  disputed grade cannot be traced at all. */
+interface GradeReview {
+  disagreedOn: string[]
+  judges: SpeakingProfile['criteria'][]
+  heardPerTask: SpeakingProfile['criteria'][]
+}
+
 interface GeminiOut {
   answers: AnswerOut[]
   profile: SpeakingProfile
   blocks: BlockOut[]
   summary: string
   fixFirst: string
+  review?: GradeReview
 }
 
 const LEVELS = ['below_A2', 'A2', 'B1', 'B2', 'C1']
@@ -557,8 +568,11 @@ never the difficulty of what they were asked. Give the CEFR level
 (below_A2 | A2 | B1 | B2 | C1) for each of:
   · grammar — B1 means simple structures are right but complex ones break down;
     B2 means complex structures are attempted and mostly work; C1 means a range
-    of them is used accurately with only slips. Errors in BASIC agreement
-    ("he love", "picture show") are A2 or below, whatever else is present.
+    of them is used accurately with only slips. Judge the PATTERN, not isolated
+    mistakes: strong speakers slip too, and a handful of errors in otherwise
+    accurate, ambitious speech does not cap the level. Errors in BASIC agreement
+    ("he love", "picture show") point to A2 only when they are SYSTEMATIC —
+    recurring across answers rather than a few one-off slips.
   · vocabulary — B1 is enough for the topic with visible wrong choices; B2 covers
     the topic with occasional imprecision; C1 is precise and varied.
   · pronunciation — B1 is intelligible but mispronunciation sometimes obscures
@@ -685,6 +699,7 @@ async function gradeWithGemini(
     profile: overall.profile,
     summary: overall.summary,
     fixFirst: overall.fixFirst,
+    review: overall.review,
   }
 }
 
@@ -921,7 +936,12 @@ async function judgeSpeaker(
   answers: AnswerOut[],
   parts: GeminiOut[],
   deadline: number,
-): Promise<{ profile: SpeakingProfile; summary: string; fixFirst: string }> {
+): Promise<{
+  profile: SpeakingProfile
+  summary: string
+  fixFirst: string
+  review?: GradeReview
+}> {
   const heard = parts
     .map((p) => p.profile?.criteria)
     .filter(Boolean) as SpeakingProfile['criteria'][]
@@ -969,9 +989,11 @@ tasks disagree, weigh the longer answers more heavily.
 
 You cannot hear the recordings. For PRONUNCIATION and FLUENCY, take the levels
 from the per-task judgements below — those were made with the audio. For
-grammar, vocabulary and coherence, judge the transcripts yourself. Errors in
-basic agreement ("he love", "picture show") are A2 or below, whatever else is
-present.
+grammar, vocabulary and coherence, judge the transcripts yourself. Judge the
+PATTERN, not isolated mistakes: strong speakers slip too, and a handful of
+errors in otherwise accurate, ambitious speech does not cap the level. Errors in
+basic agreement ("he love", "picture show") point to A2 only when they are
+SYSTEMATIC — recurring across answers rather than a few one-off slips.
 
 Then "summary": a few sentences to the student about their speaking overall, and
 "fixFirst": the single most valuable thing to work on next, in one sentence.
@@ -985,36 +1007,108 @@ WHAT EACH TASK'S EXAMINER JUDGED:
 
 ${listened}`
 
-  try {
-    const out = await callModel(
-      apiKey,
-      JSON.stringify({
-        contents: [{ parts: [{ text: judgePrompt }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          responseSchema: PROFILE_CALL_SCHEMA,
-          temperature: 0,
-          thinkingConfig: { thinkingLevel: 'low' },
-          maxOutputTokens: MAX_OUTPUT_TOKENS,
+  // TWO INDEPENDENT READINGS OF THE SAME PAPER, and the lower one wins.
+  //
+  // The whole mark hangs off this one judgement — with every question answered,
+  // the profile alone decides between 75, 64, 49 and 32 out of 75. Two runs of
+  // one student's paper have landed a whole band apart, so a grade that depends
+  // on which run they happened to get is not a grade. Both calls are text-only
+  // and run side by side, so this costs a few cents and no extra waiting.
+  //
+  // Disagreements resolve DOWNWARDS, per criterion. The two failures are not
+  // equal: a student marked too low asks us to look again, a student marked too
+  // high is told they are ready for an exam they will fail.
+  const judgeOnce = async (temperature: number) => {
+    try {
+      const out = await callModel(
+        apiKey,
+        JSON.stringify({
+          contents: [{ parts: [{ text: judgePrompt }] }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseSchema: PROFILE_CALL_SCHEMA,
+            temperature,
+            thinkingConfig: { thinkingLevel: 'low' },
+            maxOutputTokens: MAX_OUTPUT_TOKENS,
+          },
+        }),
+        remaining,
+        {
+          prompt: judgePrompt,
+          clips: [],
+          schema: PROFILE_CALL_SCHEMA,
+          maxTokens: MAX_OUTPUT_TOKENS,
         },
-      }),
-      remaining,
-      { prompt: judgePrompt, clips: [], schema: PROFILE_CALL_SCHEMA, maxTokens: MAX_OUTPUT_TOKENS },
-    )
-    if (!out?.profile?.criteria) throw new Error('no profile')
-    return {
-      profile: out.profile as SpeakingProfile,
-      summary: out.summary ?? '',
-      fixFirst: out.fixFirst ?? '',
+      )
+      if (!out?.profile?.criteria) return null
+      return {
+        profile: out.profile as SpeakingProfile,
+        summary: (out.summary ?? '') as string,
+        fixFirst: (out.fixFirst ?? '') as string,
+      }
+    } catch {
+      return null
     }
-  } catch {
+  }
+
+  // Not both at temperature 0: identical settings give one opinion twice over,
+  // which proves nothing. A small spread makes the second reading genuinely
+  // independent while keeping it inside the same rubric.
+  const [first, second] = await Promise.all([judgeOnce(0), judgeOnce(0.4)])
+  const votes = [first, second].filter(Boolean) as NonNullable<
+    Awaited<ReturnType<typeof judgeOnce>>
+  >[]
+
+  if (votes.length === 0) {
     return {
       profile: averageProfile(heard, parts),
       summary: parts.map((p) => p.blocks?.[0]?.reason ?? '').filter(Boolean).join(' '),
       fixFirst: '',
     }
   }
+  if (votes.length === 1) return votes[0]
+
+  const { criteria, disagreedOn } = lowerOf(votes[0].profile, votes[1].profile)
+  // The words shown to the student come from whichever judge marked LOWER, so
+  // the reasoning on screen matches the level actually awarded.
+  const strictest = rankSum(votes[0].profile) <= rankSum(votes[1].profile) ? votes[0] : votes[1]
+  if (disagreedOn.length) {
+    console.log(`profile judges disagreed on ${disagreedOn.join(', ')} — took the lower`)
+  }
+  return {
+    profile: { criteria, evidence: strictest.profile.evidence ?? '' },
+    summary: strictest.summary,
+    fixFirst: strictest.fixFirst,
+    review: {
+      disagreedOn,
+      judges: votes.map((v) => v.profile.criteria),
+      // What the examiners who actually HEARD each task made of the speaker,
+      // kept so a disputed grade can be traced without the audio.
+      heardPerTask: heard,
+    },
+  }
 }
+
+const PROFILE_DIMS = ['grammar', 'vocabulary', 'pronunciation', 'fluency', 'coherence'] as const
+
+/** Per-criterion lower of two readings, plus which ones the judges split on. */
+function lowerOf(a: SpeakingProfile, b: SpeakingProfile) {
+  const criteria = {} as SpeakingProfile['criteria']
+  const disagreedOn: string[] = []
+  for (const dim of PROFILE_DIMS) {
+    const ra = LEVELS.indexOf(a.criteria?.[dim])
+    const rb = LEVELS.indexOf(b.criteria?.[dim])
+    // A level the schema does not know is not evidence of anything; defer to
+    // the judge that returned a real one rather than scoring it as below_A2.
+    const rank = ra < 0 ? rb : rb < 0 ? ra : Math.min(ra, rb)
+    if (ra >= 0 && rb >= 0 && ra !== rb) disagreedOn.push(dim)
+    criteria[dim] = LEVELS[Math.max(0, rank)] as SpeakingProfile['criteria'][typeof dim]
+  }
+  return { criteria, disagreedOn }
+}
+
+const rankSum = (p: SpeakingProfile) =>
+  PROFILE_DIMS.reduce((n, d) => n + Math.max(0, LEVELS.indexOf(p.criteria?.[d])), 0)
 
 /** Fallback only: the middle of what each task's examiner heard. Rounded DOWN
  *  on a tie, because inventing half a level upwards is a mark we cannot defend. */
@@ -1022,9 +1116,8 @@ function averageProfile(
   heard: SpeakingProfile['criteria'][],
   parts: GeminiOut[],
 ): SpeakingProfile {
-  const dims = ['grammar', 'vocabulary', 'pronunciation', 'fluency', 'coherence'] as const
   const criteria = {} as SpeakingProfile['criteria']
-  for (const dim of dims) {
+  for (const dim of PROFILE_DIMS) {
     const ranks = heard
       .map((c) => LEVELS.indexOf(c[dim]))
       .filter((n) => n >= 0)
@@ -1281,6 +1374,10 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
       // The one language judgement the whole mark rests on, shown to the student
       // with the quotes behind it — so a band is something they can check.
       profile: out.profile?.criteria ? out.profile : undefined,
+      // Not shown to the student: the second judge's reading and the per-task
+      // listening, kept so a challenged grade can be re-examined after the
+      // recordings are deleted.
+      review: out.review,
       // Stored so the page never has to infer the denominator from the blocks
       // it happens to have: skipping a whole part would otherwise turn 12/21
       // into a flattering "12 of 15".

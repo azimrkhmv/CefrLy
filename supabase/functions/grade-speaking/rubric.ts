@@ -221,7 +221,23 @@ export interface BlockJudgement {
  *  not the minimum (one weak accent would drag a fluent speaker to A2). */
 export function overallLevel(criteria: Record<Criterion, CefrLevel>): number {
   const ranks = CRITERIA.map((c) => LEVEL_RANK[criteria[c]] ?? 0).sort((a, b) => a - b)
-  return ranks[Math.floor(ranks.length / 2)]
+  const median = ranks[Math.floor(ranks.length / 2)]
+
+  // THE WEAKEST SKILLS GET A VOTE. A plain median discards the two lowest
+  // criteria outright, so A2 grammar and A2 vocabulary behind C1 pronunciation,
+  // fluency and coherence read as C1 — a perfect paper for someone who cannot
+  // build a sentence. Good speakers do have uneven profiles, so ONE criterion a
+  // level behind still costs nothing; a gap of two levels or more pulls the
+  // reading down to just above the weakest skill, which is how an examiner
+  // hears it.
+  return Math.min(median, ranks[0] + 1)
+}
+
+/** Every criterion at or above `level`. The long turns' top marks are worded
+ *  "above B2" and "above C1", and a profile still resting on the anchor in one
+ *  criterion is not above it. */
+export function allAtLeast(criteria: Record<Criterion, CefrLevel>, level: number): boolean {
+  return CRITERIA.every((c) => (LEVEL_RANK[criteria[c]] ?? 0) >= level)
 }
 
 /**
@@ -256,7 +272,12 @@ export function scoreBlock(j: BlockJudgement): number {
     // One two-minute turn, anchored B2. 5 = above B2.
     case 'q7':
       if (on === 0) return 0
-      if (level >= LEVEL_RANK.C1) return j.coverage === 'partial' ? 4 : 5
+      if (level >= LEVEL_RANK.C1) {
+        if (j.coverage === 'partial') return 4
+        // "Above B2" has to mean the WHOLE profile clears B2. A median-C1
+        // reading with a criterion still at B2 is at the top of B2, not past it.
+        return allAtLeast(j.criteria, LEVEL_RANK.C1) ? 5 : 4
+      }
       if (level === LEVEL_RANK.B2) return j.coverage === 'partial' ? 3 : 4
       if (level === LEVEL_RANK.B1) return j.coverage === 'partial' ? 1 : 2
       return 0 // below B1 is 0 here, as the rubric says in so many words
@@ -266,7 +287,13 @@ export function scoreBlock(j: BlockJudgement): number {
       if (on === 0) return 0
       if (level >= LEVEL_RANK.C1) {
         if (j.balanced === false) return 4 // one-sided caps it, however good
-        return j.coverage === 'partial' ? 5 : 6
+        if (j.coverage === 'partial') return 5
+        // 6 is "above C1" — past the ceiling of this exam, and the only mark
+        // that can carry a paper to 21/21. It takes C1 in EVERY criterion, both
+        // sides genuinely argued and the topic fully covered. It was being
+        // handed out for a median-C1 profile, which is how a student with two
+        // criteria below C1 collected a flawless 75/75.
+        return allAtLeast(j.criteria, LEVEL_RANK.C1) ? 6 : 5
       }
       if (level === LEVEL_RANK.B2) return j.balanced === false ? 3 : 4
       if (level === LEVEL_RANK.B1) return 2
