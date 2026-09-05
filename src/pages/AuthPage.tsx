@@ -40,7 +40,7 @@ const CATS: CatDef[] = [
     // breathe. Frame is SHORTER than the other cats': this art is a wide, low
     // composition, so at the shared 300px it rendered visibly bigger — 245px
     // brings its cushion mass in line (user call 2026-07-06).
-    frame: 'h-[clamp(190px,27vh,245px)] max-w-[480px]',
+    frame: 'h-[clamp(62px,10.5vh,110px)] max-w-[260px] lg:h-[clamp(190px,27vh,245px)] lg:max-w-[480px]',
     zzzPos: 'left-[42%] top-[56px]',
     hello: 'Oh, you again. Welcome back.',
     helloSignup: 'A new student? Fine, I’m up…',
@@ -61,7 +61,7 @@ const CATS: CatDef[] = [
     sleepy: false,
     // Full-body cushion cat (public/cat-surprised.png), composed like the
     // sleeping one — same frame, so both alternatives sit identically.
-    frame: 'h-[clamp(230px,33vh,300px)] max-w-[480px]',
+    frame: 'h-[clamp(62px,10.5vh,110px)] max-w-[280px] lg:h-[clamp(230px,33vh,300px)] lg:max-w-[480px]',
     // Copy verbatim from the source design ("Cefrly Welcome") — a smug,
     // well-fed cat that pretends nothing surprises it.
     hello: 'Oh! You startled me. Welcome back.',
@@ -83,7 +83,7 @@ const CATS: CatDef[] = [
     sleepy: true,
     // 917×700 belly-up flop sleeper on its cushion (grey, matching the band-cat
     // art); its baked z's were erased — the animated overlay owns the zzz's.
-    frame: 'h-[clamp(230px,33vh,300px)] max-w-[480px]',
+    frame: 'h-[clamp(62px,10.5vh,110px)] max-w-[280px] lg:h-[clamp(230px,33vh,300px)] lg:max-w-[480px]',
     // Head sits top-right of the sprawl, further left than the curled cat's spot.
     zzzPos: 'left-[36%] top-[38px]',
     hello: 'Welcome back. Excuse the pose.',
@@ -329,9 +329,9 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
     'w-full box-border rounded-xl border-2 border-line bg-page px-4 py-3.5 text-[15px] font-bold text-ink outline-none transition-[border-color,box-shadow] duration-150 placeholder:font-semibold placeholder:text-ink-faint focus:border-accent focus:bg-white focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--color-accent)_13%,transparent)]'
 
   return (
-    <div className="grid min-h-screen grid-cols-[repeat(auto-fit,minmax(min(480px,100%),1fr))] bg-white font-sans text-ink">
+    <div className="grid min-h-screen grid-cols-1 bg-white font-sans text-ink lg:grid-cols-2">
       {/* Brand panel with the interactive mascot */}
-      <section className="relative flex flex-col overflow-hidden bg-page px-8 pb-10 pt-11 sm:px-14">
+      <section className="relative flex flex-col overflow-hidden bg-page px-6 pb-[clamp(12px,2.5vh,24px)] pt-[clamp(16px,3vh,28px)] lg:px-14 lg:pb-10 lg:pt-11">
         <Link to="/" className="flex items-center gap-3">
           <img
             src="/logo-cat.webp"
@@ -339,10 +339,10 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             aria-hidden="true"
             width={44}
             height={44}
-            className="h-11 w-11 shrink-0 object-contain"
+            className="h-10 w-10 shrink-0 object-contain lg:h-11 lg:w-11"
           />
           <span className="flex flex-col gap-px">
-            <span className="text-xl font-black leading-[1.1] text-ink">Cefrly</span>
+            <span className="text-lg font-black leading-[1.1] text-ink lg:text-xl">Cefrly</span>
             <span className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-ink-soft">
               CEFR Exams
             </span>
@@ -350,26 +350,26 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
         </Link>
 
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="mt-[clamp(36px,11vh,150px)]">
-            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-ink-soft">
+          <div className="mt-[clamp(12px,3vh,24px)] lg:mt-[clamp(36px,11vh,150px)]">
+            <p className="hidden text-[11px] font-extrabold uppercase tracking-[0.16em] text-ink-soft sm:block lg:text-xs">
               CEFR · Reading paper
             </p>
-            <h1 className="mt-2 text-balance text-[34px] font-black leading-[1.18] text-ink">
+            <h1 className="text-balance text-[19px] font-black leading-[1.25] text-ink sm:mt-1.5 sm:text-[26px] lg:mt-2 lg:text-[34px] lg:leading-[1.18]">
               The official reading format,
               <br />
               timed and scored.
             </h1>
           </div>
 
-          <div className="relative mt-auto w-full">
+          <div className="relative mt-[clamp(6px,1.5vh,12px)] w-full lg:mt-auto">
             {/* decorative study-nook vignette filling the space right of the cat */}
-            <CozyScene className="pointer-events-none absolute -bottom-1 right-0 z-[1] h-[clamp(235px,36vh,340px)] w-auto" />
+            <CozyScene className="pointer-events-none absolute -bottom-1 right-0 z-[1] hidden h-[clamp(235px,36vh,340px)] w-auto lg:block" />
 
             {/* speech bubble */}
-            <div className="relative h-[52px]">
+            <div className="relative h-[clamp(28px,4.5vh,38px)] lg:h-[52px]">
               <div
                 key={bubbleText}
-                className="bubble-pop absolute left-3.5 top-0 z-[3] whitespace-nowrap rounded-[14px] bg-white px-[15px] py-[9px] text-sm font-extrabold text-ink shadow-[0_4px_16px_color-mix(in_srgb,var(--color-brand)_10%,transparent)]"
+                className="bubble-pop absolute left-3.5 top-0 z-[3] whitespace-nowrap rounded-[14px] bg-white px-3.5 py-2 text-[13px] font-extrabold text-ink shadow-[0_4px_16px_color-mix(in_srgb,var(--color-brand)_10%,transparent)] lg:px-[15px] lg:py-[9px] lg:text-sm"
                 aria-live="polite"
               >
                 {bubbleText}
@@ -385,7 +385,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
                 only "zzz" now) */}
             {showZzz && (
               <div
-                className={`pointer-events-none absolute z-[2] font-black italic text-ink-faint ${
+                className={`pointer-events-none absolute z-[2] hidden font-black italic text-ink-faint lg:block ${
                   cat.zzzPos ?? 'left-[46%] top-[34px]'
                 }`}
                 aria-hidden
@@ -427,12 +427,12 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
 
       {/* Form panel — the page's <main> landmark (the brand panel beside it is
           decorative), so screen readers get a skip target. */}
-      <main className="grid place-items-center border-l border-line bg-white px-6 py-12 sm:px-[72px]">
+      <main className="grid place-items-center border-line bg-white px-6 py-[clamp(14px,3vh,32px)] lg:border-l lg:px-[72px] lg:py-12">
         <form onSubmit={handleSubmit} className="flex w-full max-w-[420px] flex-col">
-          <h2 className="m-0 text-[32px] font-black text-ink">
+          <h2 className="m-0 text-[24px] font-black text-ink sm:text-[26px] lg:text-[32px]">
             {isLogin ? 'Welcome back' : 'Create an account'}
           </h2>
-          <p className="mb-[30px] mt-2 text-[15px] font-semibold text-ink-soft">
+          <p className="mb-[clamp(12px,2.5vh,24px)] mt-1.5 text-[15px] font-semibold text-ink-soft lg:mb-[30px] lg:mt-2">
             {isLogin
               ? 'Sign in to continue your practice.'
               : 'One free account for all your CEFR practice.'}
@@ -453,7 +453,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             placeholder="name@email.com"
           />
 
-          <div className="h-[18px]" />
+          <div className="h-[clamp(10px,2vh,18px)]" />
 
           <label htmlFor="cef-pass" className="mb-2 text-sm font-extrabold text-ink">
             Password
@@ -482,7 +482,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             </button>
           </div>
           {!isLogin && (
-            <span className="mt-2 text-xs font-semibold text-ink-soft">At least 6 characters.</span>
+            <span className="mt-1 text-[11px] font-semibold text-ink-soft lg:mt-2 lg:text-xs">At least 6 characters.</span>
           )}
 
           {expired && !error && (
@@ -514,7 +514,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
           <button
             type="submit"
             disabled={busy}
-            className="mt-7 w-full rounded-xl border-0 bg-brand px-4 py-[15px] text-base font-extrabold text-white shadow-[0_8px_20px_color-mix(in_srgb,var(--color-brand)_22%,transparent)] transition-[background,transform] duration-150 hover:bg-brand-deep active:translate-y-px disabled:opacity-60"
+            className="mt-[clamp(14px,3vh,28px)] w-full rounded-xl border-0 bg-brand px-4 py-[15px] text-base font-extrabold text-white shadow-[0_8px_20px_color-mix(in_srgb,var(--color-brand)_22%,transparent)] transition-[background,transform] duration-150 hover:bg-brand-deep active:translate-y-px disabled:opacity-60"
           >
             {busy ? 'Please wait…' : isLogin ? 'Sign in' : 'Create account'}
           </button>
