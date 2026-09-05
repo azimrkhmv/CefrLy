@@ -66,7 +66,7 @@ export function SpeakingTaskCard({
           <MicIcon width={20} height={20} />
         </span>
         <div className="min-w-0 pt-0.5">
-          <h3 className="truncate font-extrabold leading-snug text-heading">{item.title}</h3>
+          <h3 className="line-clamp-2 font-extrabold leading-snug text-heading">{item.title}</h3>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-bold text-brand">
               {chip}

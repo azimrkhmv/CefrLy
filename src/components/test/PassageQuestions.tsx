@@ -56,7 +56,7 @@ export function PassageQuestions({ part, numbering }: PartProps) {
   // breathing room — same figure the writing paper's split pane already uses
   // (WritingTaskPage), which sits under an identical header; keep them in step.
   return (
-    <div className="grid gap-6 lg:grid-cols-[7fr_5fr]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[7fr_5fr]">
       <div className="self-start rounded-2xl border border-line bg-white p-5 shadow-card lg:sticky lg:top-4 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto">
         {part.passage?.title && (
           <h3 className="mb-3 text-base font-extrabold text-heading">{part.passage.title}</h3>

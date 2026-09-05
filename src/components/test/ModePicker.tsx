@@ -75,7 +75,7 @@ export function ModePicker({
         </p>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Practice */}
         <div className="flex flex-col rounded-2xl border border-line bg-white p-6 shadow-card sm:p-8">
           <div className="mb-4 flex flex-col items-center text-center">

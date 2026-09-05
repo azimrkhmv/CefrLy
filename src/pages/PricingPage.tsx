@@ -252,7 +252,7 @@ export function PricingPage() {
       <div
         role="radiogroup"
         aria-label="Plans"
-        className="grid gap-6 md:grid-cols-3 md:items-stretch"
+        className="grid grid-cols-1 gap-6 md:grid-cols-3 md:items-stretch"
       >
         {PLANS.map((plan) => (
           <PlanCard

@@ -120,7 +120,7 @@ export function TestCatalog({ skill }: { skill: Skill }) {
         />
       )}
 
-      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
         {tests?.map((test, i) => (
           <div
             key={test.id}

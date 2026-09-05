@@ -247,7 +247,7 @@ function ReviewPart({
           )}
           {part.layout === 'matching' && part.optionPool && (
             <div className="rounded-2xl border border-line bg-white p-4 shadow-card">
-              <ul className="grid gap-1 text-sm text-ink sm:grid-cols-2">
+              <ul className="grid grid-cols-1 gap-1 text-sm text-ink sm:grid-cols-2">
                 {part.optionPool.map((o) => (
                   <li key={o.key}>
                     <span className="font-bold">{o.key}</span> {o.label !== o.key && o.label}

@@ -134,7 +134,7 @@ export function SettingsPage() {
         <section className="rounded-2xl bg-white p-6 shadow-soft ring-1 ring-line/50 sm:p-7">
           <h2 className="font-extrabold text-heading">Your name</h2>
           <p className="mt-0.5 text-sm text-ink-soft">How Cefrly greets you across the app.</p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="set-first" className="mb-1.5 block text-sm font-bold text-ink">
                 First name

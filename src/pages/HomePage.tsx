@@ -265,7 +265,7 @@ function SkillsRoadmap({ weakAreas }: { weakAreas?: WeakArea[] }) {
   return (
     <section>
       <h2 className="mb-4 text-xl font-extrabold text-heading">Your CEFR skills</h2>
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {SKILLS.map(({ key, name, Icon, desc, to, tile }) => {
           const available = to !== null
           const focus = weakAreas?.includes(key as WeakArea) ?? false
@@ -419,7 +419,7 @@ function NewUserHome() {
 
       <section>
         <h2 className="mb-4 text-xl font-extrabold text-heading">How it works</h2>
-        <div className="grid gap-5 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
           {steps.map((s) => (
             <div key={s.n} className={`${CARD} p-5`}>
               <span className="grid h-8 w-8 place-items-center rounded-full bg-brand text-sm font-extrabold text-white">
@@ -439,7 +439,7 @@ function HomeSkeleton() {
   return (
     <div className="space-y-5">
       <div className="skeleton h-44 rounded-2xl" />
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <div className="skeleton h-32 rounded-2xl" />
         <div className="skeleton h-32 rounded-2xl" />
       </div>
@@ -574,7 +574,7 @@ export function HomePage() {
             targetBand={profile?.targetBand}
           />
 
-          <section className={chron.length >= 2 ? 'grid gap-5 lg:grid-cols-[1fr_1.3fr]' : ''}>
+          <section className={chron.length >= 2 ? 'grid grid-cols-1 gap-5 lg:grid-cols-[1fr_1.3fr]' : ''}>
             <div className="grid grid-cols-2 gap-5">
               <StatTile Icon={ClipboardIcon} label="Mocks taken" value={String(fullAttempts.length)} />
               <StatTile Icon={TrendUpIcon} label="Average" value={`${avg}/${MAX}`} />

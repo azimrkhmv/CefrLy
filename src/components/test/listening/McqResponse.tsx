@@ -13,7 +13,7 @@ export function McqResponse({
 }) {
   const items = (part.items ?? []).filter((i): i is SanitizedMcqItem => i.type === 'mcq')
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {items.map((item) => (
         <McqResponseItem key={item.id} item={item} number={numbering[item.id]} />
       ))}

@@ -375,7 +375,7 @@ function TaskMaterial({ step }: { step: SpeakingStep }) {
         />
       )}
       {hasImages && (
-        <div className={`mt-4 grid gap-3 ${images!.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+        <div className={`mt-4 grid grid-cols-1 gap-3 ${images!.length > 1 ? 'sm:grid-cols-2' : ''}`}>
           {images!.map((img) => (
             <figure key={img.src}>
               <img

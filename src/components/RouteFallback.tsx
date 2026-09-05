@@ -12,7 +12,7 @@ export function RouteFallback() {
       <span className="sr-only">Loading page…</span>
       <Skeleton className="h-8 w-56 rounded-xl" />
       <Skeleton className="h-4 w-80 rounded-lg" />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Skeleton className="h-40 rounded-2xl" />
         <Skeleton className="h-40 rounded-2xl" />
       </div>

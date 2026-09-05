@@ -25,7 +25,7 @@ export function TestGridSkeleton({ count = 3 }: { count?: number }) {
       <p className="sr-only" role="status">
         Loading tests…
       </p>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-hidden>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-hidden>
         {Array.from({ length: count }, (_, i) => (
           <TestCardSkeleton key={i} />
         ))}

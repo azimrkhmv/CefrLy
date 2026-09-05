@@ -90,7 +90,7 @@ function ProgressPanel({ skill, mocks }: { skill: Filter; mocks: BandedAttempt[]
 
   return (
     <section className="rounded-2xl bg-brand-soft p-6 sm:p-7">
-      <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
+      <div className="grid grid-cols-1 gap-7 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
         <div className="min-w-0">
           <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-brand/80">
             {label} · Your progress
@@ -269,7 +269,7 @@ function WritingResults({ attempts }: { attempts: WritingAttempt[] }) {
           {sorted.length} {sorted.length === 1 ? 'attempt' : 'attempts'} · newest first
         </span>
       </div>
-      <ul className="grid gap-4 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {sorted.map((a) => (
           <WritingAttemptCard key={a.id} attempt={a} />
         ))}
@@ -335,7 +335,7 @@ function SpeakingResults({
         </span>
       </div>
 
-      <ul className="grid gap-4 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {attempts.map((a) => (
           <SpeakingAttemptCard key={a.id} attempt={a} isBest={best?.id === a.id} />
         ))}
@@ -661,7 +661,7 @@ export function DashboardPage() {
                 </span>
               </div>
 
-              <ul className="grid gap-4 sm:grid-cols-2">
+              <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {shown.map((attempt) => (
                   <AttemptCard
                     key={attempt.id}

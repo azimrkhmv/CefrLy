@@ -278,7 +278,7 @@ function OverviewView({
                       className="text-ink-faint transition-colors group-hover:text-brand"
                     />
                   </button>
-                  <div className="grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-x-8 gap-y-2.5 sm:grid-cols-2">
                     {items.map((item) => (
                       <AnswerKeyRow
                         key={item.id}

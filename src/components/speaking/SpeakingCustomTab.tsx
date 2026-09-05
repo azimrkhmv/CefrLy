@@ -38,7 +38,7 @@ export function SpeakingCustomTab({
           hint="Paste a prompt you found elsewhere and practise speaking it against the clock."
         />
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((item, i) => (
             <div
               key={item.id}

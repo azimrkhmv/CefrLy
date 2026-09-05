@@ -136,7 +136,7 @@ function Analysis({ attempt }: { attempt: SpeakingAttemptRow }) {
           score and the Overall text. Only a full mock has a breakdown worth
           showing. */}
       {!isDrill && (
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {result.blocks.map((b) => (
           <div key={b.key} className="rounded-2xl border border-line bg-white p-5 shadow-card">
             <p className="text-xs font-bold uppercase tracking-wide text-ink-soft">{b.label}</p>
@@ -170,7 +170,7 @@ function Analysis({ attempt }: { attempt: SpeakingAttemptRow }) {
           <p className="mt-1 text-sm text-ink-soft">
             Every mark below was worked out from these five judgements.
           </p>
-          <dl className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <dl className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
             {(
               [
                 ['grammar', 'Grammar'],
@@ -319,7 +319,7 @@ function AnswerCard({ n, answer }: { n: number; answer: GradedAnswer }) {
             </div>
           )}
 
-          <div className="mt-5 grid gap-3 lg:grid-cols-2">
+          <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-2">
             <Panel title="Pronunciation">{answer.pronunciation}</Panel>
             <Panel title="Fluency">{answer.fluency}</Panel>
           </div>

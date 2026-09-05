@@ -148,7 +148,7 @@ export function SamplesPage() {
           hint="New model answers are on the way. Check back soon."
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {samples.map((sample) => (
             <SampleGridCard
               key={sample.slug}

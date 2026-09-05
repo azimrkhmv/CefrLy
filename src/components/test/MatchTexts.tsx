@@ -12,7 +12,7 @@ export function MatchTexts({ part, numbering }: PartProps) {
   const lastKey = pool.length > 0 ? pool[pool.length - 1].key : ''
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <div className="self-start rounded-xl bg-page p-4 lg:sticky lg:top-4">
         <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft">
           Statements A–{lastKey}
