@@ -29,6 +29,7 @@ import {
   type BlockKey,
   type SpeakingProfile,
 } from './rubric.ts'
+import { MIN_ANSWER_WORDS, resolveOnTopic } from './verify.ts'
 
 const BUCKET = 'speaking-temp'
 // FLASH, NOT FLASH-LITE. On the cheap tier the marking was not reliable enough
@@ -374,6 +375,9 @@ interface AnswerOut {
 interface BlockOut {
   block: string
   onTopic: { questionIndex: number; quote: string }[]
+  /** The model's AFFIRMATIVE claim that nothing here answered the question.
+   *  Zeroing a block now takes a statement, not an omission — see verify.ts. */
+  offTopic: boolean
   coverage: 'full' | 'partial'
   balanced: boolean
   reason: string
@@ -512,15 +516,18 @@ const RESPONSE_SCHEMA = {
               propertyOrdering: ['questionIndex', 'quote'],
             },
           },
+          offTopic: { type: 'boolean' },
           coverage: { type: 'string', enum: ['full', 'partial'] },
           balanced: { type: 'boolean' },
           reason: { type: 'string' },
         },
         // coverage and balanced are REQUIRED now. Left optional, the model simply
         // omitted them, and the long turns lost the only thing that separates a
-        // full answer from half of one.
-        required: ['block', 'onTopic', 'coverage', 'balanced', 'reason'],
-        propertyOrdering: ['block', 'onTopic', 'coverage', 'balanced', 'reason'],
+        // full answer from half of one. offTopic is required for the opposite
+        // reason: it is the ONLY way the model can zero a block, so it must be
+        // an answer it gives on purpose rather than a field it can forget.
+        required: ['block', 'onTopic', 'offTopic', 'coverage', 'balanced', 'reason'],
+        propertyOrdering: ['block', 'onTopic', 'offTopic', 'coverage', 'balanced', 'reason'],
       },
     },
     summary: { type: 'string' },
@@ -592,6 +599,12 @@ THEN one entry for each of these blocks — ${blocksPresent.join(', ')} — with
   it was NOT answered, and it does not belong in the list. Two minutes of talking
   around a question — repeating it back, or saying it is important — is not an
   answer. Neither is a memorised speech aimed at a different question.
+- "offTopic": true ONLY if nothing in this block answered the question at all —
+  silence, or a memorised speech aimed somewhere else. This is the only way a
+  block can score zero, so do not send true because you could not find a good
+  quote, because the answer was short, or because the English was weak: a weak
+  answer to the right question is still an answer. If the student addressed the
+  question at all, send false.
 - "coverage": "full" if the response covers everything the task asked for,
   "partial" if it covers it only in part. Required for every block.
 - "balanced": for Q8, true only if BOTH sides of the argument are genuinely made;
@@ -731,6 +744,7 @@ async function gradeBlock(
         {
           block: blockKey,
           onTopic: [],
+          offTopic: true,
           coverage: 'partial',
           balanced: false,
           reason: 'No answer was recorded for this task.',
@@ -1258,49 +1272,46 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
   const questionsIn = (key: BlockKey) =>
     answers.filter((a) => blockForPart(a.partType) === key).length
 
-  // Case and punctuation must not decide a mark: the model writes the quote and
-  // the transcript in the same response, but an apostrophe or a comma rendered
-  // differently between the two used to fail the substring check.
-  const normalize = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
-
-  // ALL of a block's transcripts pooled, because the model's onTopic
-  // questionIndex is not trustworthy: graded one block per call since the
-  // parallel split, it numbers the block's questions relative to the call
-  // (0/1) instead of the paper (6/7), so a REAL quote was checked against the
-  // WRONG question's transcript and whole blocks of C1 speech scored 0. A
-  // quote found anywhere in the block's own speech proves the answer; the
-  // index only ever chose which transcript to search, so pooling loses nothing
-  // a wrong index hadn't already lost.
-  const blockTranscript = (key: BlockKey) =>
-    normalize(
-      answers
-        .filter((a) => blockForPart(a.partType) === key)
-        .map((a) => out.answers?.find((x) => x.questionIndex === a.questionIndex)?.transcript ?? '')
-        .join('\n'),
-    )
+  // ALL of a block's transcripts, in question order. Pooled for quote lookup
+  // because the model's onTopic questionIndex is not trustworthy: graded one
+  // block per call since the parallel split, it numbers the block's questions
+  // relative to the call (0/1) instead of the paper (6/7). The index only ever
+  // chose which transcript to search, so pooling loses nothing.
+  const transcriptsIn = (key: BlockKey) =>
+    answers
+      .filter((a) => blockForPart(a.partType) === key)
+      .map((a) => out.answers?.find((x) => x.questionIndex === a.questionIndex)?.transcript ?? '')
 
   const profile = out.profile?.criteria ?? null
 
   const blocks = BLOCKS.filter((b) => present.includes(b.key)).map((b) => {
     const judged = out.blocks?.find((x) => x.block === b.key)
 
-    // A question counts as answered only if the quote offered as proof is
-    // REALLY IN what the student said. Without this the quote requirement is
-    // just a prompt instruction, and prompt instructions get ignored under load.
-    // Duplicate quotes count once — one sentence cannot answer three questions.
-    const pool = blockTranscript(b.key)
-    const seenQuotes = new Set<string>()
-    const verified = (judged?.onTopic ?? []).filter((t) => {
-      const quote = normalize(t?.quote ?? '')
-      if (quote.length < 3 || seenQuotes.has(quote)) return false
-      seenQuotes.add(quote)
-      if (pool.includes(quote)) return true
-      // Logged because a failed verification is silent otherwise: it presents
-      // as "off topic" and nobody can tell a lying model from a broken check.
-      console.log(`quote verify FAILED ${b.key}: "${(t?.quote ?? '').slice(0, 80)}"`)
-      return false
-    })
+    // WHEN A BLOCK MAY SCORE ZERO lives in verify.ts, as one rule with tests
+    // behind it, because closing this one door at a time is how the same bug
+    // reached students twice (docs/SPEAKING-DEFECTS.md #24, #27): missing
+    // evidence lowers confidence, only contradicted evidence zeroes a mark.
     const questionCount = questionsIn(b.key)
+    const topic = resolveOnTopic({
+      transcripts: transcriptsIn(b.key),
+      onTopic: judged?.onTopic ?? [],
+      offTopic: judged?.offTopic,
+      questionCount,
+    })
+    const { onTopicCount, quoteAudit, spoken, basis } = topic
+    for (const q of quoteAudit) {
+      // A failed verification is silent otherwise: it presents as "off topic"
+      // and nobody can tell a lying model from a broken check.
+      if (q.verdict === 'rejected') {
+        console.log(`quote verify FAILED ${b.key}: "${q.quote.slice(0, 80)}"`)
+      }
+    }
+    if (basis !== 'quotes') {
+      console.log(
+        `onTopic ${b.key}: ${onTopicCount}/${questionCount} by ${basis} ` +
+          `(quotes verified ${topic.verifiedCount}, ${spoken} answers >= ${MIN_ANSWER_WORDS} words)`,
+      )
+    }
 
     // The mark is OURS to compute (scoreBlock). No profile means the model
     // returned something unusable — score 0 rather than guess something
@@ -1309,7 +1320,7 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
       ? {
           block: b.key,
           criteria: profile,
-          onTopicCount: Math.min(questionCount, verified.length),
+          onTopicCount,
           coverage: judged?.coverage === 'partial' ? 'partial' : 'full',
           balanced: judged?.balanced === true,
           reason: judged?.reason ?? '',
@@ -1328,6 +1339,12 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
       questionCount,
       coverage: judgement?.coverage,
       balanced: b.key === 'q8' ? judgement?.balanced : undefined,
+      // The recordings are deleted seconds after a successful grade, so the
+      // quotes and their verdicts are the ONLY trace left of why a block did or
+      // did not count as answered. A disputed mark is unarguable without them.
+      quoteAudit,
+      spokenAnswers: spoken,
+      onTopicBasis: basis,
     }
   })
 

@@ -975,6 +975,32 @@ SUPABASE_ACCESS_TOKEN in .env.local: `POST /v1/projects/<ref>/functions/deploy
 .ts file) and `POST /v1/projects/<ref>/database/query` ({"query": "..."} — this
 one accepts WRITES, unlike the MCP's execute_sql which is read-only).
 
+## ⚠️ EVERY SPEAKING BUG IS LOGGED IN docs/SPEAKING-DEFECTS.md
+28 defects, oldest first, with root cause and how each was found. ADD A ROW THE
+MOMENT YOU FIND ONE, before fixing it. Read it before touching the grader.
+THREE THINGS EXIST NOW THAT DID NOT ON 2026-09-03, and they are why the
+wrong-mark class stopped recurring:
+- `grade-speaking/scoring.test.ts` — 29 cases, one per logged defect. RUN IT
+  BEFORE EVERY GRADER CHANGE: `node --test supabase/functions/grade-speaking/
+  scoring.test.ts` (Node 24 strips the types; no Deno, no network, 0.2s). It
+  caught a bug in the same day's fix. Before it, "28 cases pass" meant a
+  scratchpad that was deleted.
+- `grade-speaking/verify.ts` — THE ZERO RULE, in one tested function. A mark may
+  only be zeroed by CONTRADICTED evidence: silence on the recording, or the
+  model's affirmative `offTopic: true` (a REQUIRED schema field). Missing
+  evidence — an unmatched quote, a question left off the list, a field the model
+  forgot — lowers confidence and may NEVER erase a spoken answer. Defects #24,
+  #27 and #28 were all the same bug arriving through a different door; do not
+  reintroduce a door.
+- Migration 0025 — `speaking_grade_anomalies` view + `speaking_grade_alerts`
+  table, swept nightly 02:15 UTC by pg_cron. Flags blocks scoring 0 with real
+  speech, band swings > 15 points between a student's own mocks, missing
+  profiles, and attempts stuck in 'grading'. Service-role only. The queue was
+  emptied 2026-09-04, so ANY row in it is a live problem.
+STILL MISSING: a calibration set (see O1 in the log). Until 20-30 of the owner's
+officially-marked papers are graded and compared, the grader is only
+"not obviously broken", never "measurably right".
+
 ## SPEAKING MARKS: two defects found and fixed 2026-09-03 (v27, v28)
 A student who answered every question at B2 was shown **35/75 Below B1**, then
 briefly **75/75 C1**. Both numbers were wrong, for two unrelated reasons.
