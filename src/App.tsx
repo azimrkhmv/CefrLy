@@ -24,6 +24,10 @@ function page<T extends string, C extends ComponentType<Record<string, never>>>(
   return lazy(async () => ({ default: (await loader())[name] }))
 }
 
+const ForgotPasswordPage = page(
+  () => import('./pages/ForgotPasswordPage'),
+  'ForgotPasswordPage',
+)
 const ReadingPage = page(() => import('./pages/ReadingPage'), 'ReadingPage')
 const ListeningPage = page(() => import('./pages/ListeningPage'), 'ListeningPage')
 const WritingPage = page(() => import('./pages/WritingPage'), 'WritingPage')
@@ -94,6 +98,10 @@ export default function App() {
         {/* Auth pages render full-screen, outside the app shell. */}
         <Route path="/login" element={<AuthPage mode="login" />} />
         <Route path="/signup" element={<AuthPage mode="signup" />} />
+        {/* Built from design 1c but intentionally unlinked until SMTP is
+            configured — see ForgotPasswordPage and AuthPage's
+            SHOW_FORGOT_PASSWORD flag. Registered so it can be tested. */}
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/cat-preview" element={<CatPreview />} />
 
         {/* Handoff is public: it exchanges a MilliyMock token before a session exists. */}
