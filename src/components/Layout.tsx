@@ -4,6 +4,7 @@ import { RouteFallback } from './RouteFallback'
 import { useAuth } from '../lib/auth'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { Logo } from './Logo'
+import { SHOW_WRITING } from '../lib/features'
 import {
   BookIcon,
   ChartIcon,
@@ -107,7 +108,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to="/" end icon={<HomeIcon width={19} height={19} />} label="Home" onNavigate={onNavigate} />
         <NavItem to="/reading" icon={<BookIcon width={19} height={19} />} label="Reading" onNavigate={onNavigate} />
         <NavItem to="/listening" icon={<HeadphonesIcon width={19} height={19} />} label="Listening" onNavigate={onNavigate} />
-        <NavItem to="/writing" icon={<PenIcon width={19} height={19} />} label="Writing" onNavigate={onNavigate} />
+        {SHOW_WRITING && (
+          <NavItem to="/writing" icon={<PenIcon width={19} height={19} />} label="Writing" onNavigate={onNavigate} />
+        )}
         <NavItem to="/speaking" icon={<MicIcon width={19} height={19} />} label="Speaking" onNavigate={onNavigate} />
         {/* Model Writing/Speaking answers — fills the gap until those papers ship. */}
         <NavItem to="/samples" icon={<StarIcon width={19} height={19} />} label="Samples" onNavigate={onNavigate} />

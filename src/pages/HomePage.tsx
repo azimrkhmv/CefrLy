@@ -11,6 +11,7 @@ import { BandRuler } from '../components/BandRuler'
 import { Sparkline } from '../components/Sparkline'
 import { BAND_CAT, BAND_QUIP, BandCat, QuipBubble } from '../components/BandCat'
 import { useCountUp } from '../lib/motion'
+import { SHOW_WRITING } from '../lib/features'
 import {
   ArrowRightIcon,
   BookIcon,
@@ -257,7 +258,9 @@ function LevelSnapshot({
 const SKILLS = [
   { key: 'reading', name: 'Reading', Icon: BookIcon, desc: '35 questions · 5 parts · 60 min', to: '/reading', tile: 'bg-brand-soft text-brand' },
   { key: 'listening', name: 'Listening', Icon: HeadphonesIcon, desc: '35 questions · 6 parts · ~35 min', to: '/listening', tile: 'bg-sun-soft text-sun-ink' },
-  { key: 'writing', name: 'Writing', Icon: PenIcon, desc: 'Two emails · one forum post', to: '/writing', tile: 'bg-emerald-50 text-emerald-800' },
+  // Concealed: `to: null` makes the card render as an inert "soon" tile, the
+  // same treatment every unshipped skill already had.
+  { key: 'writing', name: 'Writing', Icon: PenIcon, desc: 'Two emails · one forum post', to: SHOW_WRITING ? '/writing' : null, tile: 'bg-emerald-50 text-emerald-800' },
   { key: 'speaking', name: 'Speaking', Icon: MicIcon, desc: '4 parts · interview & talk', to: '/speaking', tile: 'bg-rose-50 text-rose-800' },
 ] as const
 

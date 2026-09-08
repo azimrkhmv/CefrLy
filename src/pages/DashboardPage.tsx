@@ -19,6 +19,7 @@ import { EmptyState } from '../components/EmptyState'
 import { ArrowRightIcon, BookIcon, HeadphonesIcon, MicIcon, PenIcon, PlusIcon } from '../components/icons'
 import type { AttemptSummary } from '../types/attempt'
 import type { Band, Skill } from '../types/test'
+import { SHOW_WRITING } from '../lib/features'
 
 // No "All" tab (user call 2026-07-06) — the four skills are the sections.
 type Filter = Skill
@@ -568,7 +569,7 @@ export function DashboardPage() {
   const TABS: Tab<string>[] = [
     { key: 'reading', label: 'Reading' },
     { key: 'listening', label: 'Listening' },
-    { key: 'writing', label: 'Writing' },
+    { key: 'writing', label: 'Writing', soon: !SHOW_WRITING },
     { key: 'speaking', label: 'Speaking' },
   ]
   const activeLabel = `${skillMeta(filter).label.toLowerCase()} `

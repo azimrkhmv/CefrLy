@@ -404,6 +404,45 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   The mascot may be funny/deadpan on non-exam surfaces. Empty states use
   <EmptyState pose title hint action>, not plain text panels. (The SVG `welcome`
   pose exists in Cat.tsx but is unused now that login owns its own design.)
+- ⚠️ AUTH REDESIGNED 2026-09-07 to design "Auth Redesign 1c — form first, cat in
+  the nook" (claude.ai Design project a3fd4f20-fdba-40d6-a5dd-6fa798af1a1a).
+  THE THREE BULLETS BELOW THIS ONE ARE NOW PARTLY STALE — they describe the old
+  "Cefrly Welcome" import (speech bubble, floating zzz's, CozyScene, per-cat
+  `frame`/`zzzPos`). What still holds from them: the token mapping (no separate
+  auth palette; Google's 4 brand hexes are the only raw hexes) and the Google
+  OAuth wiring. What changed:
+  · LAYOUT. Under lg: ONE form-first column — header is logo + a single
+    contextual link, then eyebrow/heading/form, and the cat sits at the BOTTOM in
+    the reassurance nook (mt-auto, so it pins to the bottom of tall screens)
+    where nothing crops it. lg and up: the two-column split — brand panel (logo,
+    "CEFR · Reading paper" eyebrow, marketing headline, halo, big cat, floating
+    trust badge) beside the form. Verified 0 horizontal overflow and 0 axe
+    WCAG2 A/AA violations at 390 / 1024 / 1200 on the prod preview build.
+  · SHARED SHELL. src/components/auth/ now holds AuthShell.tsx (all the chrome +
+    the mascot state), cats.ts (CATS + pickCatIndex), icons.tsx (Google/Eye/
+    EyeOff/Shield/ChevronLeft + HaloCurves) and formBits.tsx (authInputClass +
+    PasswordStrength). AuthPage and ForgotPasswordPage are now just their forms —
+    put shared auth chrome in AuthShell, not in a page.
+  · MASCOT SURVIVES, BUBBLE DOES NOT (owner call 2026-09-07). The 3-cat rotation
+    and ?cat=<key> preview are KEPT, and poking the cat still swaps the nook line
+    to a quip. DELETED: the speech bubble, the floating zzz overlay, peek-on-
+    password-focus and the farewell-on-submit. The cat's voice now lives in the
+    nook copy. Per-cat `frame`/`zzzPos` strings were REPLACED by numeric
+    `nookW`/`heroW` (the nook and hero widths) — still sized to match visual
+    cat/cushion MASS, not frame height, so all three cats read the same size.
+  · CozyScene.tsx IS NOW UNUSED (1c has no room for it). Left on disk
+    deliberately, not deleted — delete it only if the owner says so.
+  · HaloCurves (icons.tsx) is the design's assets/halo-curves.svg INLINED: its
+    ~4 KB of base64 C2PA provenance metadata was stripped and #8b5cf6 swapped for
+    var(--color-accent). Don't re-add it as a file; it costs a request.
+  · NOT SHIPPED FROM THE DESIGN, both owner calls: "Remember me" (Supabase
+    already persists the session — the control would be decorative or harmful)
+    and the "Forgot password?" LINK. The reset SCREEN **is** built
+    (ForgotPasswordPage, route /forgot-password registered so it can be tested)
+    but nothing links to it while SMTP is unconfigured — flip
+    SHOW_FORGOT_PASSWORD in AuthPage.tsx the day mail actually sends.
+  · The sign-up "Terms"/"Privacy Policy" words are PLAIN TEXT, not links: no such
+    routes exist yet. Make them <Link>s when those pages ship.
 - LOGIN / SIGNUP (src/pages/AuthPage.tsx) is a user-owned imported design from
   the claude.ai Design tool ("Cefrly Welcome"). It ORIGINALLY used its own
   slightly-off palette (brand #3B2C86, page #F6F4FB, link #6D4FE0, focus #8A63E8,
