@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 // Cefrly's own confirmation dialog — replaces window.confirm() so the alert
 // speaks with the mascot's voice: the startled wide-eyed cat raises the alarm
@@ -18,11 +19,13 @@ export function ConfirmDialog({
   open: boolean
   title: string
   message: string
-  confirmLabel: string
+  /** Omit for a single-button notice — the dialog then shows only cancelLabel,
+   *  styled as the primary action. */
+  confirmLabel?: string
   cancelLabel: string
   /** Confirm-button color: brand for ordinary commits, rose for leaving/destructive. */
   tone?: 'brand' | 'rose'
-  onConfirm: () => void
+  onConfirm?: () => void
   onCancel: () => void
 }) {
   useEffect(() => {
@@ -35,7 +38,11 @@ export function ConfirmDialog({
   }, [open, onCancel])
 
   if (!open) return null
-  return (
+  // Portalled to <body>: an ancestor with a transform (a page/card entrance
+  // animation, say) would otherwise become the containing block for
+  // position:fixed and the backdrop would cover only that box, leaving the rest
+  // of the screen live and undimmed.
+  return createPortal(
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-heading/40" onClick={onCancel} aria-hidden />
       <div
@@ -56,25 +63,40 @@ export function ConfirmDialog({
         <p className="mt-4 text-lg font-extrabold text-heading">{title}</p>
         <p className="mt-1.5 text-sm text-ink-soft">{message}</p>
         <div className="mt-6 flex justify-center gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            autoFocus
-            className="rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
-          >
-            {cancelLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className={`rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-colors ${
-              tone === 'rose' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-brand hover:bg-brand-deep'
-            }`}
-          >
-            {confirmLabel}
-          </button>
+          {confirmLabel ? (
+            <>
+              <button
+                type="button"
+                onClick={onCancel}
+                autoFocus
+                className="rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+              >
+                {cancelLabel}
+              </button>
+              <button
+                type="button"
+                onClick={onConfirm}
+                className={`rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-colors ${
+                  tone === 'rose' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-brand hover:bg-brand-deep'
+                }`}
+              >
+                {confirmLabel}
+              </button>
+            </>
+          ) : (
+            // Notice, not a choice: one button, and it is the safe one.
+            <button
+              type="button"
+              onClick={onCancel}
+              autoFocus
+              className="rounded-xl bg-brand px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+            >
+              {cancelLabel}
+            </button>
+          )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

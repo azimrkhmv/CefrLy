@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { CheckIcon, ChevronDownIcon } from './icons'
 
 export type DropdownOption<T extends string> = { value: T; label: string }
@@ -24,7 +24,41 @@ export function Dropdown<T extends string>({
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLUListElement>(null)
+  // The menu is wider than its trigger, so on a narrow screen it can hang off
+  // one edge — a right-aligned menu on a left-hand trigger (the Speaking
+  // catalog's "All tasks") ran clean off the left of a phone. Nudge it back
+  // inside the viewport once it's laid out.
+  const [shift, setShift] = useState(0)
+  // The applied correction, readable inside the measure closure (which doesn't
+  // re-run on every shift change).
+  const shiftRef = useRef(0)
   const current = options.find((o) => o.value === value)
+
+  useLayoutEffect(() => {
+    if (!open) {
+      shiftRef.current = 0
+      setShift(0)
+      return
+    }
+    const measure = () => {
+      const el = menuRef.current
+      if (!el) return
+      // Measure the unshifted position, then work out the correction.
+      const rect = el.getBoundingClientRect()
+      const margin = 8
+      const left = rect.left - shiftRef.current
+      const right = rect.right - shiftRef.current
+      const overLeft = margin - left
+      const overRight = right - (window.innerWidth - margin)
+      const next = overLeft > 0 ? overLeft : overRight > 0 ? -overRight : 0
+      shiftRef.current = next
+      setShift(next)
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [open, options.length])
 
   useEffect(() => {
     if (!open) return
@@ -64,9 +98,11 @@ export function Dropdown<T extends string>({
 
       {open && (
         <ul
+          ref={menuRef}
           role="listbox"
           aria-label={ariaLabel}
-          className={`absolute z-30 mt-2 min-w-[11rem] rounded-xl border border-line bg-white p-1.5 shadow-card ${
+          style={shift ? { transform: `translateX(${shift}px)` } : undefined}
+          className={`absolute z-30 mt-2 max-w-[calc(100vw-1rem)] min-w-[11rem] rounded-xl border border-line bg-white p-1.5 shadow-card ${
             align === 'right' ? 'right-0' : 'left-0'
           }`}
         >
