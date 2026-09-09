@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CheckIcon, MicIcon, PlayIcon } from '../icons'
 import { primeSpeech } from '../../lib/speech'
+import { primeSignals } from '../../lib/tone'
 
 // ---------------------------------------------------------------------------
 // The mic check that gates every speaking task. A student cannot reach the paper
@@ -276,6 +277,8 @@ export function MicCheck({
             // the page has had a user gesture, and the exam's first question is
             // read automatically — without this it is silently skipped.
             primeSpeech()
+            // The same gesture unlocks the exam's timing signals.
+            primeSignals()
             onContinue()
           }}
           disabled={!ready}
