@@ -3,6 +3,7 @@ import type { TestCatalogEntry } from '../types/attempt'
 import type { OpenSession } from '../types/test'
 import { skillMeta } from '../lib/skills'
 import { LockIcon } from './icons'
+import { useScreenTooSmallForExam } from '../lib/screen'
 
 /** "23 min left" for a running attempt; a paused practice clock is frozen, so
  *  it reports the time it still has rather than counting down. */
@@ -24,6 +25,7 @@ export function TestCard({
   attemptInfo,
   locked = false,
   openSession,
+  onTooSmall,
 }: {
   test: TestCatalogEntry
   attemptInfo?: TestAttemptInfo
@@ -33,6 +35,9 @@ export function TestCard({
    *  Back button keeps its clock going, and the catalog used to show a plain
    *  "Start" as if nothing were in progress. */
   openSession?: OpenSession
+  /** Called instead of opening the exam when a full paper is tapped on a screen
+   *  too small to sit it — the catalog answers with the mascot's alert. */
+  onTooSmall?: () => void
 }) {
   const isPart = test.scope === 'part'
   const isPremium = (test.access ?? 'premium') === 'premium'
@@ -41,6 +46,12 @@ export function TestCard({
       ? `Best score ${attemptInfo.best}${isPart ? '' : '/35'} · ${attemptInfo.count} attempt${attemptInfo.count > 1 ? 's' : ''}`
       : 'No attempts yet'
   const meta = skillMeta(test.skill)
+  // A full paper is desktop-only (see lib/screen). Said on the card, not after
+  // the student has already tapped through to the exam.
+  const screenTooSmall = useScreenTooSmallForExam()
+  // An attempt already running is never blocked — leaving a clock ticking with
+  // no way back to it would be worse than a cramped screen.
+  const needsBiggerScreen = screenTooSmall && !isPart && !openSession
 
   return (
     <div className="flex h-full flex-col rounded-2xl border border-line bg-white p-6 shadow-card transition-[border-color,box-shadow] duration-200 hover:border-brand/30 hover:shadow-soft">
@@ -81,7 +92,18 @@ export function TestCard({
             attemptsLabel
           )}
         </p>
-        {locked ? (
+        {needsBiggerScreen && !locked && onTooSmall ? (
+          // Reads as Start, but stops short of the exam: start-session would
+          // spend a session (and, on a premium test, an allowance) on an
+          // attempt this screen can't hold. The dialog explains why.
+          <button
+            type="button"
+            onClick={onTooSmall}
+            className="shrink-0 rounded-xl bg-brand px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+          >
+            Start
+          </button>
+        ) : locked ? (
           // Premium test the user can't open yet → send them to pricing, not the
           // exam (start-session would refuse it anyway with an upgrade prompt).
           <Link

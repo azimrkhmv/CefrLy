@@ -34,6 +34,7 @@ import { QuestionNavigator } from '../components/test/QuestionNavigator'
 import { Timer } from '../components/test/Timer'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ModePicker } from '../components/test/ModePicker'
+import { useScreenTooSmallForExam } from '../lib/screen'
 import { ExamSkeleton } from '../components/test/ExamSkeleton'
 import { CloseIcon, PenIcon } from '../components/icons'
 
@@ -153,6 +154,8 @@ function ExamScreen({ children, center }: { children: ReactNode; center?: boolea
 
 export function TestPage() {
   const { testId } = useParams<{ testId: string }>()
+  // Full papers need a screen wide enough for the split pane (see lib/screen).
+  const screenTooSmall = useScreenTooSmallForExam()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   // Needed for the auto-pause below: it fires as the page unloads, too late for
@@ -600,6 +603,54 @@ export function TestPage() {
   // No open attempt: part drills auto-start (skeleton while starting, error if
   // that fails); full tests show the "Choose a mode" picker.
   if (attempt.session === null) {
+    // A full paper on a phone is a bad exam and an expensive mistake — the
+    // session (and, on a premium test, the monthly allowance) is spent the
+    // moment it starts. Held back before start-session is ever called; an
+    // attempt already in progress is NOT blocked, so nobody gets trapped with
+    // a running clock they can't reach. Part drills are fine here.
+    if (screenTooSmall && !isPartTest) {
+      return (
+        <ExamScreen center>
+          <div className="mx-auto max-w-md space-y-5 text-center">
+            <img
+              src="/cat-surprised.png"
+              alt=""
+              aria-hidden
+              className="mx-auto h-40 w-auto object-contain"
+            />
+            <div className="space-y-2">
+              <h2 className="text-xl font-extrabold text-heading">
+                This paper needs a bigger screen
+              </h2>
+              <p className="text-sm text-ink-soft">
+                A full {attempt.skill === 'listening' ? 'listening' : 'reading'} mock runs{' '}
+                {Math.round(attempt.durationSec / 60)} minutes with the passage and the questions
+                side by side. A laptop or a tablet both work — on a tablet, turning it sideways is
+                usually enough.
+              </p>
+              <p className="text-sm text-ink-soft">
+                On your phone, part practice works well: one short passage, a handful of questions.
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link
+                to={catalogPath}
+                className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+              >
+                Practise a part instead
+              </Link>
+              <Link
+                to="/"
+                className="rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+              >
+                Back home
+              </Link>
+            </div>
+          </div>
+        </ExamScreen>
+      )
+    }
+
     // Plan cap reached (either path — auto-started drill or picked mode): show a
     // friendly upgrade prompt rather than a raw error. Takes priority over both
     // the drill-error and picker branches below.

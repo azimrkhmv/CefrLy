@@ -11,6 +11,7 @@ import { EmptyState } from './EmptyState'
 import { TabStrip } from './TabStrip'
 import { TestCard, type TestAttemptInfo } from './TestCard'
 import { TestGridSkeleton } from './Skeleton'
+import { ConfirmDialog } from './ConfirmDialog'
 
 /** Best score + attempt count per test id, for the "Best score …" line on a card. */
 export function buildAttemptInfo(attempts: AttemptSummary[] | undefined) {
@@ -29,6 +30,9 @@ export function buildAttemptInfo(attempts: AttemptSummary[] | undefined) {
  *  the sidebar's skill nav effectively filters (each page shows its skill only). */
 export function TestCatalog({ skill }: { skill: Skill }) {
   const { session, plan } = useAuth()
+  // Tapping Start on a full paper from a phone opens the mascot's alert instead
+  // of the exam (see lib/screen).
+  const [tooSmallOpen, setTooSmallOpen] = useState(false)
   const meta = skillMeta(skill)
   // auth.plan resolves staff → 'premium', so this is true for admins too.
   const canOpenPremium = hasPremiumAccess(plan)
@@ -132,10 +136,19 @@ export function TestCatalog({ skill }: { skill: Skill }) {
               attemptInfo={attemptInfo.get(test.id)}
               locked={(test.access ?? 'premium') === 'premium' && !canOpenPremium}
               openSession={openByTest.get(test.id)}
+              onTooSmall={() => setTooSmallOpen(true)}
             />
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={tooSmallOpen}
+        title="This one needs a bigger screen"
+        message={`A full ${meta.label.toLowerCase()} test is a long paper with the questions beside it, so it opens on a laptop or a tablet — if you're on a tablet, turning it sideways is usually enough. Part practice works well on your phone in the meantime.`}
+        cancelLabel="Close"
+        onCancel={() => setTooSmallOpen(false)}
+      />
     </div>
   )
 }
