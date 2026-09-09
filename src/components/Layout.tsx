@@ -1,10 +1,11 @@
-import { Suspense, useState, type ReactNode } from 'react'
+import { Suspense, useMemo, useState, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { RouteFallback } from './RouteFallback'
 import { useAuth } from '../lib/auth'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { Logo } from './Logo'
 import { SHOW_WRITING } from '../lib/features'
+import { NavDrawerContext } from './navDrawer'
 import {
   BookIcon,
   ChartIcon,
@@ -192,6 +193,8 @@ export function Layout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
+  const navDrawer = useMemo(() => ({ open: () => setDrawerOpen(true) }), [])
+
   const pageTitle =
     PAGE_TITLES.find(([prefix]) => location.pathname.startsWith(prefix))?.[1] ?? 'Home'
   const p = location.pathname
@@ -218,6 +221,7 @@ export function Layout() {
                   : HomeIcon
 
   return (
+    <NavDrawerContext.Provider value={navDrawer}>
     <div className="min-h-screen bg-page text-ink">
       {!isSupabaseConfigured && (
         <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-800">
@@ -231,9 +235,10 @@ export function Layout() {
         <SidebarContent />
       </aside>
 
-      {/* Mobile drawer */}
+      {/* Section-menu drawer: the header button on small screens, the Home
+          "Start a test" CTA at any width. */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
+        <div className="fixed inset-0 z-40">
           <div
             className="absolute inset-0 bg-black/30"
             onClick={() => setDrawerOpen(false)}
@@ -257,13 +262,13 @@ export function Layout() {
           <div className="flex h-16 items-center gap-3 px-4 sm:px-8">
             <button
               onClick={() => setDrawerOpen(true)}
-              className="rounded-lg p-1.5 text-ink hover:bg-white lg:hidden"
+              className="inline-flex items-center justify-center rounded-xl border border-line bg-white p-2.5 text-brand shadow-card transition-colors hover:border-ink-faint hover:bg-brand-soft lg:hidden"
               aria-label="Open menu"
             >
-              <MenuIcon />
+              <MenuIcon width={22} height={22} />
             </button>
-            <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-heading shadow-card">
-              <PageIcon width={15} height={15} className="text-brand" />
+            <span className="inline-flex items-center gap-2 text-base font-extrabold text-heading lg:rounded-full lg:bg-white lg:px-4 lg:py-2 lg:text-sm lg:font-bold lg:shadow-card">
+              <PageIcon width={15} height={15} className="hidden text-brand lg:block" />
               {pageTitle}
             </span>
             <div className="ml-auto flex items-center">
@@ -355,5 +360,6 @@ export function Layout() {
         </main>
       </div>
     </div>
+    </NavDrawerContext.Provider>
   )
 }

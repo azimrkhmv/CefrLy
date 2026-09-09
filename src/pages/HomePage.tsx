@@ -2,11 +2,12 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchMyAttempts, fetchMyProfile } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { useNavDrawer } from '../components/navDrawer'
 import { BAND_INFO, BAND_ORDER, BAND_THRESHOLDS } from '../lib/bands'
 import { skillMeta } from '../lib/skills'
 import type { AttemptSummary } from '../types/attempt'
 import type { Band } from '../types/test'
-import type { SelfLevel, StudyTimeframe, TargetBand, WeakArea } from '../types/profile'
+import type { SelfLevel, StudyTimeframe, WeakArea } from '../types/profile'
 import { BandRuler } from '../components/BandRuler'
 import { Sparkline } from '../components/Sparkline'
 import { BAND_CAT, BAND_QUIP, BandCat, QuipBubble } from '../components/BandCat'
@@ -38,10 +39,6 @@ type BandedAttempt = AttemptSummary & { band: Band }
 
 // Mid-band scores used by the ?band= preview when no &score= is given.
 const PREVIEW_SCORE: Record<Band, number> = { below_B1: 5, B1: 14, B2: 23, C1: 32 }
-
-// C2-aware ordering (C2 is aspirational, above the exam's C1 ceiling) for the
-// "is my goal above my level?" comparison.
-const LEVEL_RANK: Record<Band | 'C2', number> = { below_B1: 0, B1: 1, B2: 2, C1: 3, C2: 4 }
 
 // The exam-countdown chip label, from the onboarding study timeframe.
 const TIMEFRAME_CHIP: Record<Exclude<StudyTimeframe, 'no_date'>, string> = {
@@ -93,14 +90,51 @@ function StatTile({
   )
 }
 
+type ExamChip = { label: string; past: boolean }
+
+/**
+ * The reading cat that owns the top-right of both hero cards, with the exam
+ * timeframe spoken as advice out of its mouth rather than filed as a chip in
+ * the page header.
+ */
+function HeroCat({ exam, width, height }: { exam?: ExamChip | null; width: number; height: number }) {
+  return (
+    <div className="relative flex shrink-0 items-start">
+      {exam && (
+        <Link
+          to="/settings"
+          title="Change your timeframe in Settings"
+          className="relative top-8 mr-2.5 max-w-[128px] rounded-xl bg-sun-soft px-2.5 py-1.5 text-[11px] font-bold leading-snug text-sun-ink shadow-card transition-colors hover:bg-sun/40 sm:max-w-[172px]"
+        >
+          <ClockIcon width={12} height={12} className="mr-1 inline align-[-1px]" />
+          {exam.label}
+          <span
+            aria-hidden
+            className="absolute -right-1 top-3.5 h-2.5 w-2.5 rotate-45 rounded-[2px] bg-sun-soft"
+          />
+        </Link>
+      )}
+      <img
+        src="/cat-read-grey.png"
+        alt=""
+        aria-hidden
+        draggable={false}
+        width={width}
+        height={height}
+        className="h-[150px] w-auto select-none"
+      />
+    </div>
+  )
+}
+
 function LevelSnapshot({
   best,
   selfLevel,
-  targetBand,
+  exam,
 }: {
   best: BandedAttempt
   selfLevel?: SelfLevel | null
-  targetBand?: TargetBand | null
+  exam?: ExamChip | null
 }) {
   // The level the student claimed at onboarding owns this card; test results
   // only take over when there is nothing to fall back on ("Not sure yet", or
@@ -115,16 +149,6 @@ function LevelSnapshot({
   // mark (its threshold) — right above the band label, never mid-band.
   const rulerScore = selfBand ? BAND_THRESHOLDS[displayBand] : best.rawScore
   const score = useCountUp(best.rawScore)
-  const idx = BAND_ORDER.indexOf(displayBand)
-  const nextBand = idx < BAND_ORDER.length - 1 ? BAND_ORDER[idx + 1] : null
-  const toNext = nextBand ? Math.max(0, BAND_THRESHOLDS[nextBand] - best.rawScore) : 0
-  // The student's own goal (from onboarding) takes over the "N more marks"
-  // sentence and plants a flag on the ruler; without one we fall back to the
-  // next band up the scale. C2 has no score threshold (above the ceiling).
-  const goalIsC2 = targetBand === 'C2'
-  const goalScore = targetBand && targetBand !== 'C2' ? BAND_THRESHOLDS[targetBand] : null
-  const toGoal = goalScore !== null ? Math.max(0, goalScore - best.rawScore) : 0
-  const goalAbove = targetBand ? LEVEL_RANK[targetBand] > LEVEL_RANK[actualLevel] : false
   const meta = skillMeta(best.skill)
   return (
     <section className={`${CARD_HERO} p-7 sm:p-9`}>
@@ -147,19 +171,10 @@ function LevelSnapshot({
               </span>
             )}
           </div>
-          <p className="mt-2 max-w-md text-sm text-ink-soft">{BAND_INFO[displayBand].blurb}</p>
         </div>
         {/* the reading-book cat from the first-test hero keeps its seat here
             once attempts exist — it must never disappear from Home */}
-        <img
-          src="/cat-read-grey.png"
-          alt=""
-          aria-hidden
-          draggable={false}
-          width={138}
-          height={150}
-          className="h-[150px] w-auto select-none"
-        />
+        <HeroCat exam={exam} width={138} height={150} />
       </div>
 
       <div className="mt-6 pt-20 sm:pt-24">
@@ -173,84 +188,6 @@ function LevelSnapshot({
         />
       </div>
 
-      <p className="mt-6 text-sm text-ink-soft">
-        {selfBand ? (
-          // Self-assessed level: no real score behind the band, so talk in
-          // bands, never in made-up marks.
-          goalAbove && targetBand ? (
-            <>
-              Your goal is <span className="font-extrabold text-brand">{targetBand}</span> — every
-              test moves you closer.{' '}
-              <Link to={meta.to} className="font-bold text-brand hover:underline">
-                Practice →
-              </Link>
-            </>
-          ) : targetBand ? (
-            <>
-              You’re {LEVEL_RANK[targetBand] < LEVEL_RANK[actualLevel] ? 'already past' : 'at'} your
-              goal level ({targetBand}) — prove it in a test.{' '}
-              <Link to={meta.to} className="font-bold text-brand hover:underline">
-                Start →
-              </Link>
-            </>
-          ) : (
-            <>
-              Confirm it with a mock test.{' '}
-              <Link to={meta.to} className="font-bold text-brand hover:underline">
-                Practice →
-              </Link>
-            </>
-          )
-        ) : goalIsC2 ? (
-          <>
-            Your goal is <span className="font-extrabold text-brand">C2</span> — beyond this exam’s
-            C1 ceiling. Every mark sharpens it.{' '}
-            <Link to={meta.to} className="font-bold text-brand hover:underline">
-              Practice →
-            </Link>
-          </>
-        ) : targetBand && goalScore !== null ? (
-          toGoal > 0 ? (
-            <>
-              <span className="font-extrabold text-brand">
-                {toGoal} more mark{toGoal > 1 ? 's' : ''}
-              </span>{' '}
-              to reach your goal ({targetBand}).{' '}
-              <Link to={meta.to} className="font-bold text-brand hover:underline">
-                Practice →
-              </Link>
-            </>
-          ) : (
-            <>
-              Goal reached — <span className="font-extrabold text-brand">{targetBand}</span> is
-              yours.{' '}
-              {targetBand !== 'C1' ? (
-                <Link to="/settings" className="font-bold text-brand hover:underline">
-                  Aim higher →
-                </Link>
-              ) : (
-                <>Top of the scale — keep it sharp.</>
-              )}
-            </>
-          )
-        ) : (
-          <>
-            {nextBand && toNext > 0 ? (
-              <>
-                <span className="font-extrabold text-brand">
-                  {toNext} more mark{toNext > 1 ? 's' : ''}
-                </span>{' '}
-                to reach {BAND_INFO[nextBand].label}.
-              </>
-            ) : (
-              <>You’re at the top of the {meta.label.toLowerCase()} scale — keep it sharp.</>
-            )}{' '}
-            <Link to={meta.to} className="font-bold text-brand hover:underline">
-              Practice →
-            </Link>
-          </>
-        )}
-      </p>
     </section>
   )
 }
@@ -370,7 +307,8 @@ function RecentActivity({ attempts }: { attempts: AttemptSummary[] }) {
   )
 }
 
-function NewUserHome() {
+function NewUserHome({ exam }: { exam?: ExamChip | null }) {
+  const openNav = useNavDrawer()
   const steps = [
     { n: 1, t: 'Take a mock test', d: 'A full CEFR reading paper, timed like the real exam.' },
     { n: 2, t: 'Get your band', d: 'An instant indicative CEFR level from your score out of 35.' },
@@ -387,8 +325,9 @@ function NewUserHome() {
               Take your first mock reading test — 35 questions, 5 parts, 60 minutes — and get an
               indicative band with an explanation for every answer.
             </p>
-            <Link
-              to="/reading"
+            <button
+              type="button"
+              onClick={openNav}
               className="group mt-5 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
             >
               <PlayIcon width={15} height={15} /> Start your first test
@@ -397,17 +336,9 @@ function NewUserHome() {
                 height={15}
                 className="motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5"
               />
-            </Link>
+            </button>
           </div>
-          <img
-            src="/cat-read-grey.png"
-            alt=""
-            aria-hidden
-            draggable={false}
-            width={150}
-            height={163}
-            className="h-[150px] w-auto select-none"
-          />
+          <HeroCat exam={exam} width={150} height={163} />
         </div>
         <div className="mt-8 max-w-xl pt-20 sm:pt-24">
           <BandRuler
@@ -452,6 +383,7 @@ function HomeSkeleton() {
 
 export function HomePage() {
   const { session } = useAuth()
+  const openNav = useNavDrawer()
   const {
     data: attempts,
     isLoading,
@@ -521,29 +453,17 @@ export function HomePage() {
             {hasAttempts ? 'Welcome back' : 'Welcome to Cefrly'}
             {name ? `, ${name}` : ''}
           </h1>
-          <p className="mt-1 text-sm text-ink-soft">
-            {hasAttempts
-              ? 'Here’s where your CEFR prep stands.'
-              : 'Let’s find your English level and build from there.'}
-          </p>
+          {!hasAttempts && (
+            <p className="mt-1 text-sm text-ink-soft">
+              Let’s find your English level and build from there.
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {exam && (
-            <Link
-              to="/settings"
-              title="Change your timeframe in Settings"
-              className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
-                exam.past
-                  ? 'bg-white text-ink-soft ring-1 ring-line hover:text-ink'
-                  : 'bg-sun-soft text-sun-ink hover:ring-1 hover:ring-sun/50'
-              }`}
-            >
-              <ClockIcon width={15} height={15} /> {exam.label}
-            </Link>
-          )}
           {hasAttempts && (
-            <Link
-              to="/reading"
+            <button
+              type="button"
+              onClick={openNav}
               className="group inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
             >
               Start a test
@@ -552,7 +472,7 @@ export function HomePage() {
                 height={15}
                 className="motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5"
               />
-            </Link>
+            </button>
           )}
         </div>
       </div>
@@ -565,7 +485,7 @@ export function HomePage() {
         </p>
       )}
 
-      {attempts && !hasAttempts && <NewUserHome />}
+      {attempts && !hasAttempts && <NewUserHome exam={exam} />}
 
       {hasAttempts && (
         <>
@@ -574,7 +494,7 @@ export function HomePage() {
             // ?band= previews the earned-band card, so it suppresses the
             // self-assessed override.
             selfLevel={previewBand ? null : profile?.selfLevel}
-            targetBand={profile?.targetBand}
+            exam={exam}
           />
 
           <section className={chron.length >= 2 ? 'grid grid-cols-1 gap-5 lg:grid-cols-[1fr_1.3fr]' : ''}>
