@@ -30,6 +30,7 @@ import {
   type SpeakingProfile,
 } from './rubric.ts'
 import { MIN_ANSWER_WORDS, resolveOnTopic } from './verify.ts'
+import { geminiMime, gptCanRead, orAudioFormat } from './audioFormat.ts'
 
 const BUCKET = 'speaking-temp'
 // FLASH, NOT FLASH-LITE. On the cheap tier the marking was not reliable enough
@@ -773,7 +774,7 @@ async function gradeBlock(
     prompt: typed[0].text,
     clips: typed.slice(1).map((p) => ({
       data: p.inline_data.data,
-      format: /mp4|m4a/.test(p.inline_data.mime_type ?? '') ? 'mp4' : 'webm',
+      format: orAudioFormat(p.inline_data.mime_type),
     })),
     schema: BLOCK_CALL_SCHEMA,
     maxTokens: BLOCK_OUTPUT_TOKENS,
@@ -797,7 +798,7 @@ async function promptParts(admin: Client, answers: AnswerIn[]): Promise<unknown[
       if (error || !data) throw new Error(`Missing recording for question ${a.questionIndex + 1}`)
       return {
         inline_data: {
-          mime_type: a.mimeType || data.type || 'audio/webm',
+          mime_type: geminiMime(a.mimeType || data.type),
           data: base64(new Uint8Array(await data.arrayBuffer())),
         },
       }
@@ -866,17 +867,32 @@ async function callModel(
   }
 }
 
-/** ChatGPT's audio models reject webm (tested against a real clip, 2026-09-02:
- *  400 from openai/gpt-audio however the format is labelled), so recordings can
- *  only fall back to Gemini via OpenRouter's capacity. Text-only calls have no
- *  such constraint and try ChatGPT first — a different vendor entirely. */
-const OR_AUDIO_MODELS = ['google/gemini-3.7-flash', 'google/gemini-3.6-flash', 'google/gemini-2.5-flash']
+/** A FALLBACK INSIDE ONE VENDOR IS NOT A FALLBACK. When Google is degraded
+ *  rather than down, OpenRouter's separately provisioned Gemini capacity
+ *  answers fine — but a real Google-wide outage took every lane with it, and
+ *  ChatGPT could not step in: OpenAI's audio input accepts only wav and mp3,
+ *  so a webm clip came back 400 however it was labelled (tested against a real
+ *  recording, 2026-09-02).
+ *
+ *  The browser now encodes MP3 before uploading (src/lib/mp3Encoder.ts), so
+ *  ChatGPT leads the ladder for audio too — a genuinely different vendor first.
+ *  That encoding is allowed to fail, though: it falls back to the raw recording
+ *  so a student never loses an answer to a codec. Which means the clips of ANY
+ *  given attempt may still be webm, and `orAudioModels` below picks the ladder
+ *  from what this attempt actually holds rather than from what we hoped for. */
+const OR_GEMINI_MODELS = ['google/gemini-3.7-flash', 'google/gemini-3.6-flash', 'google/gemini-2.5-flash']
 const OR_TEXT_MODELS = ['openai/gpt-audio', 'google/gemini-3.7-flash', 'google/gemini-2.5-flash']
+
+/** ChatGPT first, but only when every clip is in a format it can read — see
+ *  gptCanRead. An attempt whose clips never got encoded goes straight down the
+ *  Gemini lane rather than spending a try on a certain 400. */
+const orAudioModels = (clips: { format: string }[]): string[] =>
+  gptCanRead(clips) ? ['openai/gpt-audio', ...OR_GEMINI_MODELS] : OR_GEMINI_MODELS
 
 // deno-lint-ignore no-explicit-any
 async function callOpenRouter(orKey: string, req: NeutralRequest, budgetMs: number): Promise<any> {
   const deadline = Date.now() + budgetMs
-  const models = req.clips.length ? OR_AUDIO_MODELS : OR_TEXT_MODELS
+  const models = req.clips.length ? orAudioModels(req.clips) : OR_TEXT_MODELS
   let lastError: Error = new Error('The backup grader could not be reached')
 
   for (const model of models) {

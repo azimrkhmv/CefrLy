@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { toMp3 } from './mp3Encoder'
 import { PlanLimitError } from './api'
 import type { SpeakingAttemptRow, SpeakingAttemptSummary } from '../types/speakingResult'
 import type { SpeakingStep } from './speakingQuestions'
@@ -45,11 +46,16 @@ export async function uploadAnswerClip(
   } = await supabase.auth.getUser()
   if (!user) throw new GradingError('You need to be signed in.')
 
-  const mimeType = blob.type || 'audio/webm'
+  // MP3 if we can, the raw recording if we cannot. Every grader in the ladder
+  // reads MP3; only Gemini reads webm, so a clip that fails to encode is still
+  // gradeable, just not by the backup providers. See src/lib/mp3Encoder.ts.
+  const encoded = await toMp3(blob)
+  const upload = encoded?.blob ?? blob
+  const mimeType = encoded?.mimeType ?? blob.type ?? 'audio/webm'
   const take = crypto.randomUUID().slice(0, 8)
   // Path is scoped by user id — storage RLS refuses anything else.
   const path = `${user.id}/${attemptId}/${questionIndex}-${take}.${extensionFor(mimeType)}`
-  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
+  const { error } = await supabase.storage.from(BUCKET).upload(path, upload, {
     contentType: mimeType,
     upsert: false,
   })
@@ -66,7 +72,15 @@ export class GradingError extends Error {
 }
 
 const extensionFor = (mime: string) =>
-  mime.includes('ogg') ? 'ogg' : mime.includes('mp4') ? 'mp4' : mime.includes('wav') ? 'wav' : 'webm'
+  mime.includes('mpeg') || mime.includes('mp3')
+    ? 'mp3'
+    : mime.includes('ogg')
+      ? 'ogg'
+      : mime.includes('mp4')
+        ? 'mp4'
+        : mime.includes('wav')
+          ? 'wav'
+          : 'webm'
 
 /**
  * Upload every recorded answer, then ask the server to grade them.

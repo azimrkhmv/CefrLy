@@ -29,6 +29,7 @@ import {
   scoreBlock,
 } from './rubric.ts'
 import { MIN_ANSWER_WORDS, resolveOnTopic, verifyQuote } from './verify.ts'
+import { geminiMime, gptCanRead, orAudioFormat } from './audioFormat.ts'
 
 const profile = (
   grammar: CefrLevel,
@@ -375,3 +376,53 @@ test('a block with something on topic scores 0 only below B1 on the long turns',
 function normalized(s: string) {
   return s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
 }
+
+// ---------------------------------------------------------------------------
+// AUDIO FORMAT AND THE FALLBACK LADDER (defect #29).
+//
+// A Google-wide outage lost papers because the only backup was Gemini reached
+// another way. ChatGPT could not stand in: OpenAI's audio input takes wav and
+// mp3 only. The browser now encodes MP3 — but that encode is allowed to fail
+// back to the raw recording, so the rule being tested here is not "clips are
+// mp3", it is "we correctly notice when they are not".
+// ---------------------------------------------------------------------------
+
+test('mp3 is recognised however the browser labels it', () => {
+  for (const mime of ['audio/mpeg', 'audio/mp3', 'AUDIO/MPEG', 'audio/mpeg;codecs=mp3']) {
+    assert.equal(orAudioFormat(mime), 'mp3', mime)
+  }
+})
+
+test('the browsers own recording formats are named for OpenRouter', () => {
+  assert.equal(orAudioFormat('audio/webm;codecs=opus'), 'webm')
+  assert.equal(orAudioFormat('audio/mp4'), 'mp4')
+  assert.equal(orAudioFormat('audio/x-m4a'), 'mp4')
+  assert.equal(orAudioFormat('audio/wav'), 'wav')
+  assert.equal(orAudioFormat('audio/ogg'), 'ogg')
+})
+
+test('an unknown or missing mime type is treated as webm, never as mp3', () => {
+  // Guessing mp3 here would send a webm clip to ChatGPT and 400 the call.
+  for (const mime of [undefined, null, '', 'application/octet-stream']) {
+    assert.equal(orAudioFormat(mime), 'webm', String(mime))
+    assert.equal(gptCanRead([{ format: orAudioFormat(mime) }]), false, String(mime))
+  }
+})
+
+test('ChatGPT is offered the clips only when it can read every one of them', () => {
+  assert.equal(gptCanRead([{ format: 'mp3' }, { format: 'mp3' }]), true)
+  assert.equal(gptCanRead([{ format: 'wav' }, { format: 'mp3' }]), true)
+  // ONE un-encoded clip fails the whole call, so the batch must not try.
+  assert.equal(gptCanRead([{ format: 'mp3' }, { format: 'webm' }]), false)
+  assert.equal(gptCanRead([{ format: 'webm' }]), false)
+  // No clips is the text-only judge, which picks its own ladder.
+  assert.equal(gptCanRead([]), false)
+})
+
+test('Gemini is given a mime type it documents, with codec parameters dropped', () => {
+  assert.equal(geminiMime('audio/mpeg'), 'audio/mp3')
+  assert.equal(geminiMime('audio/mp3'), 'audio/mp3')
+  assert.equal(geminiMime('audio/webm;codecs=opus'), 'audio/webm')
+  assert.equal(geminiMime('audio/mp4'), 'audio/mp4')
+  assert.equal(geminiMime(undefined), 'audio/webm')
+})
