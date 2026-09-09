@@ -102,11 +102,17 @@ export function ChevronLeftIcon() {
   )
 }
 
-/** Decorative glow + arcs behind the desktop mascot (design: halo-curves.svg).
- *  Inlined rather than shipped as a file so it costs no extra request and can
- *  use the accent token instead of the source's hard-coded #8b5cf6. The C2PA
- *  provenance metadata in the original export is dropped — it was ~4 KB of
- *  base64 that the browser never reads. */
+/** Decorative backdrop behind the desktop mascot (from the design's
+ *  halo-curves.svg, since grown well past it). Inlined rather than shipped as a
+ *  file so it costs no extra request and can use theme tokens instead of the
+ *  source's hard-coded #8b5cf6. The C2PA provenance metadata in the original
+ *  export is dropped — it was ~4 KB of base64 the browser never reads.
+ *
+ *  Three layers, back to front: two soft glows, a set of ripple rings centred
+ *  under the cushion (the cat sits in the middle of them, so the panel reads as
+ *  a calm pond rather than an empty half-page), and the sweeping arcs. Every
+ *  stroke is painted with a horizontal gradient so lines dissolve at the panel
+ *  edges instead of ending in a hard clipped stub. */
 export function HaloCurves({ className }: { className?: string }) {
   return (
     <svg
@@ -120,25 +126,82 @@ export function HaloCurves({ className }: { className?: string }) {
         <radialGradient
           id="cefrly-halo"
           cx={230}
-          cy={420}
-          r={270}
+          cy={430}
+          r={280}
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0" stopColor="var(--color-accent)" stopOpacity={0.14} />
-          <stop offset=".45" stopColor="var(--color-accent)" stopOpacity={0.07} />
+          <stop offset="0" stopColor="var(--color-accent)" stopOpacity={0.2} />
+          <stop offset=".45" stopColor="var(--color-accent)" stopOpacity={0.09} />
           <stop offset="1" stopColor="var(--color-accent)" stopOpacity={0} />
         </radialGradient>
+        {/* A second, cooler glow up and to the right, so the panel's empty
+            middle is not perfectly flat. */}
+        <radialGradient
+          id="cefrly-halo-far"
+          cx={470}
+          cy={170}
+          r={230}
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0" stopColor="var(--color-brand)" stopOpacity={0.08} />
+          <stop offset="1" stopColor="var(--color-brand)" stopOpacity={0} />
+        </radialGradient>
+        {/* Fades every stroke out at both ends. */}
+        <linearGradient id="cefrly-stroke" x1="0" y1="0" x2="600" y2="0"
+          gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="var(--color-accent)" stopOpacity={0} />
+          <stop offset=".22" stopColor="var(--color-accent)" stopOpacity={1} />
+          <stop offset=".78" stopColor="var(--color-accent)" stopOpacity={1} />
+          <stop offset="1" stopColor="var(--color-accent)" stopOpacity={0} />
+        </linearGradient>
+        <linearGradient id="cefrly-ripple" x1="0" y1="0" x2="600" y2="0"
+          gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="var(--color-brand)" stopOpacity={0} />
+          <stop offset=".3" stopColor="var(--color-brand)" stopOpacity={1} />
+          <stop offset=".7" stopColor="var(--color-brand)" stopOpacity={1} />
+          <stop offset="1" stopColor="var(--color-brand)" stopOpacity={0} />
+        </linearGradient>
       </defs>
-      <circle cx={230} cy={420} r={270} fill="url(#cefrly-halo)" />
+
+      <circle cx={470} cy={170} r={230} fill="url(#cefrly-halo-far)" />
+      <circle cx={230} cy={430} r={280} fill="url(#cefrly-halo)" />
+
+      {/* Ripple rings under the cushion. Centred below the viewBox floor so
+          only their upper arcs show — the cat stands in the middle of them. */}
+      <g stroke="url(#cefrly-ripple)" fill="none" opacity={0.22}>
+        <ellipse cx={175} cy={505} rx={140} ry={52} strokeWidth={1.2} />
+        <ellipse cx={175} cy={508} rx={215} ry={80} strokeWidth={1} />
+        <ellipse cx={175} cy={512} rx={300} ry={112} strokeWidth={0.9} />
+      </g>
+
+      {/* Sweeping arcs. Graduated weight and opacity so they read as a family
+          with depth rather than three identical tramlines. */}
       <g
-        stroke="var(--color-accent)"
-        strokeWidth={1.5}
+        stroke="url(#cefrly-stroke)"
         strokeLinecap="round"
-        opacity={0.18}
+        fill="none"
       >
-        <path d="M-40 470 C 120 300 320 260 640 400" />
-        <path d="M-40 400 C 140 210 360 190 640 320" />
-        <path d="M-40 330 C 160 130 400 120 640 240" />
+        <path d="M-40 470 C 120 300 320 260 640 400" strokeWidth={2.2} opacity={0.34} />
+        <path d="M-40 400 C 140 210 360 190 640 320" strokeWidth={1.6} opacity={0.26} />
+        <path d="M-40 330 C 160 130 400 120 640 240" strokeWidth={1.2} opacity={0.2} />
+        <path d="M-40 258 C 180 52 430 46 640 158" strokeWidth={1} opacity={0.14} />
+        {/* One dashed pass, offset just off the lead arc, for texture. */}
+        <path
+          d="M-40 432 C 130 254 340 224 640 358"
+          strokeWidth={1.4}
+          strokeDasharray="2 12"
+          opacity={0.4}
+        />
+      </g>
+
+      {/* A few motes sitting on the arcs — the detail that makes the backdrop
+          look drawn rather than generated. */}
+      <g fill="var(--color-accent)">
+        <circle cx={92} cy={382} r={3} opacity={0.3} />
+        <circle cx={318} cy={268} r={2.2} opacity={0.24} />
+        <circle cx={462} cy={318} r={3.4} opacity={0.2} />
+        <circle cx={228} cy={172} r={2} opacity={0.18} />
+        <circle cx={540} cy={214} r={2.6} opacity={0.16} />
       </g>
     </svg>
   )

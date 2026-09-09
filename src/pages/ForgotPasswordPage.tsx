@@ -49,7 +49,7 @@ export function ForgotPasswordPage() {
         </Link>
       }
       line={(cat) => cat.bye}
-      sub="Your progress stays saved."
+      sub="The link expires in 1 hour."
     >
       <form onSubmit={handleSubmit} className="flex flex-col">
         <p className="mt-[34px] text-[10px] font-extrabold uppercase tracking-[0.16em] text-ink-soft lg:hidden">

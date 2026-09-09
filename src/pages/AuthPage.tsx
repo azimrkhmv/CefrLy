@@ -92,33 +92,14 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
 
   return (
     <AuthShell
-      topRight={
-        isLogin ? (
-          <>
-            New here?{' '}
-            <Link
-              to="/signup"
-              state={{ from }}
-              className="font-extrabold text-brand no-underline hover:underline"
-            >
-              Sign up
-            </Link>
-          </>
-        ) : (
-          <>
-            Have an account?{' '}
-            <Link
-              to="/login"
-              state={{ from }}
-              className="font-extrabold text-brand no-underline hover:underline"
-            >
-              Log in
-            </Link>
-          </>
-        )
-      }
       line={(cat) => (isLogin ? cat.hello : cat.helloSignup)}
-      sub="Your progress is safe with us."
+      // The design gives each screen its own steady second line under the
+      // cat's, rather than one shared reassurance string.
+      sub={
+        isLogin
+          ? 'The official reading format, timed and scored.'
+          : 'One free account, all four papers.'
+      }
     >
       <form onSubmit={handleSubmit} className="flex flex-col">
         {/* The desktop brand panel carries this eyebrow beside the headline. */}
@@ -244,6 +225,22 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             <span className="font-bold text-ink">Privacy Policy</span>.
           </p>
         )}
+
+        {/* Account switch. It sits at the END of the form — directly under the
+            Google button when signing in, under the Terms line when signing up
+            (so "By continuing…" stays next to the buttons it refers to). It
+            used to be parked in the top corner, far from the point where a
+            visitor actually realises they are on the wrong screen. */}
+        <p className="mt-6 border-t border-line pt-5 text-center text-sm font-semibold text-ink-soft">
+          {isLogin ? 'New here? ' : 'Have an account? '}
+          <Link
+            to={isLogin ? '/signup' : '/login'}
+            state={{ from }}
+            className="font-extrabold text-brand no-underline hover:underline"
+          >
+            {isLogin ? 'Sign up' : 'Log in'}
+          </Link>
+        </p>
       </form>
     </AuthShell>
   )

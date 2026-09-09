@@ -7,7 +7,7 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 import { CATS, pickCatIndex, type CatDef } from "./cats";
-import { HaloCurves, ShieldIcon } from "./icons";
+import { HaloCurves } from "./icons";
 
 /** Shared chrome for every auth surface (sign in / sign up / reset password),
  *  built from design "Auth Redesign 1c — form first, cat in the nook".
@@ -15,20 +15,26 @@ import { HaloCurves, ShieldIcon } from "./icons";
  *  Two layouts, one tree:
  *  · Under lg  — a single form-first column. Header is logo + one link; the cat
  *    lives at the bottom in the reassurance nook, where nothing crops it.
- *  · lg and up — a two-column split: brand panel (logo, headline, halo, big cat,
- *    trust badge) beside the form.
+ *  · lg and up — a two-column split: brand panel (logo, headline, halo, big cat
+ *    under its line) beside the form. "Auth Redesign Final" dropped the
+ *    floating trust badge that the earlier 1c import carried.
  *
- *  The mascot rotates per load and can be poked (see cats.ts); poking swaps the
- *  nook line to one of that cat's quips. There is no speech bubble in this
- *  design — the cat's voice lives in the nook copy instead. */
+ *  The mascot rotates per load and can be poked (see cats.ts); poking swaps its
+ *  line to one of that cat's quips. BOTH layouts render that line — the desktop
+ *  cat used to be mute, because the only element showing it was the lg:hidden
+ *  nook. There is no speech bubble in this design: the cat's voice is set as
+ *  plain copy next to it. */
 export function AuthShell({
   topRight,
   line,
   sub,
   children,
 }: {
-  /** Shown in the mobile header and, on desktop, above the form. */
-  topRight: ReactNode;
+  /** Optional top-corner slot: mobile header right, desktop above the form.
+   *  Used for back-navigation (the reset screen's "← Sign in"). The account
+   *  switch does NOT live here — it sits at the end of the form, under the
+   *  Google button, so the eye meets it after the things it can act on. */
+  topRight?: ReactNode;
   /** The cat's default nook line, given whichever cat was picked this load. */
   line: (cat: CatDef) => string;
   /** Steady reassurance copy under the cat's line. */
@@ -121,35 +127,55 @@ export function AuthShell({
 
         <HaloCurves className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-auto w-full" />
 
-        <button
-          type="button"
-          onClick={() => poke(heroRef)}
-          aria-label="Poke the cat"
-          className="absolute -bottom-1 left-11 z-[1] cursor-pointer select-none border-0 bg-transparent p-0"
-        >
-          <img
-            ref={heroRef}
-            src={cat.src}
-            alt={cat.alt}
-            draggable={false}
-            width={cat.iw}
-            height={cat.ih}
+        {/* The cat's line, beside the cat, so the mascot has a voice on desktop
+            too (the nook that renders `nookLine` below is lg:hidden, so the
+            desktop cat used to be mute). The cat is FLUID here: a fixed 400px
+            cushion plus a line alongside overflows the ~400px of content width
+            this panel has at 1024px, and the section's overflow-hidden would
+            silently clip the words. min(heroW, 50%) lets the cushion shrink on
+            narrow desktops and stop growing at its designed size on wide ones.
+            -ml-3 keeps it at the design's left-11 despite the panel's px-14;
+            -mb-1 lets it bleed off the bottom edge. */}
+        <div className="relative z-[1] mt-auto -mb-1 -ml-3">
+          <button
+            type="button"
+            onClick={() => poke(heroRef)}
+            aria-label="Poke the cat"
             style={{ width: cat.heroW }}
-            // This is the desktop LCP element. It can't be preloaded from the
-            // HTML (which cat renders is picked at random in JS), so at least
-            // tell the browser not to queue it behind everything else.
-            fetchPriority="high"
-            decoding="async"
-            className={`${catAnim} block h-auto`}
-          />
-        </button>
-
-        <div className="absolute right-12 top-11 z-[2] flex items-center gap-2.5 rounded-[14px] bg-white px-4 py-3 text-[13px] font-extrabold leading-[1.3] text-ink shadow-[0_4px_16px_color-mix(in_srgb,var(--color-brand)_10%,transparent)]">
-          <span className="text-brand">
-            <ShieldIcon />
-          </span>
-          Your progress is safe with us.
+            className="block cursor-pointer select-none border-0 bg-transparent p-0"
+          >
+            <img
+              ref={heroRef}
+              src={cat.src}
+              alt={cat.alt}
+              draggable={false}
+              width={cat.iw}
+              height={cat.ih}
+              // This is the desktop LCP element. It can't be preloaded from the
+              // HTML (which cat renders is picked at random in JS), so at least
+              // tell the browser not to queue it behind everything else.
+              fetchPriority="high"
+              decoding="async"
+              className={`${catAnim} block h-auto w-full`}
+            />
+          </button>
+          {/* The cat speaks in a bubble, as it always has. Keyed on the text so
+              React remounts it and the bubble-pop replays on every new line.
+              It floats above the cushion with the tail pointing back down at
+              the cat, rather than sitting beside it as flat copy. */}
+          <div
+            key={nookLine}
+            className="bubble-pop absolute bottom-full left-4 z-[3] mb-3 max-w-[320px] rounded-[14px] bg-white px-[15px] py-[9px] text-sm font-extrabold leading-[1.35] text-ink shadow-[0_4px_16px_color-mix(in_srgb,var(--color-brand)_10%,transparent)]"
+            aria-live="polite"
+          >
+            {nookLine}
+            <span
+              className="absolute -bottom-[5px] left-[26px] h-3 w-3 rotate-45 rounded-[2px] bg-white"
+              aria-hidden
+            />
+          </div>
         </div>
+
       </section>
 
       {/* ── Form column ───────────────────────────────────────────────────── */}
@@ -174,15 +200,19 @@ export function AuthShell({
               </span>
             </span>
           </Link>
-          <span className="text-sm font-semibold text-ink-soft">
-            {topRight}
-          </span>
+          {topRight && (
+            <span className="text-sm font-semibold text-ink-soft">
+              {topRight}
+            </span>
+          )}
         </div>
 
         {/* Same link, parked top-right of the form column on desktop. */}
-        <span className="absolute right-14 top-[46px] hidden text-sm font-semibold text-ink-soft lg:block">
-          {topRight}
-        </span>
+        {topRight && (
+          <span className="absolute right-14 top-[46px] hidden text-sm font-semibold text-ink-soft lg:block">
+            {topRight}
+          </span>
+        )}
 
         <div className="flex w-full max-w-[400px] flex-1 flex-col lg:flex-none">
           {children}

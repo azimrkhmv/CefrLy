@@ -52,6 +52,9 @@ export const CATS: CatDef[] = [
       'Petting is not on the syllabus.',
       'This is my study position.',
       'I dream in perfect English.',
+      'Wake me for the listening part.',
+      'I have already read it. Trust me.',
+      'Studying is mostly lying down, yes?',
     ],
   },
   {
@@ -74,6 +77,9 @@ export const CATS: CatDef[] = [
       'Who said that? ...Oh. You.',
       'I’m deeply invested in your progress.',
       'Blink twice if you brought snacks.',
+      'You typed that? Bold.',
+      'I have seen the answer key. I said nothing.',
+      'Do not startle me. I am fragile and round.',
     ],
   },
   {
@@ -95,6 +101,9 @@ export const CATS: CatDef[] = [
       'The floor needed a hug.',
       'Horizontal is a study position.',
       'Belly rubs unlock C1. Probably.',
+      'I peaked. This is the peak.',
+      'Gravity: 1. Me: 0.',
+      'I revise with my eyes closed.',
     ],
   },
 ]
