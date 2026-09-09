@@ -318,6 +318,16 @@ export interface SpeakingQuestion {
   speakSec?: number
 }
 
+export interface SpeakingDebate {
+  /** The proposition, in the paper's own words: "Citizens should be allowed to
+   *  carry personal guns." */
+  statement: string
+  /** Suggested supporting points. May be empty if the paper printed none. */
+  for: string[]
+  /** Suggested opposing points. */
+  against: string[]
+}
+
 export interface SpeakingTask {
   id: string
   partType: SpeakingPartType
@@ -328,6 +338,11 @@ export interface SpeakingTask {
    *  own recording. Parts with a single long turn carry exactly one entry (or
    *  none, in which case the prompt itself is the question). */
   questions?: (string | SpeakingQuestion)[]
+  /** PART 3 ONLY. The statement under debate, plus the paper's own suggested
+   *  points on each side. The real paper prints these as a highlighted
+   *  statement over two short lists; running them together as prose (as this
+   *  app first did) hides the one line the student actually has to argue. */
+  debate?: SpeakingDebate
   /** OPTIONAL photos — required in spirit for Part 1.2 (compare two). */
   images?: SpeakingImage[]
   /** Default silent preparation window before EACH question's recording starts

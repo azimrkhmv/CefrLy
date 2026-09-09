@@ -1,5 +1,11 @@
 import type { Sample, SampleCategory, SpeakingTurn } from '../types/sample'
-import type { SpeakingImage, SpeakingPartType, SpeakingTask, SpeakingTest } from '../types/test'
+import type {
+  SpeakingDebate,
+  SpeakingImage,
+  SpeakingPartType,
+  SpeakingTask,
+  SpeakingTest,
+} from '../types/test'
 import { imageUrl } from './storage'
 import { PART_DEFAULTS, PART_LABEL, PART_1_2_OPENING } from './speakingFixtures'
 
@@ -128,11 +134,69 @@ const esc = (s: string) =>
 
 /** The framing text shown above the question. The "Questions:" line is dropped —
  *  it becomes the questions themselves, and repeating it would double it up. */
-function promptHtml(sample: Sample): string {
+function promptHtml(sample: Sample, dropDebateLines = false): string {
   return sample.content.task
     .filter((t) => !/^\s*Questions?:/i.test(t))
+    .filter((t) => !(dropDebateLines && isDebateLine(t)))
     .map((t) => `<p>${esc(t)}</p>`)
     .join('')
+}
+
+
+// --- Part 3: statement + suggested points ----------------------------------
+// The papers print Part 3 as a proposition and two short lists of arguments,
+// but the samples library stores that as two prose lines:
+//
+//   "In Part 3 you are given a statement … (Statement: “Citizens should be
+//    allowed to carry personal guns.”)"
+//   "FOR: guns help people protect themselves; they deter crimes … AGAINST:
+//    guns are used to commit crimes; fewer guns reduce the homicide rate …"
+//
+// Read back as one paragraph, the student cannot see what they are arguing.
+// These two functions recover the structure the paper had.
+
+/** The proposition, from `(Statement: “…”)` or the first quoted sentence. */
+function parseStatement(task: string[]): string | null {
+  const joined = task.join(' ')
+  const labelled = /statement:\s*["“”']?([^"“”']+)["“”']?\s*\)?/i.exec(joined)
+  if (labelled?.[1]) return tidy(labelled[1])
+  const quoted = /["“]([^"“”]{12,})["”]/.exec(joined)
+  return quoted?.[1] ? tidy(quoted[1]) : null
+}
+
+/** Split "FOR: a; b; c AGAINST: d; e" into two lists of points. Reads across
+ *  the whole prompt, since the two labels are as often on their own lines (a
+ *  student typing their own question) as on one (the samples library). */
+function parsePoints(task: string[]): { for: string[]; against: string[] } {
+  const joined = task.join('\n')
+  const m = /\bfor\s*:(.*?)\bagainst\s*:(.*)$/is.exec(joined)
+  if (!m) return { for: [], against: [] }
+  const points = (chunk: string) =>
+    chunk
+      // A point ends at a semicolon, a newline, a bullet, or a full stop
+      // before a new capitalised point.
+      .split(/;|\n|\u2022|(?:\.\s+(?=[A-Z]))/)
+      .map(tidy)
+      .filter((t) => t.length > 2)
+  return { for: points(m[1]), against: points(m[2]) }
+}
+
+const tidy = (s: string) => s.replace(/\s+/g, ' ').replace(/^[\s.;,-]+|[\s.;,]+$/g, '').trim()
+
+/** The debate a Part 3 prompt describes. Exported because a student's own Part
+ *  3 question goes through exactly the same parse — type "FOR: … AGAINST: …"
+ *  and it renders as the real paper does. */
+export function parseDebate(task: string[]): SpeakingDebate | null {
+  const statement = parseStatement(task)
+  if (!statement) return null
+  const { for: forPoints, against } = parsePoints(task)
+  return { statement, for: forPoints, against }
+}
+
+/** Lines the debate card now renders — kept out of the framing prose so the
+ *  same words are not printed twice. */
+function isDebateLine(t: string): boolean {
+  return /statement:/i.test(t) || (/\bfor\s*:/i.test(t) && /\bagainst\s*:/i.test(t))
 }
 
 /** One sample → one exam task. */
@@ -143,6 +207,7 @@ function toTask(sample: Sample): SpeakingTask | null {
   const questionLine = sample.content.task.find((t) => /^\s*Questions?:/i.test(t)) ?? ''
 
   let questions: SpeakingTask['questions']
+  let debate: SpeakingDebate | null = null
 
   if (partType === 'part_1_1') {
     // Three short interview questions, each its own recording.
@@ -157,10 +222,21 @@ function toTask(sample: Sample): SpeakingTask | null {
     const prompts = splitQuestions(questionLine)
     questions = prompts.length ? [{ text: prompts.join(' ') }] : undefined
   } else {
-    // Part 3 keeps its statement in the prompt image, so there is no question
-    // line to parse — the title carries the topic.
+    // Part 3 argues ONE proposition. Ask the statement in the paper's own words
+    // — the sample title ("For and against: personal gun ownership") is a
+    // library label, and reading it aloud as the question is not the exam.
+    // 23 of the 24 papers keep the statement and its points inside the prompt
+    // IMAGE, so the prose parse finds nothing. The title carries the topic in
+    // those, which is still worth highlighting on its own — the points stay
+    // where they are, in the image below the card.
+    debate = parseDebate(sample.content.task) ?? {
+      statement: sample.title,
+      for: [],
+      against: [],
+    }
+    const asked = debate.statement
     questions = [
-      { text: `${sample.title}. Give arguments for and against this, then say what you think.` },
+      { text: `${asked} Give arguments for and against this, then say what you think.` },
     ]
   }
 
@@ -170,8 +246,9 @@ function toTask(sample: Sample): SpeakingTask | null {
     id: `${sample.slug}-t`,
     partType,
     label: PART_LABEL[partType],
-    prompt: { title: sample.title, html: promptHtml(sample) },
+    prompt: { title: sample.title, html: promptHtml(sample, partType === 'part_3') },
     questions,
+    debate: debate ?? undefined,
     images: toImages(sample),
     prepSec: d.prepSec,
     speakSec: d.speakSec,

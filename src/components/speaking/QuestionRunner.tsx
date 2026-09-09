@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { CheckIcon, HeadphonesIcon, MicIcon, PlayIcon } from '../icons'
 import { useRecorder } from '../../lib/useRecorder'
 import { cancelSpeech, speak } from '../../lib/speech'
+import { playSignal, warningAt } from '../../lib/tone'
 import type { SpeakingStep } from '../../lib/speakingQuestions'
+import type { SpeakingDebate } from '../../types/test'
 
 // ---------------------------------------------------------------------------
 // One question, one recording, on the exam's clock.
@@ -81,6 +83,13 @@ export function QuestionRunner({
   speakingRef.current = speaking
   prepLeftRef.current = prepLeft
 
+  // Exam signals fire once each per question (see lib/tone). Reset when the
+  // step changes, so a re-answered question signals again.
+  const signalled = useRef({ prepEnding: false, start: false, warning: false })
+  useEffect(() => {
+    signalled.current = { prepEnding: false, start: false, warning: false }
+  }, [step.id])
+
   const recorder = useRecorder()
   const { status, recording, start, stop, reset, level, elapsed, error } = recorder
 
@@ -131,6 +140,16 @@ export function QuestionRunner({
         return
       }
       const left = (endsAt - Date.now()) / 1000
+      // "Nearly done preparing", then the rising start pair while the mic is
+      // still closed — so neither is inside the graded clip.
+      if (left <= 3.2 && left > 1 && !signalled.current.prepEnding) {
+        signalled.current.prepEnding = true
+        playSignal('prep-ending')
+      }
+      if (left <= 0.9 && !signalled.current.start) {
+        signalled.current.start = true
+        playSignal('start')
+      }
       if (left <= 0) {
         window.clearInterval(id)
         setPrepLeft(0)
@@ -147,12 +166,32 @@ export function QuestionRunner({
   useEffect(() => {
     if (phase !== 'answering') return
     if (status !== 'idle') return
+    // Steps with no preparation window (prepSec 0) never ran the countdown, so
+    // they signal here instead.
+    if (!signalled.current.start) {
+      signalled.current.start = true
+      playSignal('start')
+    }
     void start(step.speakSec)
   }, [phase, status, start, step.speakSec])
+
+  // "Time is nearly up" while the student is still talking. Long turns get 10s,
+  // short ones 5s, and the shortest none at all (see warningAt).
+  useEffect(() => {
+    if (phase !== 'answering' || status !== 'recording') return
+    const at = warningAt(step.speakSec)
+    if (at === null || signalled.current.warning) return
+    if (speakLeft <= at) {
+      signalled.current.warning = true
+      playSignal('warning')
+    }
+  }, [phase, status, speakLeft, step.speakSec])
 
   // The recorder hard-stops itself at speakSec; follow it into review.
   useEffect(() => {
     if (status === 'recorded' && recording) {
+      // After the recorder stopped, so the falling pair is never on the clip.
+      playSignal('end')
       setPhase('review')
       onAnswered(recording)
     }
@@ -183,6 +222,15 @@ export function QuestionRunner({
 
   const live = status === 'recording'
 
+  // With a debate card above, the question card would repeat the statement word
+  // for word. Show only what is being ASKED of it; the spoken question keeps
+  // both halves, because the examiner reads the statement out.
+  const debate = step.task.debate
+  const shownQuestion =
+    debate && step.question.text.startsWith(debate.statement)
+      ? step.question.text.slice(debate.statement.length).trim() || step.question.text
+      : step.question.text
+
   return (
     <div className="mx-auto w-full max-w-2xl">
       <Stepper current={stepNumber} total={totalSteps} />
@@ -200,7 +248,7 @@ export function QuestionRunner({
           </span>
         </div>
 
-        <p className="mt-3 text-lg font-extrabold leading-snug text-heading">{step.question.text}</p>
+        <p className="mt-3 text-lg font-extrabold leading-snug text-heading">{shownQuestion}</p>
 
         <button
           type="button"
@@ -362,9 +410,9 @@ export function QuestionRunner({
 /** The task's own material — the photos of Part 1.2 and the framing text. The
  *  student needs them in view for every question of the task, not just the first. */
 function TaskMaterial({ step }: { step: SpeakingStep }) {
-  const { prompt, images } = step.task
+  const { prompt, images, debate } = step.task
   const hasImages = !!images?.length
-  if (!hasImages && !prompt.html) return null
+  if (!hasImages && !prompt.html && !debate) return null
   return (
     <section className="mt-6 rounded-2xl border border-line bg-white p-5 shadow-card sm:p-6">
       {prompt.title && <h2 className="font-extrabold text-heading">{prompt.title}</h2>}
@@ -374,6 +422,7 @@ function TaskMaterial({ step }: { step: SpeakingStep }) {
           dangerouslySetInnerHTML={{ __html: prompt.html }}
         />
       )}
+      {debate && <DebateCard debate={debate} hasImage={hasImages} />}
       {hasImages && (
         <div className={`mt-4 grid grid-cols-1 gap-3 ${images!.length > 1 ? 'sm:grid-cols-2' : ''}`}>
           {images!.map((img) => (
@@ -393,6 +442,74 @@ function TaskMaterial({ step }: { step: SpeakingStep }) {
         </div>
       )}
     </section>
+  )
+}
+
+
+/**
+ * Part 3's prompt, in the shape the paper prints it: the proposition on its own,
+ * highlighted, then the suggested arguments in two columns. Running these
+ * together as a paragraph — which is how the samples library stores them — hid
+ * the one line the student has to argue, which is what students reported.
+ *
+ * Most papers keep their points inside the prompt IMAGE, so the columns are
+ * rendered only when we actually have them; the statement alone is still worth
+ * pulling out.
+ */
+function DebateCard({ debate, hasImage }: { debate: SpeakingDebate; hasImage: boolean }) {
+  const hasPoints = debate.for.length > 0 || debate.against.length > 0
+  return (
+    <div className="mt-4">
+      <div className="rounded-xl border border-brand/25 bg-brand-soft p-4">
+        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-brand">Main question</p>
+        <p className="mt-1.5 text-lg font-extrabold leading-snug text-heading">
+          {debate.statement}
+        </p>
+      </div>
+
+      {hasPoints ? (
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <PointList tone="for" points={debate.for} />
+          <PointList tone="against" points={debate.against} />
+        </div>
+      ) : (
+        hasImage && (
+          <p className="mt-3 text-sm text-ink-soft">
+            The points for and against are on the prompt below.
+          </p>
+        )
+      )}
+    </div>
+  )
+}
+
+function PointList({ tone, points }: { tone: 'for' | 'against'; points: string[] }) {
+  if (points.length === 0) return null
+  const isFor = tone === 'for'
+  return (
+    <div
+      className={`rounded-xl border p-4 ${
+        isFor ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'
+      }`}
+    >
+      <p
+        className={`text-[11px] font-bold uppercase tracking-[0.08em] ${
+          isFor ? 'text-emerald-800' : 'text-rose-800'
+        }`}
+      >
+        {isFor ? 'For' : 'Against'}
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {points.map((point) => (
+          <li key={point} className="flex gap-2 text-sm text-ink">
+            <span aria-hidden className={isFor ? 'text-emerald-700' : 'text-rose-700'}>
+              •
+            </span>
+            <span>{point}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 

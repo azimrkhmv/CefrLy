@@ -57,5 +57,5 @@ export const PART_EXAMPLE: Record<SpeakingPartType, string> = {
   part_2:
     'Example:\nTalk about a skill you would like to learn.\n\n• say what the skill is\n• explain why you want to learn it\n• describe how you would start',
   part_3:
-    'Example:\nSome people think university education should be free for everyone.\n\nGive arguments for and against this opinion, then say what you think.',
+    'Example:\nStatement: "University education should be free for everyone."\n\nFOR: it widens access; it lifts the whole economy; talent is not wasted.\nAGAINST: someone still pays; degrees lose value; the money could go to schools.',
 }

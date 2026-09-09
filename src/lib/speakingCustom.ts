@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { SpeakingPartType, SpeakingTask, SpeakingTest } from '../types/test'
 import { PART_DEFAULTS, PART_LABEL } from './speakingFixtures'
+import { parseDebate } from './speakingFromSamples'
 
 // ---------------------------------------------------------------------------
 // Student-authored custom speaking questions (Phase 5, UI-first) — the mirror of
@@ -60,6 +61,12 @@ export function buildCustomTest(input: CustomSpeakingInput, id: string): Speakin
     label: PART_LABEL[input.partType],
     prompt: { html: questionToHtml(input.question) },
     questions: input.questions?.length ? input.questions : undefined,
+    // A student writing their own Part 3 gets the paper's layout too, if they
+    // write it the paper's way — see PART_EXAMPLE for the shape.
+    debate:
+      input.partType === 'part_3'
+        ? (parseDebate(input.question.split(/\n+/).filter(Boolean)) ?? undefined)
+        : undefined,
     prepSec: d.prepSec,
     speakSec: d.speakSec,
   }
