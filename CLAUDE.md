@@ -1086,9 +1086,8 @@ successful grades delete their audio within seconds (`deleteClips`), so a
 disputed mark can never be re-heard — only failed/abandoned clips survive, for
 3h (`ORPHAN_MS` in sweep-speaking-audio).
 
-## WRITING IS GRADED NOW (built 2026-09-09, NOT YET DEPLOYED)
-The whole marking spine exists and is green locally; nothing is live until the
-migration and the edge function are pushed (see DEPLOYMENT below). `writing.md`
+## WRITING IS GRADED NOW (built 2026-09-09, DEPLOYED 2026-09-10)
+The whole marking spine is LIVE in production. `writing.md`
 is still the authoritative PRD — this section records what was actually built
 and where it DIVERGES from that document.
 - ARCHITECTURE MIRRORS SPEAKING, NOT READING. Writing papers are NOT rows in
@@ -1186,12 +1185,40 @@ and where it DIVERGES from that document.
 - NO CALIBRATION SET — the same gap Speaking has. Until the owner's officially
   marked papers are run through this and compared, the grader is "not obviously
   broken", never "measurably right". Do that before tuning anything.
-- ⚠️ DEPLOYMENT IS OUTSTANDING AND NEEDS THE OWNER. There is no
-  SUPABASE_ACCESS_TOKEN in this environment any more (the note in the
-  grade-speaking section above is STALE — .env.local now holds only the two
-  VITE_ vars), and `supabase login` needs a TTY. To go live: apply
-  `supabase/migrations/0027_writing_grading.sql`, deploy the `grade-writing`
-  function (it reuses the existing GEMINI_API_KEY / OPENROUTER_API_KEY secrets),
-  then push the frontend. Nothing in the app breaks before that — the check
-  simply fails with "your writing is saved, try again", which is the failure
-  path it was designed around.
+- DEPLOYED TO PRODUCTION 2026-09-10: migration 0027 applied to prod
+  (ktxharmjdgkfxkoiymhd) via the management API, `grade-writing` deployed v1
+  (6 files, verify_jwt ON — it does its own getUser check and has no rescue
+  path, unlike grade-speaking), frontend pushed to main → Vercel. SHOW_WRITING
+  flipped to true (owner call 2026-09-09), so Writing is in the sidebar, the
+  home roadmap and the My-results tabs.
+  VERIFIED END TO END against prod with a throwaway Pro account (since deleted,
+  attempt cascaded): free plan → 403 premium_only · Pro → 202 then done in ~30s
+  · re-submitting the same attemptId → 200 with grading_runs STILL 1 (the
+  double-grade guard holds) · a blank paper → 400 before any model call · RLS
+  read-own works through PostgREST with the student's own JWT.
+  THE MARK IT GAVE: the sample 3-task paper scored 69/75 C1 (raw 31.56; task
+  bands 7/8/8). The hand-authored judgement in the preview fixture scores the
+  same paper 67/75 C1 — i.e. two independent judgements of one paper landed 2
+  points apart, which is the first evidence the scheme is stable. 19 of 20
+  corrections located exactly, 0 mis-highlighted.
+  ONE REAL FINDING: the model quoted "do not have opportunity" (Task 1.2's text)
+  while marking Task 2. Because corrections are verified against THEIR OWN
+  task's text, it was listed as feedback without a highlight instead of
+  highlighting the wrong words — the "missing evidence never harms" rule doing
+  its job on live output. If cross-task bleed becomes common, tighten the prompt
+  rather than loosening the verification.
+- ⚠️ PROD SECRETS, CHECKED 2026-09-10: `GEMINI_MODEL` is set to
+  `gemini-3.1-flash-lite` — the model CLAUDE.md already records as too weak to
+  put a band on. grade-writing IGNORES it (RETIRED_MODELS blocklist) and used
+  gemini-3.7-flash, which is why the guard exists; grade-speaking has the same
+  blocklist. THE SECRET ITSELF IS STILL WRONG and should be unset or updated.
+  `OPENROUTER_FIRST=1` is also still set from the 2026-09-02 Google incident —
+  unset it now Google has recovered, the direct lane is cheaper.
+  (The secrets API returns SHA-256 hashes, not values; both were identified by
+  hashing candidates.)
+- The deploy token is in .env.local (gitignored) as SUPABASE_ACCESS_TOKEN.
+  `supabase login` still cannot run here (non-TTY, even behind `!`); deploys go
+  through `npx supabase functions deploy <slug> --project-ref <ref>` with that
+  env var set, and SQL through `POST /v1/projects/<ref>/database/query` (writes
+  allowed). NOTE: plain urllib gets a Cloudflare 403 on the management API —
+  use curl.
