@@ -1006,6 +1006,17 @@ this volume. What was actually wrong, all fixed:
   hourly; it was N+1 storage list calls inside the student's wait.
 - fetchSpeakingAttempts no longer selects `result` (returns SpeakingAttemptSummary
   = Omit<Row,'result'|'audio_manifest'>) — same bug class as fetchMyAttempts.
+⚠️ THE FUNCTION AND THE REPO DRIFT, AND NOTHING WARNS YOU. On 2026-09-10 prod
+was running the 2026-09-04 build: the zero-rule fix (1d38ed6, "a spoken answer
+can never score zero" — the defect class the whole verify.ts exists to stop)
+and the OpenRouter fallback (bf07d04) were merged, tested, and never deployed.
+A frontend change reaches prod on a push; an edge function only ever reaches it
+because somebody ran a deploy. Redeployed 2026-09-10 (v30, verify_jwt still on,
+`npx supabase functions deploy grade-speaking --project-ref ktxharmjdgkfxkoiymhd`
+with SUPABASE_ACCESS_TOKEN from .env.local — deploys fine, Docker not needed).
+CHECK BEFORE ASSUMING PROD HAS YOUR FIX: GET /v1/projects/<ref>/functions/<slug>
+returns updated_at; compare it with `git log -1 --date=short -- supabase/functions/<slug>`.
+
 NOTE: the Supabase CLI has no access token in this environment (`supabase login`
 needs a TTY); grade-speaking v8 was deployed via the Supabase MCP
 deploy_edge_function with all four files inline, and verified byte-for-byte
