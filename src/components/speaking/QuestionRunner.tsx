@@ -253,8 +253,8 @@ export function QuestionRunner({
     // Three columns, with EQUAL 1fr gutters either side of a fixed 42rem centre.
     // That is what keeps the photo, the question and the clock dead centre on
     // the screen — a two-column grid centres the PAIR, which pushed the exam
-    // visibly off to the left and read as a layout bug. The sheet sits in the
-    // left gutter, right-aligned so it hugs the exam rather than drifting to
+    // visibly off to one side and read as a layout bug. The sheet sits in the
+    // RIGHT gutter, left-aligned so it hugs the exam rather than drifting to
     // the edge of a wide monitor, and sticky so it holds through preparation
     // AND through the recording, which is the moment it is actually for.
     //
@@ -317,11 +317,11 @@ export function QuestionRunner({
 
       </div>
 
-      {/* The note sheet, for the long turns only. Second column on a wide screen
-          (sticky, so it survives scrolling); between the question and the clock
-          when stacked. */}
+      {/* The note sheet, for the long turns only. Right-hand gutter on a wide
+          screen (sticky, so it survives scrolling); between the question and
+          the clock when stacked. */}
       {hasNotes && (
-        <aside className="min-w-0 xl:col-start-1 xl:row-start-1 xl:row-span-2 xl:sticky xl:top-4 xl:w-full xl:max-w-[17rem] xl:justify-self-end">
+        <aside className="min-w-0 xl:col-start-3 xl:row-start-1 xl:row-span-2 xl:sticky xl:top-4 xl:w-full xl:max-w-[17rem] xl:justify-self-start">
           <SpeakingNotes step={step} testId={testId} />
         </aside>
       )}
