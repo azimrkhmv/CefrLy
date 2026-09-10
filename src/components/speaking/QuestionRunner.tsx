@@ -247,21 +247,27 @@ export function QuestionRunner({
   const questionLines = shownQuestion.split('\n').map((l) => l.trim()).filter(Boolean)
 
   return (
-    // TWO COLUMNS ON A WIDE SCREEN. The exam column is deliberately narrow — a
-    // question is easier to read at 42rem than at full width — which left a
-    // whole empty half of the page beside it while the note sheet sat below the
-    // fold. The notes move into that space and stick there, so they stay in
-    // view through preparation AND through the recording, which is the moment
-    // they are actually for. Below xl there is no room, and the source order
-    // gives the stacked layout the sensible reading: question, notes, clock.
+    // THE EXAM STAYS IN THE MIDDLE OF THE PAGE; the note sheet lives in the
+    // gutter beside it.
+    //
+    // Three columns, with EQUAL 1fr gutters either side of a fixed 42rem centre.
+    // That is what keeps the photo, the question and the clock dead centre on
+    // the screen — a two-column grid centres the PAIR, which pushed the exam
+    // visibly off to the left and read as a layout bug. The sheet sits in the
+    // left gutter, right-aligned so it hugs the exam rather than drifting to
+    // the edge of a wide monitor, and sticky so it holds through preparation
+    // AND through the recording, which is the moment it is actually for.
+    //
+    // Below xl there is no room for a gutter, and the source order gives the
+    // stacked layout the reading it should have: question, notes, clock.
     <div
       className={
         hasNotes
-          ? 'mx-auto grid w-full max-w-2xl grid-cols-1 gap-5 xl:max-w-[68rem] xl:grid-cols-[minmax(0,42rem)_minmax(0,24rem)] xl:items-start xl:gap-6'
+          ? 'mx-auto grid w-full max-w-2xl grid-cols-1 gap-5 xl:max-w-[80rem] xl:grid-cols-[minmax(0,1fr)_minmax(0,42rem)_minmax(0,1fr)] xl:items-start xl:gap-6'
           : 'mx-auto grid w-full max-w-2xl grid-cols-1 gap-5'
       }
     >
-      <div className="min-w-0 xl:col-start-1 xl:row-start-1">
+      <div className="min-w-0 xl:col-start-2 xl:row-start-1">
         <Stepper current={stepNumber} total={totalSteps} />
 
         <TaskMaterial step={step} />
@@ -315,12 +321,12 @@ export function QuestionRunner({
           (sticky, so it survives scrolling); between the question and the clock
           when stacked. */}
       {hasNotes && (
-        <aside className="min-w-0 xl:col-start-2 xl:row-start-1 xl:row-span-2 xl:sticky xl:top-4">
+        <aside className="min-w-0 xl:col-start-1 xl:row-start-1 xl:row-span-2 xl:sticky xl:top-4 xl:w-full xl:max-w-[17rem] xl:justify-self-end">
           <SpeakingNotes step={step} testId={testId} />
         </aside>
       )}
 
-      <div className="min-w-0 xl:col-start-1 xl:row-start-2">
+      <div className="min-w-0 xl:col-start-2 xl:row-start-2">
       <div className="rounded-2xl border border-line bg-white p-8 text-center shadow-card">
         {phase === 'asking' &&
           (needsTap ? (

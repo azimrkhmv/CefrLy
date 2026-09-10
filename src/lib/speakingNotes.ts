@@ -36,7 +36,7 @@ export function fieldsFor(step: SpeakingStep): NoteField[] | null {
         key: 'for',
         label: 'Arguments FOR',
         placeholder: debate?.for?.length ? 'Your own reasons, in your own words…' : 'Reasons to agree…',
-        rows: 4,
+        rows: 3,
       },
       {
         key: 'against',
@@ -44,7 +44,7 @@ export function fieldsFor(step: SpeakingStep): NoteField[] | null {
         placeholder: debate?.against?.length
           ? 'Your own reasons, in your own words…'
           : 'Reasons to disagree…',
-        rows: 4,
+        rows: 3,
       },
       { key: 'view', label: 'What I think', placeholder: 'Your own position, and why…', rows: 2 },
     ]

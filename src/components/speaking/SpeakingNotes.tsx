@@ -72,23 +72,21 @@ export function SpeakingNotes({ step, testId }: { step: SpeakingStep; testId: st
   const twoUp = fields.length === 3 && fields[0].key === 'for'
 
   return (
-    <section className="@container rounded-2xl border border-line bg-white p-5 shadow-card">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="flex items-center gap-2 font-extrabold text-heading">
-          <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-soft text-brand">
-            <PenIcon width={15} height={15} />
-          </span>
-          Your notes
-        </h3>
-        <p className="text-xs text-ink-soft">Not marked — this is your paper</p>
+    <section className="@container rounded-2xl border border-line bg-white p-4 shadow-card">
+      <div className="flex items-center gap-2">
+        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand">
+          <PenIcon width={13} height={13} />
+        </span>
+        <h3 className="text-sm font-extrabold text-heading">Your notes</h3>
+        <span className="ml-auto text-[11px] text-ink-soft">Not marked</span>
       </div>
 
-      <div className={twoUp ? 'mt-4 grid grid-cols-1 gap-4 @md:grid-cols-2' : 'mt-4 space-y-3'}>
+      <div className={twoUp ? 'mt-3 grid grid-cols-1 gap-3 @md:grid-cols-2' : 'mt-3 space-y-2.5'}>
         {fields.map((field, i) => (
           <div key={field.key} className={twoUp && i === 2 ? '@md:col-span-2' : undefined}>
             <label
               htmlFor={`note-${step.id}-${field.key}`}
-              className="block text-xs font-bold text-ink-soft"
+              className="block text-[11px] font-bold leading-snug text-ink-soft"
             >
               {field.label}
             </label>
@@ -99,7 +97,7 @@ export function SpeakingNotes({ step, testId }: { step: SpeakingStep; testId: st
               rows={field.rows}
               placeholder={field.placeholder}
               spellCheck={false}
-              className="mt-1.5 w-full resize-y rounded-xl border border-line bg-page px-3 py-2 text-sm leading-relaxed text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand/40"
+              className="mt-1 w-full resize-y rounded-lg border border-line bg-page px-2.5 py-1.5 text-[13px] leading-relaxed text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand/40"
             />
           </div>
         ))}
