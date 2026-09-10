@@ -18,7 +18,8 @@ import { Sparkline } from '../components/Sparkline'
 import { TabStrip, type Tab } from '../components/TabStrip'
 import { AttemptListSkeleton } from '../components/Skeleton'
 import { EmptyState } from '../components/EmptyState'
-import { ArrowRightIcon, BookIcon, HeadphonesIcon, MicIcon, PenIcon, PlusIcon } from '../components/icons'
+import { ArrowRightIcon, MicIcon, PenIcon, PlusIcon } from '../components/icons'
+import { SkillTile } from '../components/SkillTile'
 import type { AttemptSummary } from '../types/attempt'
 import type { Band, Skill } from '../types/test'
 import { SHOW_WRITING } from '../lib/features'
@@ -29,18 +30,6 @@ type Filter = Skill
 /** A full-mock attempt — the only kind that carries a CEFR band and sits on the
  *  /35 progress scale. Part drills (scope 'part', band null) never reach it. */
 type BandedAttempt = AttemptSummary & { band: Band }
-
-// Per-skill icon tile: mirrors the skill colors used on the Home roadmap
-// (reading = brand violet, listening = sun).
-const SKILL_CARD: Record<
-  Skill,
-  { tile: string; Icon: (props: { width?: number; height?: number }) => React.ReactElement }
-> = {
-  reading: { tile: 'bg-brand-soft text-brand', Icon: BookIcon },
-  listening: { tile: 'bg-sun-soft text-sun-ink', Icon: HeadphonesIcon },
-  writing: { tile: 'bg-brand-soft text-brand', Icon: PenIcon },
-  speaking: { tile: 'bg-rose-50 text-rose-800', Icon: MicIcon },
-}
 
 const shortMonth = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short' })
 
@@ -144,7 +133,6 @@ function AttemptCard({
   isBest: boolean
   delta: number | null | undefined
 }) {
-  const card = SKILL_CARD[attempt.skill]
   return (
     <li>
       <Link
@@ -157,13 +145,7 @@ function AttemptCard({
         }`}
       >
         <div className="flex items-center gap-3">
-          <span
-            className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${
-              isBest ? 'bg-brand text-white' : card.tile
-            }`}
-          >
-            <card.Icon width={20} height={20} />
-          </span>
+          <SkillTile skill={attempt.skill} className={isBest ? 'bg-brand text-white' : undefined} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <p className="truncate font-extrabold leading-snug text-heading">

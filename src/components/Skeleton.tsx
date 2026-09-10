@@ -7,13 +7,19 @@ export function Skeleton({ className = '' }: { className?: string }) {
 
 export function TestCardSkeleton() {
   return (
-    <div className="flex flex-col rounded-lg border border-line bg-white p-6" aria-hidden>
-      <Skeleton className="h-3 w-24" />
-      <Skeleton className="mt-3 h-5 w-3/4" />
-      <Skeleton className="mt-2.5 h-4 w-1/2" />
+    <div className="flex flex-col rounded-2xl border border-line bg-white p-6" aria-hidden>
+      {/* Mirrors TestCard: skill tile, then title / chips / levels beside it. */}
+      <div className="flex items-start gap-3">
+        <Skeleton className="h-11 w-11 shrink-0 rounded-xl" />
+        <div className="min-w-0 flex-1">
+          <Skeleton className="h-5 w-3/4" />
+          <Skeleton className="mt-2.5 h-5 w-2/3 rounded-full" />
+          <Skeleton className="mt-2.5 h-4 w-1/2" />
+        </div>
+      </div>
       <div className="mt-6 flex items-center justify-between gap-3 border-t border-line pt-4">
         <Skeleton className="h-4 w-28" />
-        <Skeleton className="h-9 w-16 rounded-md" />
+        <Skeleton className="h-9 w-16 rounded-xl" />
       </div>
     </div>
   )
