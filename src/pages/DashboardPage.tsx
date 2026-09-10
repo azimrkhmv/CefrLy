@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchMyAttempts, fetchOpenSessions } from '../lib/api'
 import { useWritingAttempts, type WritingAttempt } from '../lib/writingAttempts'
+import { fetchWritingAttempts } from '../lib/writingGrading'
+import type { WritingAttemptSummary } from '../types/writingResult'
 import { TASK_LABEL } from '../lib/writingFixtures'
 import { fetchSpeakingAttempts } from '../lib/speakingGrading'
 import { useSpeakingAttempts, type SpeakingAttempt } from '../lib/speakingAttempts'
@@ -36,7 +38,7 @@ const SKILL_CARD: Record<
 > = {
   reading: { tile: 'bg-brand-soft text-brand', Icon: BookIcon },
   listening: { tile: 'bg-sun-soft text-sun-ink', Icon: HeadphonesIcon },
-  writing: { tile: 'bg-emerald-50 text-emerald-800', Icon: PenIcon },
+  writing: { tile: 'bg-brand-soft text-brand', Icon: PenIcon },
   speaking: { tile: 'bg-rose-50 text-rose-800', Icon: MicIcon },
 }
 
@@ -212,21 +214,168 @@ function AttemptCard({
   )
 }
 
-// Writing attempts are scoreless this phase (no grader): a completed card just
-// records what was written. Kept OUT of the graded AttemptCard / CEFR surfaces —
-// no rawScore, band, delta or results link (there is no writing report yet).
-function WritingAttemptCard({ attempt }: { attempt: WritingAttempt }) {
+// Writing attempts come from `writing_attempts` (there is no `attempts` row and
+// no /35 score — writing is marked out of 75, like speaking). Every marked card
+// links to its report: without that, a report a student paid for would be
+// reachable only in the seconds after handing in.
+function WritingResults({
+  attempts,
+  unchecked,
+}: {
+  attempts: WritingAttemptSummary[]
+  /** Papers handed in that never reached the marker — a send that failed. */
+  unchecked: WritingAttempt[]
+}) {
+  // Only full papers carry a real band; single-task drills store NULL on
+  // purpose, so they never influence "best" or the trend.
+  const banded = attempts.filter(
+    (a) => a.status === 'done' && a.scope === 'full' && a.rating != null,
+  )
+  const best = banded.length > 0 ? banded.reduce((a, b) => (b.rating! > a.rating! ? b : a)) : null
+  const chron = [...banded].reverse()
+  const trend = chron.length >= 2 ? chron[chron.length - 1].rating! - chron[0].rating! : null
+
+  return (
+    <>
+      {best && (
+        <div className="rounded-2xl bg-brand-soft p-5 sm:p-6">
+          <p className="text-xs font-bold uppercase tracking-wide text-brand">
+            Writing · Your progress
+          </p>
+          <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
+            <p className="tnum text-4xl font-extrabold text-heading">
+              {best.rating}
+              <span className="text-lg text-ink-soft">/75</span>
+            </p>
+            {best.band && (
+              <span className="rounded-full bg-white px-3 py-1 text-sm font-bold text-brand">
+                {BAND_INFO[best.band].label}
+              </span>
+            )}
+            {trend !== null && (
+              <span className="tnum text-sm font-bold text-ink-soft">
+                {trend >= 0 ? '+' : ''}
+                {trend} points since your first paper
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base font-extrabold text-heading">All attempts</h2>
+        <span className="text-[13px] font-semibold text-ink-soft">
+          {attempts.length} {attempts.length === 1 ? 'attempt' : 'attempts'} · newest first
+        </span>
+      </div>
+
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {attempts.map((a) => (
+          <WritingAttemptCard key={a.id} attempt={a} isBest={best?.id === a.id} />
+        ))}
+        {unchecked.map((a) => (
+          <UncheckedWritingCard key={a.id} attempt={a} />
+        ))}
+      </ul>
+    </>
+  )
+}
+
+function WritingAttemptCard({
+  attempt,
+  isBest,
+}: {
+  attempt: WritingAttemptSummary
+  isBest: boolean
+}) {
+  const done = attempt.status === 'done'
+  const chip =
+    attempt.scope === 'full'
+      ? 'Full paper'
+      : attempt.task_type
+        ? TASK_LABEL[attempt.task_type]
+        : 'Task practice'
+
+  return (
+    <li
+      className={`flex h-full flex-col rounded-2xl border bg-white p-5 shadow-card transition-shadow ${
+        isBest ? 'border-brand' : 'border-line'
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${
+            isBest ? 'bg-brand text-white' : 'bg-brand-soft text-brand'
+          }`}
+        >
+          <PenIcon width={20} height={20} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-extrabold leading-snug text-heading">{attempt.test_title}</p>
+          <p className="mt-0.5 text-xs font-semibold text-ink-soft">
+            {new Date(attempt.created_at).toLocaleString(undefined, {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            })}
+          </p>
+        </div>
+        {isBest && (
+          <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-extrabold text-brand">
+            BEST
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3.5">
+        <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-bold text-brand">
+          {chip}
+        </span>
+
+        {done ? (
+          <span className="flex items-center gap-2">
+            <span className="tnum text-sm font-bold text-heading">{attempt.rating}/75</span>
+            {attempt.band ? (
+              <span className="rounded-full bg-page px-2.5 py-0.5 text-xs font-bold text-ink">
+                {BAND_INFO[attempt.band].label}
+              </span>
+            ) : (
+              <span className="rounded-full bg-page px-2.5 py-0.5 text-xs font-bold text-ink-soft">
+                estimate
+              </span>
+            )}
+          </span>
+        ) : attempt.status === 'grading' ? (
+          <span className="text-xs font-bold text-brand">Marking…</span>
+        ) : (
+          <span className="text-xs font-bold text-rose-700">Check failed</span>
+        )}
+      </div>
+
+      <Link
+        to={`/writing/analyze/${attempt.id}`}
+        className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-brand hover:underline"
+      >
+        {done ? 'See feedback' : 'Open'}
+        <ArrowRightIcon width={14} height={14} />
+      </Link>
+    </li>
+  )
+}
+
+/** A paper that was written but never reached the marker. It still happened, so
+ *  it is still listed — dropping it would look like the work was lost. */
+function UncheckedWritingCard({ attempt }: { attempt: WritingAttempt }) {
   const totalWords = attempt.answers.reduce((n, a) => n + a.wordCount, 0)
   const chip =
     attempt.scope === 'full'
-      ? 'Full mock'
+      ? 'Full paper'
       : attempt.taskType
         ? TASK_LABEL[attempt.taskType]
         : 'Writing'
   return (
     <li className="flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-card">
       <div className="flex items-center gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-800">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
           <PenIcon width={20} height={20} />
         </span>
         <div className="min-w-0 flex-1">
@@ -243,39 +392,17 @@ function WritingAttemptCard({ attempt }: { attempt: WritingAttempt }) {
         <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-bold text-brand">
           {chip}
         </span>
-        <span className="tnum text-sm font-bold text-emerald-700">
-          Completed · {totalWords} {totalWords === 1 ? 'word' : 'words'}
+        <span className="tnum text-sm font-bold text-ink-soft">
+          {totalWords} {totalWords === 1 ? 'word' : 'words'}
         </span>
       </div>
+      <p className="mt-3 text-xs text-ink-soft">
+        Not checked — no score for this attempt.{' '}
+        <Link to="/pricing" className="font-bold text-brand hover:underline">
+          See plans
+        </Link>
+      </p>
     </li>
-  )
-}
-
-function WritingResults({ attempts }: { attempts: WritingAttempt[] }) {
-  const sorted = [...attempts].sort(
-    (a, b) => +new Date(b.submittedAt) - +new Date(a.submittedAt),
-  )
-  return (
-    <>
-      <div className="rounded-2xl bg-brand-soft p-5 sm:p-6">
-        <p className="text-sm font-extrabold text-heading">Writing feedback is coming soon</p>
-        <p className="mt-1 text-sm text-ink-soft">
-          Your submitted tasks are saved here. Detailed scoring and feedback arrive in a later
-          update.
-        </p>
-      </div>
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base font-extrabold text-heading">All attempts</h2>
-        <span className="text-[13px] font-semibold text-ink-soft">
-          {sorted.length} {sorted.length === 1 ? 'attempt' : 'attempts'} · newest first
-        </span>
-      </div>
-      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {sorted.map((a) => (
-          <WritingAttemptCard key={a.id} attempt={a} />
-        ))}
-      </ul>
-    </>
   )
 }
 
@@ -526,7 +653,23 @@ export function DashboardPage() {
     isLoading,
     error,
   } = useQuery({ queryKey: ['my-attempts'], queryFn: fetchMyAttempts })
-  const writingAttempts = useWritingAttempts()
+  // Writing lives in its own table too, for the same reason speaking does.
+  const { data: writingRows } = useQuery({
+    queryKey: ['writing-attempts'],
+    queryFn: fetchWritingAttempts,
+  })
+  const writingAttempts = writingRows ?? []
+  // Local papers whose send never landed. One that DID reach the server is on
+  // both lists, so it is matched out by test id + minute rather than shown twice.
+  const localWriting = useWritingAttempts()
+  const unsentWriting = localWriting.filter(
+    (l) =>
+      !writingAttempts.some(
+        (w) =>
+          w.test_id === l.testId &&
+          Math.abs(+new Date(w.created_at) - +new Date(l.submittedAt)) < 10 * 60 * 1000,
+      ),
+  )
   // Speaking lives in its own table, so it needs its own query rather than
   // riding along with fetchMyAttempts.
   const { data: speakingRows } = useQuery({
@@ -604,6 +747,7 @@ export function DashboardPage() {
         </p>
       ) : all.length === 0 &&
         writingAttempts.length === 0 &&
+        unsentWriting.length === 0 &&
         speakingAttempts.length === 0 &&
         localSpeaking.length === 0 ? (
         <EmptyState
@@ -630,7 +774,7 @@ export function DashboardPage() {
           />
 
           {(isWriting
-            ? writingAttempts.length === 0
+            ? writingAttempts.length + unsentWriting.length === 0
             : isSpeaking
               ? speakingAttempts.length + localSpeaking.length === 0
               : shown.length === 0) ? (
@@ -648,7 +792,7 @@ export function DashboardPage() {
               }
             />
           ) : isWriting ? (
-            <WritingResults attempts={writingAttempts} />
+            <WritingResults attempts={writingAttempts} unchecked={unsentWriting} />
           ) : isSpeaking ? (
             <SpeakingResults attempts={speakingAttempts} ungraded={localSpeaking} />
           ) : (

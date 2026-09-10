@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode, type SVGProps } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Timer } from '../components/test/Timer'
@@ -17,6 +18,8 @@ import {
   type WritingDraft,
 } from '../lib/writingDraft'
 import { addWritingAttempt, type WritingAnswer } from '../lib/writingAttempts'
+import { submitWritingAttempt } from '../lib/writingGrading'
+import { PlanLimitError } from '../lib/api'
 import type { TestMode, WritingTask, WritingTest } from '../types/test'
 
 // The writing exam takes over the whole viewport — no app shell — so the student
@@ -112,6 +115,9 @@ function WritingRunner({ test, onLeave }: { test: WritingTest; onLeave: () => vo
     const now = Date.now()
     setDraft({
       mode,
+      // Minted HERE, not at submit: the id has to survive a reload mid-exam so
+      // the finished paper is marked once, under one attempt.
+      attemptId: crypto.randomUUID(),
       startedAt: now,
       expiresAt: now + durationSec * 1000,
       pausedAt: null,
@@ -187,6 +193,15 @@ function RunningWriting({
   onLeave: () => void
 }) {
   const isPractice = draft.mode === 'practice'
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+  // A retry after a failed send must not file the paper locally a second time,
+  // nor mint a second attempt id — the server upserts by id, so keeping it
+  // stable is what makes retrying idempotent instead of opening a new attempt
+  // (and, once quotas bite, paying for one).
+  const [handedIn, setHandedIn] = useState(false)
 
   const expiresAt = useMemo(() => new Date(draft.expiresAt).toISOString(), [draft.expiresAt])
   const pausedAtIso = draft.pausedAt ? new Date(draft.pausedAt).toISOString() : null
@@ -216,7 +231,16 @@ function RunningWriting({
     (t) => countWords(draft.answers[t.id] ?? '') < t.minWords,
   )
 
-  const submit = () => {
+  /**
+   * Hand the paper in.
+   *
+   * The local copy is written FIRST and always. Sending can fail — a dropped
+   * connection, a plan wall — and an exam that ate an hour of somebody's
+   * afternoon must not be able to vanish because a fetch did. Only then is it
+   * sent for marking; the report page polls from there.
+   */
+  const submit = async () => {
+    if (sending || submitted) return
     const answers: WritingAnswer[] = tasks.map((t) => {
       const value = draft.answers[t.id] ?? ''
       return {
@@ -227,25 +251,59 @@ function RunningWriting({
         wordCount: countWords(value),
       }
     })
-    addWritingAttempt({
-      testId: test.id,
-      title: test.title,
-      scope: test.scope ?? 'full',
-      taskType: isFull ? undefined : tasks[0]?.taskType,
-      answers,
-    })
-    clearWritingDraft(test.id)
+    if (!handedIn) {
+      addWritingAttempt({
+        testId: test.id,
+        title: test.title,
+        scope: test.scope ?? 'full',
+        taskType: isFull ? undefined : tasks[0]?.taskType,
+        answers,
+      })
+      setHandedIn(true)
+    }
+
+    // Older drafts predate the id; mint one and put it BACK in the draft so a
+    // retry — or a reload — sends the same attempt.
+    let attemptId = draft.attemptId
+    if (!attemptId) {
+      attemptId = crypto.randomUUID()
+      setDraft((d) => ({ ...d, attemptId }))
+    }
+    const written = answers.some((a) => a.text.trim())
+    setSending(true)
     setSubmitted(true)
+    try {
+      // A paper with nothing on it is not sent: there is nothing to mark, and
+      // it would spend one of the student's monthly checks to be told so.
+      if (!written) throw new Error('blank')
+      await submitWritingAttempt({ test, answers: draft.answers, attemptId })
+      clearWritingDraft(test.id)
+      // The catalog's Completed state and My results both read these.
+      void queryClient.invalidateQueries({ queryKey: ['writing-attempts'] })
+      navigate(`/writing/analyze/${attemptId}`, { replace: true })
+    } catch (e) {
+      // The draft is deliberately KEPT when sending failed, so "Check again"
+      // has something to send and a refresh does not lose the answers.
+      setSendError(
+        e instanceof PlanLimitError
+          ? e.message
+          : (e as Error).message === 'blank'
+            ? 'There is nothing written to check.'
+            : 'Your writing is saved, but the check could not be sent. Try again in a moment.',
+      )
+    } finally {
+      setSending(false)
+    }
   }
 
-  // Auto-submit when the clock runs out (saves whatever is written so far).
+  // Auto-submit when the clock runs out (hands in whatever is written so far).
   const onExpire = () => {
-    if (!submitted) submit()
+    if (!submitted) void submit()
   }
 
   const handleSubmitClick = () => {
     if (anyUnderMin) setConfirm('submit')
-    else submit()
+    else void submit()
   }
 
   const leave = () => {
@@ -253,7 +311,19 @@ function RunningWriting({
     onLeave()
   }
 
-  if (submitted) return <SubmittedScreen onLeave={onLeave} />
+  if (submitted) {
+    return (
+      <SubmittedScreen
+        sending={sending}
+        error={sendError}
+        onRetry={() => {
+          setSubmitted(false)
+          setSendError(null)
+        }}
+        onLeave={onLeave}
+      />
+    )
+  }
 
   return (
     <ExamScreen>
@@ -296,9 +366,10 @@ function RunningWriting({
             <button
               type="button"
               onClick={handleSubmitClick}
-              className="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+              disabled={sending}
+              className="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-deep disabled:opacity-60"
             >
-              Submit
+              {sending ? 'Sending…' : 'Submit'}
             </button>
           </div>
         </div>
@@ -422,7 +493,7 @@ function RunningWriting({
         tone="brand"
         onConfirm={() => {
           setConfirm(null)
-          submit()
+          void submit()
         }}
         onCancel={() => setConfirm(null)}
       />
@@ -447,8 +518,25 @@ function BackIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
-/** Calm post-submit confirmation — no grader yet, so no score/celebration. */
-function SubmittedScreen({ onLeave }: { onLeave: () => void }) {
+/**
+ * The moment between handing in and the report.
+ *
+ * On the happy path this is on screen for a heartbeat — the navigate to the
+ * report happens as soon as the server has the paper. It matters when sending
+ * FAILED: the student needs to know their work is not lost and be able to try
+ * again, which is why the draft is kept until a send succeeds.
+ */
+function SubmittedScreen({
+  sending,
+  error,
+  onRetry,
+  onLeave,
+}: {
+  sending: boolean
+  error: string | null
+  onRetry: () => void
+  onLeave: () => void
+}) {
   return (
     <ExamScreen center>
       <div className="max-w-md space-y-5 rounded-2xl border border-line bg-white p-8 shadow-card">
@@ -460,19 +548,39 @@ function SubmittedScreen({ onLeave }: { onLeave: () => void }) {
           className="mx-auto block h-24 w-auto select-none"
         />
         <div className="space-y-1.5">
-          <h1 className="text-xl font-extrabold text-heading">Submitted ✓</h1>
+          <h1 className="text-xl font-extrabold text-heading">
+            {error ? 'Saved, but not sent' : sending ? 'Handing it in…' : 'Submitted ✓'}
+          </h1>
           <p className="text-sm text-ink-soft">
-            Your writing is saved. Detailed feedback is coming soon — we&rsquo;ll let you know when
-            grading is ready.
+            {error ?? 'Sending your writing to the examiner. Your report opens in a moment.'}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onLeave}
-          className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
-        >
-          Back to Writing
-        </button>
+        {error ? (
+          <div className="flex flex-wrap justify-center gap-2">
+            <button
+              type="button"
+              onClick={onRetry}
+              className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+            >
+              Back to the paper
+            </button>
+            <button
+              type="button"
+              onClick={onLeave}
+              className="rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+            >
+              Back to Writing
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onLeave}
+            className="rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+          >
+            Back to Writing
+          </button>
+        )}
       </div>
     </ExamScreen>
   )

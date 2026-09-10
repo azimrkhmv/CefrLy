@@ -197,7 +197,7 @@ const SKILLS = [
   { key: 'listening', name: 'Listening', Icon: HeadphonesIcon, desc: '35 questions · 6 parts · ~35 min', to: '/listening', tile: 'bg-sun-soft text-sun-ink' },
   // Concealed: `to: null` makes the card render as an inert "soon" tile, the
   // same treatment every unshipped skill already had.
-  { key: 'writing', name: 'Writing', Icon: PenIcon, desc: 'Two emails · one forum post', to: SHOW_WRITING ? '/writing' : null, tile: 'bg-emerald-50 text-emerald-800' },
+  { key: 'writing', name: 'Writing', Icon: PenIcon, desc: 'Two emails · one forum post', to: SHOW_WRITING ? '/writing' : null, tile: 'bg-brand-soft text-brand' },
   { key: 'speaking', name: 'Speaking', Icon: MicIcon, desc: '4 parts · interview & talk', to: '/speaking', tile: 'bg-rose-50 text-rose-800' },
 ] as const
 

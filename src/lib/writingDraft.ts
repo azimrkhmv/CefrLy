@@ -15,6 +15,11 @@ import type { TestMode } from '../types/test'
 export interface WritingDraft {
   /** simulation (fixed clock, no pause) or practice (own limit, pausable). */
   mode: TestMode
+  /** The id this sitting will be MARKED under. Fixed when the attempt starts and
+   *  kept here, so a reload submits the same attempt rather than opening a
+   *  second one — and so a check that was already paid for is never bought
+   *  twice. Older drafts predate it; the runner mints one on submit. */
+  attemptId?: string
   /** Epoch ms when the attempt's clock started. */
   startedAt: number
   /** Epoch ms deadline — the countdown derives from this (shifts on resume). */

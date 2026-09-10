@@ -1,22 +1,17 @@
-import type { ReactElement } from 'react'
 import { Link } from 'react-router-dom'
-import type { WritingTaskType } from '../../types/test'
 import type { WritingCatalogItem } from '../../lib/writingCatalog'
 import { TASK_LABEL } from '../../lib/writingFixtures'
 import { hasWritingDraft } from '../../lib/writingDraft'
-import { ClipboardIcon, CloseIcon, PenIcon, PlayIcon, StarIcon, UsersIcon } from '../icons'
+import { CloseIcon, PenIcon, PlayIcon, StarIcon } from '../icons'
 
-type IconProps = { width?: number; height?: number }
-
-const TILE: Record<
-  WritingTaskType | 'full',
-  { cls: string; Icon: (p: IconProps) => ReactElement }
-> = {
-  task_1_1: { cls: 'bg-brand-soft text-brand', Icon: PenIcon },
-  task_1_2: { cls: 'bg-sun-soft text-sun-ink', Icon: PenIcon },
-  part_2: { cls: 'bg-emerald-50 text-emerald-800', Icon: UsersIcon },
-  full: { cls: 'bg-brand text-white', Icon: ClipboardIcon },
-}
+// ONE TILE FOR EVERY WRITING PAPER. The tile used to change with the task —
+// lavender for 1.1, yellow for 1.2, green (and a *people* icon) for Task 2 —
+// which made three colours out of one skill and put the wrong sign on the
+// essay. Writing is a pen on lavender wherever it appears: the catalog, My
+// results, the home roadmap and the report. The part is named by the chip
+// underneath; it is not the tile's job to encode it. Speaking already works
+// this way (SpeakingTaskCard's single TILE constant).
+const TILE = 'bg-brand-soft text-brand'
 
 const minutes = (sec: number) => Math.round(sec / 60)
 
@@ -37,8 +32,6 @@ export function WritingTaskCard({
   /** Called instead of opening the paper when the plan cannot use it. */
   onBlocked?: () => void
 }) {
-  const kind = item.scope === 'full' ? 'full' : (item.taskType as WritingTaskType)
-  const { cls, Icon } = TILE[kind]
   const chip = item.scope === 'full' ? 'Full mock test' : TASK_LABEL[item.taskType!]
   const resume = inProgress || hasWritingDraft(item.id)
   const cta = resume ? 'Resume' : attempts > 0 ? 'Retake' : 'Start'
@@ -63,8 +56,8 @@ export function WritingTaskCard({
       )}
 
       <div className="flex items-start gap-3">
-        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${cls}`}>
-          <Icon width={20} height={20} />
+        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${TILE}`}>
+          <PenIcon width={20} height={20} />
         </span>
         <div className="min-w-0 pt-0.5">
           <h3 className="line-clamp-2 font-extrabold leading-snug text-heading">{item.title}</h3>

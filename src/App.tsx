@@ -32,6 +32,10 @@ const ReadingPage = page(() => import('./pages/ReadingPage'), 'ReadingPage')
 const ListeningPage = page(() => import('./pages/ListeningPage'), 'ListeningPage')
 const WritingPage = page(() => import('./pages/WritingPage'), 'WritingPage')
 const WritingTaskPage = page(() => import('./pages/WritingTaskPage'), 'WritingTaskPage')
+const WritingAnalyzePage = page(
+  () => import('./pages/WritingAnalyzePage'),
+  'WritingAnalyzePage',
+)
 const SpeakingPage = page(() => import('./pages/SpeakingPage'), 'SpeakingPage')
 const SpeakingTaskPage = page(() => import('./pages/SpeakingTaskPage'), 'SpeakingTaskPage')
 const SpeakingAnalyzePage = page(
@@ -121,6 +125,7 @@ export default function App() {
             <Route path="/listening" element={<ListeningPage />} />
             <Route path="/writing" element={<WritingPage />} />
             <Route path="/writing/task/:id" element={<WritingTaskPage />} />
+            <Route path="/writing/analyze/:attemptId" element={<WritingAnalyzePage />} />
             <Route path="/speaking" element={<SpeakingPage />} />
             <Route path="/speaking/task/:id" element={<SpeakingTaskPage />} />
             <Route path="/speaking/analyze/:attemptId" element={<SpeakingAnalyzePage />} />

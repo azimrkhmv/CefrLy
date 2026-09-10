@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { TabStrip } from '../components/TabStrip'
 import { Dropdown } from '../components/Dropdown'
 import { Toast } from '../components/Toast'
@@ -8,6 +9,7 @@ import { WritingCustomTab } from '../components/writing/WritingCustomTab'
 import { AddCustomModal } from '../components/writing/AddCustomModal'
 import { useWritingItems } from '../lib/writingCatalog'
 import { countAttempts, useWritingAttempts } from '../lib/writingAttempts'
+import { fetchWritingAttempts } from '../lib/writingGrading'
 import { removeCustomQuestion } from '../lib/writingCustom'
 import { hasPremiumAccess } from '../lib/plans'
 import { useAuth } from '../lib/auth'
@@ -46,8 +48,19 @@ export function WritingPage() {
   const [paywall, setPaywall] = useState(false)
 
   const { items } = useWritingItems(tab)
+  // Attempts live in two stores: everything the student handed in is recorded
+  // locally the instant they press Submit, and everything that reached the
+  // server comes back marked. A card counts BOTH — but a local attempt whose
+  // send succeeded is also a server row, so the two are reconciled by test id
+  // rather than added, or a checked paper would count twice.
   const attempts = useWritingAttempts()
-  const attemptCount = (id: string) => countAttempts(attempts, id)
+  const { data: gradedRows } = useQuery({
+    queryKey: ['writing-attempts'],
+    queryFn: fetchWritingAttempts,
+  })
+  const graded = gradedRows ?? []
+  const attemptCount = (id: string) =>
+    Math.max(countAttempts(attempts, id), graded.filter((g) => g.test_id === id).length)
 
   const shown =
     status === 'all'

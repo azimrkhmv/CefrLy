@@ -1,9 +1,13 @@
 # Cefrly — Writing Section PRD
 
-**Status:** the UI-first phase is built and browser-verified (running on local fixtures +
-localStorage). This is the **single authoritative PRD** for the whole Writing feature — the built UI,
-the remaining backend, and the **AI grading built on the official Multilevel writing rubric**.
-It supersedes the earlier `cefrly-phase-4-writing-prd.md` (now deleted to avoid confusion).
+**Status (2026-09-09):** the UI **and the AI grading** are built. Marking, the report screen and
+the results history all exist and are green locally; they are **not deployed yet** (migration 0027 +
+the `grade-writing` edge function need the owner's Supabase token). See "WRITING IS GRADED NOW" at
+the end of `CLAUDE.md` for what was actually built, and §14 below for where the build **diverges
+from this document**. Still outstanding from §8/§10: per-task timers, the admin form and bulk import.
+
+This remains the **single authoritative PRD** for the Writing feature. It supersedes the earlier
+`cefrly-phase-4-writing-prd.md` (now deleted to avoid confusion).
 
 Source of truth for scoring (in the repo): `Writing criteria multilevel.pdf` (per-task band
 descriptors) and `Chet tili (multilevel) baholash mezonlari - yangi.pdf` (weights + the /36→/75
@@ -300,3 +304,25 @@ Provider-agnostic: one function, one input→`WritingGrade` contract; the owner'
   underlength rules. **The grader's rubric.**
 - `Chet tili (multilevel) baholash mezonlari - yangi.pdf` — Rasch/standardisation for L&R, the
   writing weights (12/24), the raw/36→final/75 conversion table, and the /75→CEFR thresholds.
+
+
+---
+
+## 14. What was built, and where it diverges from this PRD (2026-09-09)
+
+Decisions taken while building, all of them reversible — flagged here rather than made silently.
+
+| §  | This PRD says | What was built | Why |
+|----|---------------|----------------|-----|
+| 9  | `get-test` writing branch + `submit-writing` + `grade-writing` | **only `grade-writing`** | Writing papers are fixtures, not `tests` rows (the Speaking model). `get-test` exists to strip answer keys; a writing paper has none. The invariant that matters — only the service_role may write a band — is enforced by RLS on `writing_attempts`. |
+| 1  | "How the 4 criteria combine into one task band" — open | **mean, capped at `weakest + 2`** | Two bands = one CEFR level. A plain mean lets band-9 content hide band-3 grammar; one criterion may lag a level for free, a bigger gap pulls the band down. Same shape as Speaking's `overallLevel`. |
+| 3  | Task 1.1 = 4, Task 1.2 = 8, Task 2 = 24 | **as proposed** | Reproduces all four of §4.5's worked examples exactly (pinned by tests). Change the constants in `rubric.ts` if you prefer 6 + 6. |
+| 4.1| underlength caps as absolute word counts | **as ratios of the paper's own target** | The ladders are written against 150/250-word tasks. Cefrly's essay prompts ask for 180-200, so the literal ladder would cap a student who wrote exactly what the paper asked for. |
+| 4.1| "feed the PDFs into the prompt verbatim" | **descriptors reconstructed from the anchors** | The PDFs are gitignored and were not in the working tree. `RUBRIC_TEXT` is one constant — replace it with the PDF's own words. The maths is transcribed and tested. |
+| 4.4| B2 = 51-64 | **followed**, and flagged | `grade-speaking/rubric.ts` puts the B2 floor at 50 from the same chart. One of the two is wrong by a point; only the PDFs settle it. |
+| 7  | one grading pass, retry once on bad output | **two examiners in parallel, per-criterion lower** | A single reading is what let a Speaking paper with A2 grammar score 75/75. Text is cheap enough to read twice. |
+| 8  | free tier sees score/band, detail gated | **not built** | Writing is already Pro/Premium-only end to end (`writing_check`), so there is no free tier to gate against yet. |
+
+**Open, and blocking nothing but confidence:** there is no calibration set. Until 20-30 of the
+owner's officially marked papers are run through the grader and compared, every number it produces
+is plausible rather than verified — the same gap the Speaking grader still has.

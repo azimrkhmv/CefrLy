@@ -1,11 +1,10 @@
 /** Student-facing feature switches.
  *
- *  WRITING IS CONCEALED, NOT REMOVED (owner call 2026-09-07). The whole Writing
- *  section still exists and still works — pages, routes, catalog, drafts and the
- *  localStorage attempt history are all untouched. This flag only hides the ways
- *  a student would FIND it: the sidebar link, the home roadmap CTA and the
- *  My-results tab. /writing stays reachable by typing the URL, so the section can
- *  still be worked on and tested while it is hidden.
+ *  WRITING IS VISIBLE (owner call 2026-09-09, superseding the 2026-09-07 call
+ *  that concealed it). The flag stays in place so the section can be hidden
+ *  again in one line: it controls the three ways a student FINDS Writing — the
+ *  sidebar link, the home roadmap CTA and the My-results tab. The routes
+ *  themselves have always been live regardless.
  *
- *  Flip to true to reveal it everywhere at once. */
-export const SHOW_WRITING = false
+ *  Flip to false to conceal it everywhere at once. */
+export const SHOW_WRITING = true

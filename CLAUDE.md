@@ -117,7 +117,9 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
 
 ## Conventions
 - TypeScript strict. Clear folders (src/pages, src/components, src/lib, src/types). Small components.
-- Keep it simple. Phase 1 = Reading, Phase 3 = Listening (both live). Do NOT build Writing/Speaking yet.
+- Keep it simple. Phase 1 = Reading, Phase 3 = Listening, Phase 4 = Writing,
+  Phase 5 = Speaking — all four are live or built. See the Writing and Speaking
+  sections at the end of this file for what is real and what is still missing.
 
 ## Performance (done 2026-08-28)
 - NEVER run Lighthouse against the Vite dev server (:5173) — it serves raw
@@ -1083,3 +1085,113 @@ Multilevelzonemock) and compare, or every future tuning is guesswork. Related:
 successful grades delete their audio within seconds (`deleteClips`), so a
 disputed mark can never be re-heard — only failed/abandoned clips survive, for
 3h (`ORPHAN_MS` in sweep-speaking-audio).
+
+## WRITING IS GRADED NOW (built 2026-09-09, NOT YET DEPLOYED)
+The whole marking spine exists and is green locally; nothing is live until the
+migration and the edge function are pushed (see DEPLOYMENT below). `writing.md`
+is still the authoritative PRD — this section records what was actually built
+and where it DIVERGES from that document.
+- ARCHITECTURE MIRRORS SPEAKING, NOT READING. Writing papers are NOT rows in
+  `tests`: they come from `src/lib/writingFixtures.ts` plus the student's own
+  custom questions, exactly like Speaking. So there is no `get-test` writing
+  branch and no `submit-writing` (writing.md §9 proposes both). THAT IS
+  DELIBERATE: get-test exists to strip answer keys, and a writing paper has no
+  key to strip — the only secret in the loop is the model API key, which lives
+  in the function's secrets. The security invariant that DOES matter is intact:
+  `writing_attempts` has a select-own policy and NO insert/update policy, so
+  only the service_role edge function can write a band. A student cannot post
+  their own score.
+- SCORING IS OURS, JUDGEMENT IS THE MODEL'S — the rule Speaking paid for twice.
+  The model never returns a band, a total or a CEFR level. It returns the four
+  official criteria (task_achievement / grammar / vocabulary / coherence, 0-9)
+  with quotes behind them, and `supabase/functions/grade-writing/` does all the
+  arithmetic: `rubric.ts` (weights 4/8/24, underlength caps, the /36→/75 table,
+  CEFR thresholds), `verify.ts` (the zero rule + quote location), `scoring.ts`
+  (assembly). All three are PURE — no Deno, no network — which is what lets
+  `node --test supabase/functions/grade-writing/scoring.test.ts` run the entire
+  mark scheme in 0.2s. RUN IT BEFORE EVERY GRADER CHANGE. 36 cases; the first
+  four are writing.md §4.5's own worked examples, so a mistranscribed conversion
+  table fails the suite.
+- THE ZERO RULE, same as Speaking's `verify.ts`: a mark may only be zeroed by
+  CONTRADICTED evidence — a blank page, a word count under the official floor
+  (20 / 40), or the model's AFFIRMATIVE `offTopic: true` / `memorised: true`
+  (both REQUIRED schema fields, and both judges must agree before either can
+  zero a task). MISSING evidence never zeroes: an unmatched correction quote is
+  listed without a highlight, a criterion the model omitted is filled from the
+  mean of the rest, and a model that returned nothing at all makes the attempt
+  FAILED (retryable, costs no allowance) rather than a 0 on the student's
+  record. Do not add a new door.
+- TWO EXAMINERS, LOWER MARK STANDS. `judgePaper` calls the model twice in
+  parallel (temperature 0 and 0.4 — identical settings give one opinion twice)
+  and takes the per-criterion LOWER; the prose shown comes from whichever judge
+  marked lower, so the feedback matches the mark. Both readings are stored in
+  `result.review`.
+- UNDERLENGTH CAPS ARE RATIOS OF WHAT THE PAPER ASKED FOR, not absolute counts.
+  The official ladders are written against a 150-word letter and a 250-word
+  essay; Cefrly's Task 1.1 asks for ~50 words and its essay prompts ask for
+  180-200, so applying them literally would cap a student who wrote exactly what
+  they were told to write. A student is judged against their own instruction.
+- A DRILL IS AN EXTRAPOLATION, and says so. One task cannot make a /75, so
+  `band` is stored NULL (never reaching the dashboard's best/trend tiles) and
+  the report shows "if you wrote at this level across the whole paper" —
+  `estimateRatingFromBand(b) = ratingForRaw(4b)`, since every task at band b
+  gives raw 4b. Nothing is scaled; this is the flaw that cost Speaking two
+  rewrites.
+- ASYNC, GUARDED, RATE-LIMITED — copied from grade-speaking v8: 202 +
+  `EdgeRuntime.waitUntil`, the report page's 3s poll is the delivery mechanism;
+  a double-grade guard on `grading_started_at` (5 min stale window) +
+  `grading_runs`; MAX_RUNS_PER_ATTEMPT 5, MAX_ATTEMPTS_PER_HOUR 15, staff exempt;
+  Gemini ladder then an OpenRouter fallback (a fallback inside one vendor is not
+  a fallback — writing is text-only so a genuinely different vendor leads).
+  RUBRIC_TEXT sits FIRST in the prompt for implicit caching; never move the
+  student's text above it.
+- ⚠️ RUBRIC_TEXT IS RECONSTRUCTED, NOT TRANSCRIBED. `Writing criteria
+  multilevel.pdf` is gitignored and was NOT in the working tree, so the
+  descriptors were written from the anchors writing.md records (9=C1, 7=B2,
+  5=B1). REPLACE IT WITH THE PDF's OWN WORDS — it is one exported constant and
+  nothing else depends on its wording. The MATHS is from the PRD's transcription
+  and is pinned by tests.
+- ⚠️ B2 FLOOR DISAGREES WITH SPEAKING. writing.md §4.4 puts B2 at 51-64;
+  `grade-speaking/rubric.ts` puts it at 50, from the same agency chart. One
+  transcription is off by a point and only the PDFs settle it. Flagged in
+  `bandForRating`, not silently unified — a student on exactly 50 is B1 in
+  writing and B2 in speaking today.
+- CLIENT: `src/types/writingResult.ts` (mirrors the function's output),
+  `src/lib/writingGrading.ts` (submit / retry / fetch; `fetchWritingAttempts`
+  does NOT select `result` or `answers` — same bug class as fetchMyAttempts),
+  `src/pages/WritingAnalyzePage.tsx` (/writing/analyze/:attemptId — /75 + band +
+  ruler, per-task band /9 + the four criteria, and the student's own script with
+  corrections marked IN PLACE via server-computed offsets, Feedback ↔ Original
+  toggle, strengths, content points, the answer rewritten one band higher).
+  WritingTaskPage submits to the server; the LOCAL attempt is still written
+  first and the draft is KEPT when a send fails, so an hour's work cannot vanish
+  to a dropped connection. Retry is idempotent (the attempt id is minted at
+  START and lives in the draft). Dashboard's Writing tab now shows real /75
+  cards + a progress panel; unsent local papers are listed as "not checked".
+- DEV-ONLY PREVIEW: `/writing/analyze/preview` renders a sample marked paper so
+  the report can be reviewed with no deployed grader — `?case=short` shows the
+  underlength cap (band-8 writing pulled to 5 by length), `?case=drill` shows a
+  single-task estimate. The fixture (`src/lib/writingPreview.ts`) is GENERATED by
+  running the real `scoring.ts` over a sample paper + judgement, so the preview
+  shows what the grader actually computes rather than hand-typed numbers; it is
+  lazily imported so it never ships to a student. Remove the file and the branch
+  before launch, like /cat-preview. (Rendering it immediately paid for itself: a
+  capitalisation fix — "english" → "English" — was being discarded as a "changes
+  nothing" no-op, because the comparison ran through `normalize`, which
+  lowercases. Fixed, with two tests.)
+- STILL NOT BUILT (deliberate, this pass): per-task timers for the mock
+  (writing.md §8 — the full paper still runs on ONE combined clock), the admin
+  authoring form + bulk import (§10 — content is still the fixtures file), and
+  the essay-quota UI beyond the existing `writing_check` plan limits.
+- NO CALIBRATION SET — the same gap Speaking has. Until the owner's officially
+  marked papers are run through this and compared, the grader is "not obviously
+  broken", never "measurably right". Do that before tuning anything.
+- ⚠️ DEPLOYMENT IS OUTSTANDING AND NEEDS THE OWNER. There is no
+  SUPABASE_ACCESS_TOKEN in this environment any more (the note in the
+  grade-speaking section above is STALE — .env.local now holds only the two
+  VITE_ vars), and `supabase login` needs a TTY. To go live: apply
+  `supabase/migrations/0027_writing_grading.sql`, deploy the `grade-writing`
+  function (it reuses the existing GEMINI_API_KEY / OPENROUTER_API_KEY secrets),
+  then push the frontend. Nothing in the app breaks before that — the check
+  simply fails with "your writing is saved, try again", which is the failure
+  path it was designed around.
