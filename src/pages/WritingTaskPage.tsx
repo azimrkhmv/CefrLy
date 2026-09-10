@@ -408,10 +408,10 @@ function RunningWriting({
       </header>
 
       {/* Split pane: the writing task on the left, the answer on the right. */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-8 lg:grid-cols-2">
+      <div className="min-h-0 flex-1 overflow-y-auto lg:overflow-hidden">
+        <div className="mx-auto grid max-w-[1600px] gap-6 px-4 py-6 sm:px-8 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
           {/* Writing task */}
-          <div className="self-start rounded-2xl border border-line bg-white p-5 shadow-card sm:p-6 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto">
+          <div className="self-start rounded-2xl border border-line bg-white p-5 shadow-card sm:p-6 lg:h-full lg:min-h-0 lg:self-stretch lg:overflow-y-auto">
             <span className="inline-flex rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-bold text-brand">
               {task.label}
             </span>
@@ -439,7 +439,7 @@ function RunningWriting({
           </div>
 
           {/* Your answer */}
-          <div className="flex flex-col rounded-2xl border border-line bg-white p-5 shadow-card sm:p-6">
+          <div className="flex flex-col rounded-2xl border border-line bg-white p-5 shadow-card sm:p-6 lg:h-full lg:min-h-0">
             <div className="mb-2 flex items-center justify-between gap-3">
               <h3 className="font-extrabold text-heading">Your answer</h3>
               <span
@@ -454,7 +454,7 @@ function RunningWriting({
               onChange={(e) => setText(e.target.value)}
               disabled={!!draft.pausedAt}
               placeholder="Write your answer here…"
-              className="min-h-[24rem] flex-1 resize-y rounded-xl border border-line bg-page px-4 py-3 text-[15px] leading-relaxed text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-h-[24rem] flex-1 resize-y rounded-xl lg:min-h-0 lg:resize-none border border-line bg-page px-4 py-3 text-[15px] leading-relaxed text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-60"
             />
             <p className="mt-2 text-xs text-ink-soft">
               {draft.pausedAt
