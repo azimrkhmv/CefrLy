@@ -19,5 +19,9 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Node test files (node:test, node:assert) are run by `node --test`, not by
+  // Vite, and this project has no @types/node. The edge-function suites sit
+  // outside this tsconfig for the same reason.
+  "exclude": ["src/**/*.test.ts"]
 }

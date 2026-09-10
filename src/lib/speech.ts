@@ -100,8 +100,24 @@ function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null 
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-/** How long to give the browser to actually make a sound before retrying. */
-const START_TIMEOUT_MS = 1400
+/**
+ * How long to wait for a sign of life before deciding the browser refused.
+ *
+ * THIS USED TO BE 1400ms AND IT WAS THE BUG. Windows SAPI voices routinely take
+ * two seconds or more to spin up the first time — the student heard the question
+ * read out perfectly, while this code had already concluded "refused", shown
+ * "your browser blocked the audio" and left the exam stuck before the
+ * preparation countdown. Reported by real users as: the question is spoken, prep
+ * never starts, you have to press the button again.
+ *
+ * The stopwatch is now only half the test — see `attempt`. It never decides
+ * anything on its own while the engine says it is still speaking or pending.
+ */
+const START_TIMEOUT_MS = 3000
+/** Absolute ceiling on waiting for a start, when the engine keeps saying "pending". */
+const START_HARD_CAP_MS = 8000
+/** How often to ask the engine whether sound is happening. */
+const POLL_MS = 150
 
 /**
  * Speak `text`. Returns immediately with a handle; await `.started` to know
@@ -110,7 +126,19 @@ const START_TIMEOUT_MS = 1400
  *
  * Never throws and never rejects.
  */
-export function speak(text: string, opts: { rate?: number } = {}): SpeechHandle {
+export function speak(
+  text: string,
+  opts: {
+    rate?: number
+    /** TEST ONLY. The waits below are the whole point of this module, so the
+     *  suite has to be able to shorten them; nothing in the app passes this. */
+    timings?: { startMs?: number; capMs?: number; pollMs?: number }
+  } = {},
+): SpeechHandle {
+  const startMs = opts.timings?.startMs ?? START_TIMEOUT_MS
+  const capMs = opts.timings?.capMs ?? START_HARD_CAP_MS
+  const pollMs = opts.timings?.pollMs ?? POLL_MS
+
   if (!isSpeechSupported() || !text.trim()) {
     return { done: Promise.resolve(), started: Promise.resolve(false), cancel: () => {} }
   }
@@ -120,6 +148,17 @@ export function speak(text: string, opts: { rate?: number } = {}): SpeechHandle 
   let resolveDone: () => void = () => {}
   let resolveStarted: (ok: boolean) => void = () => {}
   let settledStart = false
+
+  // Did sound ever actually happen? Set by onstart, by the engine reporting
+  // `speaking`, or by an utterance reaching onend — a REFUSED utterance fires
+  // onerror, never onend, so an end is proof it was read out.
+  let everSpoke = false
+
+  // Only the utterance we are currently driving may resolve these promises. The
+  // retry path abandons one and starts another, and an abandoned utterance's
+  // late onend used to resolve `done` while its replacement was still talking —
+  // which advanced the exam mid-question and could open the microphone over it.
+  let active: SpeechSynthesisUtterance | null = null
 
   const done = new Promise<void>((resolve) => {
     resolveDone = resolve
@@ -137,12 +176,14 @@ export function speak(text: string, opts: { rate?: number } = {}): SpeechHandle 
   const cleanup = () => {
     if (keepAlive !== undefined) clearInterval(keepAlive)
     keepAlive = undefined
-    markStarted(false) // no-op if it already started
+    active = null
+    markStarted(everSpoke)
     resolveDone()
   }
 
   const cancel = () => {
     cancelled = true
+    active = null
     try {
       window.speechSynthesis.cancel()
     } catch {
@@ -151,39 +192,77 @@ export function speak(text: string, opts: { rate?: number } = {}): SpeechHandle 
     cleanup()
   }
 
-  /** One attempt. Resolves true if the browser reported it started speaking. */
+  const enginePending = () => {
+    try {
+      return window.speechSynthesis.speaking || window.speechSynthesis.pending
+    } catch {
+      return false
+    }
+  }
+
+  /** One attempt. Resolves true once we are satisfied sound is happening. */
   const attempt = (voice: SpeechSynthesisVoice | null): Promise<boolean> =>
     new Promise((resolve) => {
       const utter = new SpeechSynthesisUtterance(text)
+      active = utter
       if (voice) utter.voice = voice
       utter.lang = voice?.lang ?? 'en-GB'
       utter.rate = opts.rate ?? 0.95 // a touch slower than default: this is a test
 
-      let began = false
-      utter.onstart = () => {
-        began = true
-        markStarted(true)
-        resolve(true)
+      let settled = false
+      let poll: number | undefined
+      const settle = (ok: boolean) => {
+        if (settled) return
+        settled = true
+        if (poll !== undefined) clearInterval(poll)
+        resolve(ok)
       }
-      utter.onend = cleanup
+      const sawSound = () => {
+        everSpoke = true
+        markStarted(true)
+        settle(true)
+      }
+
+      utter.onstart = sawSound
+      utter.onend = () => {
+        if (utter !== active) return // an abandoned attempt: its end means nothing
+        // Reaching the end IS proof it was spoken. Chrome and the Windows voices
+        // both drop onstart often enough that treating its absence as a refusal
+        // is what stranded students mid-exam.
+        sawSound()
+        cleanup()
+      }
       utter.onerror = () => {
+        if (utter !== active) return
         // 'not-allowed' (no gesture) and 'interrupted' both land here.
-        if (!began) resolve(false)
-        else cleanup()
+        if (everSpoke) cleanup()
+        settle(false)
       }
 
       try {
         window.speechSynthesis.speak(utter)
       } catch {
-        resolve(false)
+        settle(false)
         return
       }
 
-      // onstart is the only trustworthy signal that sound is happening; a
-      // silently-refused utterance fires nothing at all.
-      setTimeout(() => {
-        if (!began) resolve(false)
-      }, START_TIMEOUT_MS)
+      // onstart is the SIGNAL we want, but it is not reliable — so also ask the
+      // engine directly whether it is speaking.
+      const began = Date.now()
+      poll = window.setInterval(() => {
+        if (utter !== active) return settle(false)
+        try {
+          if (window.speechSynthesis.speaking) return sawSound()
+        } catch {
+          /* ignore */
+        }
+        const waited = Date.now() - began
+        if (waited < startMs) return
+        // Past the stopwatch. Only call it a refusal if the engine ALSO has
+        // nothing queued — otherwise it is merely slow, which Windows voices are.
+        if (!enginePending()) return settle(false)
+        if (waited >= capMs) settle(false)
+      }, pollMs)
     })
 
   void (async () => {
@@ -193,7 +272,7 @@ export function speak(text: string, opts: { rate?: number } = {}): SpeechHandle 
 
     // Only cancel if something is actually speaking. Cancelling an idle queue
     // and speaking in the same tick is the Chrome bug that eats the utterance.
-    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+    if (enginePending()) {
       try {
         window.speechSynthesis.cancel()
       } catch {
@@ -206,8 +285,10 @@ export function speak(text: string, opts: { rate?: number } = {}): SpeechHandle 
     let ok = await attempt(voice)
 
     // One retry: a first utterance right after a cancel, or right after a route
-    // change, is the case that silently fails most often.
-    if (!ok && !cancelled) {
+    // change, is the case that silently fails most often. Nothing is speaking by
+    // now — the attempt only reports false when the engine has gone quiet — so
+    // the cancel here clears a stuck queue rather than cutting anyone off.
+    if (!ok && !cancelled && !everSpoke) {
       try {
         window.speechSynthesis.cancel()
       } catch {
@@ -222,6 +303,15 @@ export function speak(text: string, opts: { rate?: number } = {}): SpeechHandle 
     if (!ok) {
       // Give up quietly and tell the caller, which must offer a manual button
       // rather than marching the student past a question they never heard.
+      // Cancel first: nothing may still be talking while the screen says the
+      // audio was blocked.
+      if (!everSpoke) {
+        try {
+          window.speechSynthesis.cancel()
+        } catch {
+          /* ignore */
+        }
+      }
       cleanup()
       return
     }
