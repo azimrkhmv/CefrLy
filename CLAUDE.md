@@ -12,18 +12,50 @@ https://cefrly-admin.vercel.app, Vercel project `cefrly-admin`). Deleted from
 here: `src/pages/admin/`, `src/components/admin/`, `src/lib/adminApi.ts`,
 `testDraft.ts`, `listeningDraft.ts`, `sampleDraft.ts`, `testValidation.ts`,
 `listeningValidation.ts`. `/admin/*` now renders `AdminMoved` in App.tsx, which
-forwards old bookmarks to the new domain.
-NOTHING ABOUT THE BACKEND CHANGED: same Supabase project, same `admin-tests` /
-`admin-samples` / `admin-users` edge functions, same RLS. The split added no
-authorization — it never could; authorization is server-side and always was.
+forwards old bookmarks to the new domain. Its 12 routes: /login · /admin/tests
+(+new, new/listening, new/part, :slug) · /admin/samples (+new, :slug) ·
+/admin/users (+:id) · /admin/admins→redirect.
+⚠️ THAT REPO IS PUBLIC ON GITHUB (checked 2026-09-10 — every file reads over
+raw.githubusercontent with no auth). Not a hole by itself: authorization is
+server-side and the anon key is meant to be public. But it publishes the admin
+surface map, BOTH exam validators and the exact edge-function payload
+contracts. Make it private if that was not a deliberate call.
+ONLY THE UI MOVED — the admin repo has NO `supabase/` directory at all. The
+edge functions (`admin-tests` + validate.ts + validate-listening.ts,
+`admin-samples` + validate.ts, `admin-users` + plans.ts), every migration, the
+RLS and `public.is_admin()` all still live HERE and are still deployed from
+HERE, so an admin feature usually means editing BOTH repos. Actions the API
+exposes: admin-tests list/get/upsert/setStatus/setAccess/delete · admin-samples
+list/get/upsert/setStatus/delete · admin-users listUsers/getUser/setUserRole/
+setUserPlan/resolveRecheck. The split added no authorization — it never could;
+authorization is server-side and always was.
 The sections below still describe the admin UI as living here (Phase 2, the
-user directory, the samples admin, the part-test form). Treat every one of
-those as a pointer to `../CefrLyAdmin/CLAUDE.md`, not to this codebase.
+user directory, the samples admin, the part-test form). Every `src/pages/admin/…`
+and `src/components/admin/…` path in them means `../CefrLyAdmin/<that path>`;
+`../CefrLyAdmin/CLAUDE.md` is the current story.
 DUPLICATED FILES: the admin repo carries copies of `lib/auth`, `lib/supabase`,
 `lib/storage`, `lib/bands`, `lib/plans`, `lib/sessionExpiry`, `types/*` and a
-few components. Change any of those HERE and you must mirror the change THERE —
-the `types/*` files especially, since they mirror the exam schemas the edge
-function validators enforce, and drift causes silent save failures.
+few components — 19 files, listed in `../CefrLyAdmin/scripts/check-shared.mjs`.
+Change any of them HERE and you must mirror the change THERE. RUN THE CHECK:
+`cd ../CefrLyAdmin && npm run check:shared` (diffs against ../cefrly, exit 1 =
+drift). STATUS 2026-09-10: 14/19 in sync; `types/test.ts`, `types/attempt.ts`,
+`Skeleton.tsx`, `RouteFallback.tsx` and `index.css` drifted, ALL student-ahead
+(51 commits here since the split, 18 of them touching mirrored files). The
+dangerous case is NOT live: `types/test.ts` is identical through line 250 —
+the whole Reading/Listening schema the validators enforce — and every
+difference is Writing/Speaking or session-rescue types (SpeakingDebate,
+OpenSession, ExpiredAttempt, attempt.late/autoSubmitted) that the console never
+authors. Skeleton/RouteFallback drift is the `grid-cols-1` mobile fix (419463e)
+that the admin app never got; index.css may legitimately differ.
+ADMIN BLIND SPOTS (verified 2026-09-10, all real): admin-users reads `profiles`
++ `attempts` + `speaking_attempts` + `speaking_recheck_requests` but NOT
+`writing_attempts`, so writing activity and bands are INVISIBLE in the user
+directory even though writing shipped to prod 2026-09-10. There is no admin
+authoring for Writing or Speaking papers at all — they are fixtures in
+`src/lib/writingFixtures.ts` / `src/lib/speakingFixtures.ts` HERE, so a content
+change is a student-app code deploy, not a console edit. And
+`speaking_grade_alerts` (migration 0025) has no screen: it is service-role SQL
+only, though any row in it is by definition a live problem.
 
 ## Stack (do not change without asking)
 - Frontend: Vite + React + TypeScript + Tailwind CSS + React Router
@@ -130,14 +162,15 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
 - ROUTE CODE-SPLITTING (src/App.tsx): every page except HomePage and AuthPage
   (the two entry points) is `React.lazy`. Pages use named exports, so App.tsx
   has a tiny `page(loader, name)` adapter that maps the named export onto
-  `default`. Suspense boundaries live INSIDE the shells — Layout.tsx and
-  admin/AdminLayout.tsx wrap their `<Outlet/>` — so the sidebar/header never
-  unmount while a chunk loads; App.tsx keeps one outer boundary for the
-  shell-less routes (/welcome, /cat-preview). Fallbacks: RouteFallback /
+  `default`. Suspense boundaries live INSIDE the shells — Layout.tsx wraps its
+  `<Outlet/>` (AdminLayout did too, until the 2026-08-28 split moved it out of
+  this repo) — so the sidebar/header never unmount while a chunk loads; App.tsx
+  keeps one outer boundary for the shell-less routes (/welcome, /cat-preview). Fallbacks: RouteFallback /
   FullScreenFallback in src/components/RouteFallback.tsx (shimmer, per the
   design system — never "Loading…"). Entry chunk went 826 KB → 258 KB
-  (79 KB gzip); admin CRUD, the exam player, review/analyze and the onboarding
-  wizard are now separate chunks students never download.
+  (79 KB gzip); the exam player, review/analyze and the onboarding wizard are
+  now separate chunks students never download (admin CRUD was on that list too,
+  until the split removed it from this repo entirely).
 - vite.config.ts `build.rollupOptions.output.manualChunks` splits react-vendor /
   supabase / query so a normal deploy doesn't bust cached vendor code.
 - FONTS ARE SELF-HOSTED. The render-blocking `<link>` to fonts.googleapis.com
@@ -202,12 +235,14 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
 - ENTRY CHUNK COMPOSITION, measured 2026-08-28 (687 KB pre-minify, 39 modules):
   react-dom 540 KB (79%), HomePage 25, AuthPage 21, Cat 18, Layout 14, App 10,
   icons 8, api 7, BandRuler 7 — everything else under 4. The floor is react-dom;
-  there is no app code left worth splitting. 187 KB of admin already sits in
-  lazy chunks students never fetch, and AdminRoute/AdminLayout (the last 3.2 KB
-  of admin in the entry chunk) are lazy too now, so a student downloads ZERO
-  admin code. DO NOT split the admin panel into a separate app/domain for
-  performance — measured saving is ~1 KB gzip. (Blast-radius or release-cadence
-  reasons would be a different argument; perf is not one.)
+  there is no app code left worth splitting. 187 KB of admin already SAT in
+  lazy chunks students never fetched, and AdminRoute/AdminLayout (the last
+  3.2 KB of admin in the entry chunk) were lazy too, so a student downloaded
+  ZERO admin code even before the split. DO NOT split the admin panel into a
+  separate app/domain FOR PERFORMANCE — measured saving was ~1 KB gzip. (The
+  2026-08-28 split went ahead anyway on blast-radius / release-cadence grounds,
+  which is a different argument; perf was never one. Numbers above are the
+  pre-split entry chunk; admin is now 0 bytes of it.)
 
 ## Working notes (added during phase 1)
 - Test authoring: edit supabase/seed/reading-test-1.json, then `npm run seed:generate`
@@ -268,7 +303,7 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   cards, every onboarding answer, and the full attempt history; promote/demote
   lives here (super_admin only, hidden for super_admin targets + your own row to
   match what the API allows). Shared chips/labels/date helpers in
-  src/components/admin/userDisplay.tsx — the onboarding enum label maps mirror the
+  ../CefrLyAdmin/src/components/admin/userDisplay.tsx — the enum label maps mirror the
   profiles CHECK constraints, keep them in lockstep.
   admin-users v2 (deployed): listUsers/getUser now require admin OR super_admin
   (any admin may read the directory); setUserRole is still super_admin-only with
@@ -644,7 +679,7 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   applies). submit-test v7: band=null + scope/partNumber in result for part
   attempts. review-attempt v2 preserves band null (no 'below_B1' default).
   Client validator mirrors updated in lockstep (testValidation.ts /
-  listeningValidation.ts).
+  listeningValidation.ts — both now ../CefrLyAdmin/src/lib/, not this repo).
 - STUDENT FLOW: the catalog Part 1..N tabs are REAL now (TestCatalog filters
   scope/part_number; TestCard shows "Part N practice"; per-tab empty state).
   Part drills SKIP the mode picker — TestPage auto-starts (or auto-resumes)
@@ -758,12 +793,12 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   mirrors AdminTestsPage) + /admin/samples/new & /admin/samples/:slug
   (SampleFormPage — one page, create vs edit differ by prefill + locked slug &
   category). Frontend-only: reuses the deployed admin-samples fn via new
-  adminApi.ts helpers (adminListSamples/adminGetSample/adminUpsertSample/
+  ../CefrLyAdmin/src/lib/adminApi.ts helpers (adminListSamples/adminGetSample/adminUpsertSample/
   adminSetSampleStatus/adminArchiveSample; invokeSamples surfaces validator
   errors[] as ValidationError). Draft logic + client validator (mirrors the
-  server) in src/lib/sampleDraft.ts; repeating-field editors (StringListEditor
+  server) in ../CefrLyAdmin/src/lib/sampleDraft.ts; repeating-field editors (StringListEditor
   ↑↓✕, TurnListEditor for speaking, VocabEditor, ImagesEditor w/ uploadMedia
-  ('images', samples/<slug>/…)) in src/components/admin/form/SampleEditors.tsx;
+  ('images', samples/<slug>/…)) in ../CefrLyAdmin/src/components/admin/form/SampleEditors.tsx;
   shared category metadata (labels + badge hints + usesTurns) in
   SAMPLE_CATEGORIES (types/sample.ts). Category-aware: writing → paragraph model
   editor, speaking → dialogue-turn editor (draft holds BOTH so switching never
@@ -1097,6 +1132,75 @@ successful grades delete their audio within seconds (`deleteClips`), so a
 disputed mark can never be re-heard — only failed/abandoned clips survive, for
 3h (`ORPHAN_MS` in sweep-speaking-audio).
 
+## THE OFFICIAL CRITERIA PDFs ARRIVED (2026-09-10) — both graders checked against them
+The owner supplied all four source documents on 2026-09-10, in two gitignored
+folders: `writing band score /` (note the TRAILING SPACE in the directory name —
+the .gitignore pattern has to escape it) holds "Writing criteria multilevel.pdf"
++ "Chet tili (multilevel) baholash mezonlari - yangi.pdf"; `speaking band
+criteria/` holds "reyting shkalasi.pdf" + "yangi format baholash mezoni uzbek
+rus.pdf". Extract them with PyMuPDF (`get_text("blocks")` — the criteria tables
+are FOUR COLUMNS and plain `get_text()` interleaves them into nonsense; sort
+blocks by (y, x) and read the x offset to tell which criterion a bullet belongs
+to). No poppler/pdftotext in this environment; a scratch venv + `pip install
+pymupdf` is the route.
+
+WHAT WAS VERIFIED CORRECT, by machine, row by row — do not re-litigate these:
+- Writing's /36→/75 conversion table: **all 66 rows** match the PDF exactly.
+- Speaking's /21→/75 "reyting shkalasi": **all 43 rows** match exactly.
+- Writing weights (Task 1 = 33% = 12 marks, Task 2 = 67% = 24), the zero-mark
+  rules, both underlength ladders and their 150/250-word targets.
+- Speaking's four blocks and maxima: Q1-3 (5, A2) · Q4-6 (5, B1) · Q7 (5, B2) ·
+  Q8 (6, C1) = 21, and its RUBRIC_TEXT, which was a genuine transcription.
+
+WHAT WAS WRONG AND IS NOW FIXED (see docs/SPEAKING-DEFECTS.md #31-33):
+- **B2 FLOOR SETTLED AT 51.** The chart reads C1 65-75 · B2 51-64 · B1 38-50.
+  grade-writing was right; grade-speaking said 50 and is corrected. The
+  long-standing "one transcription is off by a point" flag is CLOSED.
+- **grade-writing's RUBRIC_TEXT is now the PDF's own words**, replacing the
+  reconstruction. The reconstruction invented a band 1 (the scale is 9,8,7,6,5,
+  4,3,2 then 0 — `clampBand` now rounds a 1 UP to 2, never down into a zero),
+  and omitted paraphrasing, referencing/substitution and the countable content
+  -point rule ("2 out of 3" = band 5, "1 out of 3" = band 3) entirely.
+- **UNDERLENGTH CAPS TASK ACHIEVEMENT ONLY.** Every underlength line in the PDF
+  is a bullet INSIDE the Task achievement column. `scoreTask` capped the whole
+  task band, throwing away a student's real grammar mark for a fault the agency
+  books against content alone. ⚠️ THIS MADE SHORT ANSWERS SCORE HIGHER: the
+  preview's 115-word essay went 49/75 → 64/75. Believed right, unproven until
+  calibration.
+- **Speaking's below-floor blocks scored 1, not 0.** Q4-6 ("Nutq A2 darajasidan
+  past … 0") and Q8 ("Nutq B1 darajasidan past … 0") both fell through to
+  `return 1`. Q7 was already correct. The old test ASSERTED the bug.
+- **Q8 can now award its 1.** `readsOutPrompt` (required boolean, affirmative
+  -only) separates the rubric's 2 ("mostly repeats the points given") from its 1
+  ("the points are simply read out").
+
+CONTENT CHANGE, owner's call: **the essay asks for 250 words**, the official
+Task 2 length, up from 180-200 — fixtures, TASK_DEFAULTS and TASK_BLURB. The
+60-minute paper clock is unchanged (that is the official section time).
+`src/lib/writingPreview.ts` keeps its own 200-word target: a paper is judged
+against the instruction IT gave, which is the whole point of the ratio design.
+
+STILL OPEN, and named here so it is not rediscovered a third time:
+1. **NO CALIBRATION SET.** Both graders now "follow the rulebook"; neither is
+   known to "agree with an examiner". Nothing is measurable until 20-30 of the
+   owner's officially-marked papers are run through and compared.
+2. **TWO JUDGES: WE TAKE THE LOWER, THE AGENCY TAKES THE MEAN.** Both graders
+   run the model twice and take the per-criterion minimum. The agency averages
+   two human experts — which is WHY the speaking table has half-point rows, and
+   why **21 of its 43 rows are unreachable in our implementation** (block marks
+   are integers, so the raw total always is). Switching to the mean would match
+   the documented procedure and be slightly more generous. DO NOT switch before
+   calibration; it would trade one guess for another.
+3. **Q7 IS SCORED BY A BOOLEAN, NOT A COUNT.** The PDF marks it by how many of
+   the three prompts were addressed (3→4, 2→3, 1→1); Cefrly merges the prompts
+   into one turn and asks the model `coverage: full|partial`. Coherent, but a
+   2-value stand-in for a 4-value rule.
+4. **THE WRITING PDF DESCRIBES A 2-TASK PAPER** (150-word letter + 250-word
+   essay); the current exam, per the owner's own sample papers, is 3 tasks. The
+   4+8 split of the official 12-mark Task 1 bucket is OURS, not the agency's.
+   The essay length is now aligned; the split is not externally validated.
+
+
 ## WRITING IS GRADED NOW (built 2026-09-09, DEPLOYED 2026-09-10)
 The whole marking spine is LIVE in production. `writing.md`
 is still the authoritative PRD — this section records what was actually built
@@ -1155,12 +1259,11 @@ and where it DIVERGES from that document.
   a fallback — writing is text-only so a genuinely different vendor leads).
   RUBRIC_TEXT sits FIRST in the prompt for implicit caching; never move the
   student's text above it.
-- ⚠️ RUBRIC_TEXT IS RECONSTRUCTED, NOT TRANSCRIBED. `Writing criteria
-  multilevel.pdf` is gitignored and was NOT in the working tree, so the
-  descriptors were written from the anchors writing.md records (9=C1, 7=B2,
-  5=B1). REPLACE IT WITH THE PDF's OWN WORDS — it is one exported constant and
-  nothing else depends on its wording. The MATHS is from the PRD's transcription
-  and is pinned by tests.
+- ✅ RUBRIC_TEXT WAS RECONSTRUCTED; IT IS NOW TRANSCRIBED (2026-09-10). The PDF
+  arrived and its own words replaced the reconstruction — see "THE OFFICIAL
+  CRITERIA PDFs ARRIVED" above for what that changed (no band 1, countable
+  content points, paraphrasing and referencing restored). The MATHS was checked
+  against the PDF row by row at the same time; all 66 rows were already exact.
 - B2 FLOOR: SETTLED 2026-09-10 at 51. writing.md §4.4 said 51-64 and
   `grade-speaking/rubric.ts` said 50, off the same agency chart, so a student on
   exactly 50 was B1 in writing and B2 in speaking. The PDF ("Chet tili

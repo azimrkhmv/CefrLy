@@ -50,3 +50,6 @@ writing\ band\ score\ /
 caveman/
 .agents/
 skills-lock.json
+
+# supabase CLI scratch (npx writes a version marker here)
+supabase/.temp/

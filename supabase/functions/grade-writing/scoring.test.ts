@@ -18,6 +18,7 @@ import assert from 'node:assert/strict'
 
 import {
   bandForRating,
+  clampBand,
   estimateRatingFromBand,
   ratingForRaw,
   taskBandFromCriteria,
@@ -168,8 +169,37 @@ test('a capped task reports the band it would have had', () => {
   const short: TaskIn = { ...TASK.t2, text: words(120), targetWords: 200 }
   const g = scoreTask(short, judged(crit(9)))
   assert.equal(g.bandBeforeCap, 9)
-  assert.equal(g.band, 5) // 120/200 = 0.6 → below 0.75 → cap 5
+  // 120/200 = 0.6 → below 0.75 → task achievement capped at 5. The other three
+  // criteria stay at 9, so the four are [5,9,9,9]: mean 8, held to weakest+2 = 7.
+  assert.equal(g.band, 7)
   assert.equal(g.underlengthCapped, true)
+})
+
+test('length is booked against CONTENT, not against grammar', () => {
+  // The PDF prints its underlength lines inside the Task achievement column.
+  // A short piece loses its content mark; what is on the page is still marked.
+  const short: TaskIn = { ...TASK.t2, text: words(120), targetWords: 250 }
+  const g = scoreTask(short, judged(crit(9)))
+  assert.equal(g.criteria.task_achievement, 3) // 120/250 = 0.48 → the 0.3 rung
+  assert.equal(g.criteria.grammar, 9)
+  assert.equal(g.criteria.vocabulary, 9)
+  assert.equal(g.criteria.coherence, 9)
+})
+
+test('a very short answer still cannot pass as a good one', () => {
+  // 60/250 = 0.24, below the bottom rung → task achievement 2. [2,9,9,9] is
+  // mean 7 held to weakest+2 = 4: real English, almost none of the task done.
+  const g = scoreTask({ ...TASK.t2, text: words(60), targetWords: 250 }, judged(crit(9)))
+  assert.equal(g.band, 4)
+})
+
+test('the official scale has no band 1', () => {
+  // 9,8,7,6,5,4,3,2 and 0. A 1 — from the model or from the arithmetic —
+  // rounds UP to 2 ("performance below Band 3"), never down into a zero.
+  assert.equal(clampBand(1), 2)
+  assert.equal(clampBand(1.4), 2)
+  assert.equal(clampBand(0.4), 0)
+  assert.equal(clampBand(2), 2)
 })
 
 test('length never RAISES a band', () => {

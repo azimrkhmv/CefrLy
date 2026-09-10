@@ -4,15 +4,11 @@
 //   · "Writing criteria multilevel.pdf"                  — the 0-9 band descriptors
 //   · "Chet tili (multilevel) baholash mezonlari - yangi" — weights + the /36→/75 table
 //
-// ⚠️ RUBRIC_TEXT BELOW IS NOT A VERBATIM TRANSCRIPTION. The descriptor PDF is
-// gitignored and was not present in the working tree when this was written, so
-// the descriptors here are reconstructed from the anchors the PRD does record
-// (9 = C1, 7 = B2, 5 = B1, 3-2 below B1, plus the zero-mark and underlength
-// rules). REPLACE RUBRIC_TEXT WITH THE PDF's OWN WORDS when the file is
-// available — it is one constant, and nothing else in this module depends on
-// its wording. The MATHS below (weights, conversion table, thresholds) IS from
-// the PRD's transcription of the second PDF and reproduces all four of its
-// worked examples exactly; scoring.test.ts pins them.
+// RUBRIC_TEXT at the foot of this file is now TRANSCRIBED FROM THE DESCRIPTOR
+// PDF (2026-09-10), replacing the reconstruction written before that file was
+// available. The MATHS was checked against the second PDF the same day, row by
+// row: all 66 entries of the conversion table, the 12/24 weights, the word
+// floors and both underlength ladders match exactly. scoring.test.ts pins them.
 
 export type WritingTaskType = 'task_1_1' | 'task_1_2' | 'part_2'
 
@@ -111,11 +107,33 @@ export function taskBandFromCriteria(criteria: Record<Criterion, number>): numbe
   return clampBand(Math.min(Math.round(mean), weakest + 2))
 }
 
-export const clampBand = (n: number): number =>
-  Number.isFinite(n) ? Math.max(0, Math.min(9, Math.round(n))) : 0
+/**
+ * A mark on the official scale.
+ *
+ * THE SCALE HAS NO BAND 1. The agency's table runs 9, 8, 7, 6, 5, 4, 3, 2 and
+ * then 0 for the fail conditions; "2" is its word for everything below band 3.
+ * A 1 is therefore not a mark that exists, whether the model returned it or the
+ * arithmetic landed on it, and it rounds UP to 2 — never down to 0, because 0
+ * is reserved for the zero-mark rules (blank, off topic, memorised, under the
+ * word floor) and may never be reached by averaging (see verify.ts).
+ */
+export const clampBand = (n: number): number => {
+  if (!Number.isFinite(n)) return 0
+  const b = Math.max(0, Math.min(9, Math.round(n)))
+  return b === 1 ? 2 : b
+}
 
 /**
  * UNDERLENGTH CAPS — how short an answer limits the band it can reach.
+ *
+ * ⚠️ THIS CAPS TASK ACHIEVEMENT, NOT THE WHOLE TASK BAND. In the PDF every
+ * underlength line ("Text may be 10-20% underlength (121-135 words)") is a
+ * bullet inside the TASK ACHIEVEMENT column — it sits beside "all content
+ * points are addressed", not above the table. Grammar, vocabulary and coherence
+ * are judged on their own merit however short the piece is. Capping all four
+ * (which is what this used to do) threw away a student's real grammar mark for
+ * a fault the agency books against content alone. scoreTask applies it to the
+ * one criterion and lets the band follow from the four.
  *
  * The official ladders are written against the full-length tasks: a 150-word
  * letter is capped at band 7 from 121-135 words, band 5 from 91-120, band 3
@@ -254,95 +272,201 @@ export function estimateRatingFromBand(band: number): number {
   return ratingForRaw(clampBand(band) * 4)
 }
 
-/** The descriptors the model marks against. See the warning at the top of this
- *  file: reconstructed from the PRD's CEFR anchors, NOT the PDF's own words. */
+/** The descriptors the model marks against — TRANSCRIBED FROM
+ *  "Writing criteria multilevel.pdf", the agency's own words, column by column.
+ *  It replaced a reconstruction written before the PDF was available; the
+ *  reconstruction invented a band 1 (there is none), and left out paraphrasing,
+ *  referencing/substitution and the countable content-point rule entirely. */
 export const RUBRIC_TEXT = `
-THE BAND SCALE (0-9), used for every criterion on every task.
-  9 = C1.  7 = B2.  5 = B1.  3 = below B1.
-  8, 6, 4 and 2 mean the writing shares features of the bands either side of it.
-  Use the whole scale. A band is a description of what is on the page, not a
-  reward for effort.
+THE BAND SCALE. The official marks are 9, 8, 7, 6, 5, 4, 3, 2 — and 0 for the
+fail conditions below. THERE IS NO BAND 1. The odd bands carry the descriptors;
+8, 6 and 4 mean the writing shares features of the bands either side of it, and
+2 means "performance below Band 3". CEFR anchors: 9 = C1, 7 = B2, 5 = B1.
 
-TASK 1 DESCRIPTORS (informal email / formal email — Cefrly Task 1.1 and 1.2).
+ZERO MARK. A task scores 0 only if the response is: not written; completely off
+topic; fully plagiarized or memorized; or under the word floor (20 words for
+Task 1, 40 for Task 2). Nothing else zeroes a task.
 
+=============================================================================
+TASK 1 — the letter/email (Cefrly Task 1.1 and Task 1.2)
+=============================================================================
+
+BAND 9 (C1)
   Task achievement
-    9 = every content point in the prompt is covered and developed, the purpose
-        is immediately clear, and the register (informal to a friend, formal to
-        an official) is consistent throughout.
-    7 = all content points are covered, most developed; register is appropriate
-        with the odd slip.
-    5 = the content points are addressed but thinly, or one is passed over;
-        register wavers between formal and informal.
-    3 = the response only partly relates to the task, or leaves most of the
-        prompt unanswered; register is wrong for the reader.
-    1 = barely connected to the task set.
-
+    · All content is relevant to the task
+    · Addresses the requirements of the genre and style
+    · Presents a purpose that is clear and well-written
+    · All content points are addressed and adequately developed
   Grammar range and accuracy
-    9 = a range of structures used flexibly and accurately; errors are rare and
-        do not affect meaning.
-    7 = complex structures attempted and mostly correct; errors appear but do
-        not block understanding.
-    5 = simple structures are correct; errors appear whenever anything complex
-        is attempted, occasionally obscuring meaning.
-    3 = errors in basic structures are frequent and interfere with meaning.
-    1 = grammar limited to memorised words and phrases.
-
+    · A variety of complex structures are used with full control, flexibility
+      and sophistication
+    · There are few errors; good control of grammar and punctuation
   Vocabulary range and appropriacy
-    9 = a wide, precise range including less common items; word choice is
-        natural and suits the register.
-    7 = enough range for the task with some flexibility; occasional wrong
-        choices that do not block meaning.
-    5 = adequate for simple content; repetition and wrong choices are noticeable.
-    3 = very limited, mostly everyday personal vocabulary; wrong choices often
-        obscure meaning.
-    1 = isolated words only.
+    · A wide range of vocabulary is used with flexibility and precision
+    · Some less common lexis are used with some awareness of style and
+      collocation
+    · There are few errors in word choice, spelling and/or word formation
+    · Paraphrasing is effectively used
+  Coherence and Cohesion
+    · Text is a well-organised, coherent whole
+    · Uses a variety of cohesive devices and organizational patterns with
+      flexibility
+    · Referencing / substitution is used appropriately to avoid repetition
+    · Paragraphing conventions are followed
 
-  Coherence and cohesion
-    9 = ideas are ordered so the reader never has to work; cohesion is varied
-        and unobtrusive; paragraphing is purposeful.
-    7 = a clear line of thought with a range of linkers, occasionally mechanical.
-    5 = ideas are followable but linking is simple and repetitive; paragraphing
-        may be missing.
-    3 = links between ideas are often unclear; the reader has to reconstruct
-        the order.
-    1 = no discernible organisation.
+BAND 8 — performance shares features of Band 7 and Band 9.
 
-TASK 2 DESCRIPTORS (essay / forum post — Cefrly Task 2).
-
+BAND 7 (B2)
   Task achievement
-    9 = a clear position is stated and sustained; the argument is developed with
-        relevant reasons and specific examples; the response answers the exact
-        question asked.
-    7 = a clear position with reasons and examples; some development is thin or
-        general.
-    5 = a position is present but the argument is assertion rather than
-        development; examples are generic or missing.
-    3 = the position is unclear or shifts; the response drifts from the question.
-    1 = the topic is mentioned but the question is not addressed.
+    · Minor irrelevances and/or omissions may be present
+    · Generally addresses the genre and style; the format may be inappropriate
+      in places
+    · Presents a purpose for the letter
+    · All content points are addressed
+    · Text may be 10-20% underlength (121-135 words)
+  Grammar range and accuracy
+    · A mix of simple and complex structures are used
+    · Errors in grammar and/or punctuation exist, but they do not impede
+      understanding
+  Vocabulary range and appropriacy
+    · A good range of vocabulary is used
+    · Some less common lexis are attempted, but with some inaccuracy
+    · Errors in word choice, spelling and/or word formation do not impede
+      understanding
+    · Paraphrasing is used to some effect
+  Coherence and Cohesion
+    · Text is well organized and coherent
+    · Cohesive devices are used effectively, but cohesion within and/or between
+      sentences may be faulty or mechanical
+    · Referencing may not always be used clearly or appropriately
+    · Uses paragraphing, but not always logically
 
-  Grammar range and accuracy — as Task 1, judged against the greater demands of
-    argument: subordination, hedging, conditionals and passive forms are part of
-    the range expected at 9 and 7.
+BAND 6 — performance shares features of Band 5 and Band 7.
 
-  Vocabulary range and appropriacy — as Task 1, plus: at 9 and 7 the register is
-    appropriately impersonal or discursive and topic vocabulary is precise.
+BAND 5 (B1)
+  Task achievement
+    · Irrelevances and misinterpretation of task may be present
+    · Attempts to address the genre and style; the format may be inappropriate
+    · May fail to clearly explain the purpose of the letter
+    · Some content points (2 out of 3) are addressed, parts may be unclear,
+      irrelevant, repetitive or inaccurate
+    · Text may be 20-40% underlength (91-120 words)
+  Grammar range and accuracy
+    · Mostly simple structures are used, complex sentences are attempted, but
+      these tend to be less accurate than simple sentences
+    · There are frequent grammatical errors and punctuation may be faulty
+    · Errors sometimes impede understanding
+  Vocabulary range and appropriacy
+    · Uses a range of everyday vocabulary appropriately, with occasional
+      inappropriate use of less common lexis
+    · Errors in word choice, spelling and/or word formation may impede
+      understanding
+    · Paraphrasing is rarely used
+  Coherence and Cohesion
+    · Ideas are presented with some organization
+    · Cohesive devices may be inappropriate, inaccurate and/or over-used
+    · Cohesive devices may be repetitive because of lack of referencing and
+      substitution
+    · May not write in paragraphs, or paragraphing may be inadequate
 
-  Coherence and cohesion
-    9 = a genuine essay shape (position, developed body, conclusion that follows
-        from it); each paragraph carries one idea; cohesion is varied.
-    7 = a clear structure with functioning paragraphs and a range of linkers.
-    5 = some structure, but paragraphs may run together or repeat.
-    3 = one undifferentiated block, or an order the reader must reconstruct.
-    1 = no organisation.
+BAND 4 — performance shares features of Band 3 and Band 5.
 
-JUDGING NOTES (these matter as much as the descriptors).
-  · Judge the PATTERN, not the tally. High-level writers make careless slips;
-    an isolated agreement error in otherwise complex accurate prose is not
-    evidence of a low band. Errors in basic structures point to a low band only
-    when they are SYSTEMATIC.
-  · Length is not yours to judge. Word counts and their caps are applied by the
-    system afterwards; mark the quality of what is in front of you.
-  · Do not reward volume. A long answer that repeats itself is not developed.
-  · Do not punish an opinion you disagree with, an unusual position, or a
-    culture you do not share. Mark the English and the argument, not the view.
+BAND 3
+  Task achievement
+    · Fails to address the task, which may have been completely misunderstood
+    · Presents limited ideas which may be largely irrelevant or repetitive
+    · Some content points (1 out of 3) may be addressed
+    · Text may be 40-60% underlength (61-90 words)
+  Grammar range and accuracy
+    · Only a limited range of structures are used with rare use of subordinate
+      clauses
+    · Some structures are accurate but errors predominate, and punctuation is
+      often faulty
+    · Errors impede understanding
+  Vocabulary range and appropriacy
+    · Only basic vocabulary is used which may be repetitive or inappropriate
+      for the task
+    · Errors in word choice, word formation and/or spelling causes strain for
+      the reader
+    · Paraphrasing is not used
+  Coherence and Cohesion
+    · Ideas are presented, but not arranged coherently and there is no clear
+      progression in the response
+    · Some basic cohesive devices are used, but these may be inaccurate or
+      repetitive
+    · There is no attempt at referencing and substitution
+    · May not write in paragraphs or their use may be confusing
+
+BAND 2 — performance below Band 3.
+
+=============================================================================
+TASK 2 — the essay / forum post (Cefrly Task 2)
+=============================================================================
+Grammar, Vocabulary and Coherence use the SAME descriptors as Task 1 at every
+band. Task achievement differs, because this task is an argued response:
+
+BAND 9 (C1)
+    · Presents a clear position throughout the response
+    · Ideas are relevant, fully extended and well-supported
+    · All parts of the task are addressed and well-developed
+    · Requirements of academic style are fully observed
+    · Thesis is appropriately stated
+    · Introduction and conclusion are included and appropriately developed
+    · Paragraphs in the body are developed correctly
+
+BAND 7 (B2)
+    · Presents, extends and supports main ideas, but there may be a tendency to
+      overgeneralise or supporting ideas may lack focus
+    · All parts of the task are addressed
+    · Requirements of academic style are generally observed
+    · Thesis is stated
+    · Introduction and conclusion are included
+    · Paragraphs in the body are developed generally correctly
+    · Text may be 10-25% underlength (188-225 words)
+
+BAND 5 (B1)
+    · Expresses a position but the development is not always clear
+    · The conclusions may become unclear or repetitive
+    · Presents relevant main ideas but some may be inadequately
+      developed/unclear
+    · All parts of the task are addressed, but some parts may be more fully
+      covered than others
+    · Requirements of academic style are partially observed
+    · Thesis is stated, but may be unclear or inadequate
+    · Some paragraphs in the body are incorrectly developed
+    · Text may be 25-50% underlength (125-187 words)
+
+BAND 3
+    · Responds to the task only in a minimal way
+    · Presents some main ideas but these are limited and not sufficiently
+      developed; there may be irrelevant details
+    · Task is only partially observed
+    · Requirements of academic style are not observed
+    · Thesis may be missing
+    · Introduction or conclusion is/are missing or inadequately developed
+    · Paragraphs in the body are incorrectly developed
+    · Text may be 50-70% underlength (76-125 words)
+
+BAND 2 — performance below Band 3.
+
+=============================================================================
+HOW TO APPLY THIS
+=============================================================================
+· LENGTH IS NOT YOURS TO JUDGE. The underlength lines above are printed so you
+  can see where the agency draws them, but the system applies them afterwards,
+  to Task achievement only, against the word target THIS paper asked for. Mark
+  the quality of what is in front of you and do not deduct for shortness
+  yourself — doing so would punish it twice.
+· CONTENT POINTS ARE COUNTABLE. Band 5 means two of the three prompt bullets
+  are addressed, band 3 means one. Count them, and list what you counted.
+· PARAPHRASING AND REFERENCING ARE MARKED. Whether the writer recasts the
+  prompt in their own words belongs to Vocabulary; whether they use "it",
+  "this", "the former" instead of repeating nouns belongs to Coherence. Both
+  are part of the official descriptors — do not ignore them.
+· JUDGE THE PATTERN, NOT THE TALLY. High-level writers make careless slips. An
+  isolated agreement error in otherwise complex accurate prose is not evidence
+  of a low band. Basic errors point to a low band when they are SYSTEMATIC.
+· DO NOT REWARD VOLUME. A long answer that repeats itself is not developed.
+· DO NOT PUNISH AN OPINION you disagree with, an unusual position, or a culture
+  you do not share. Mark the English and the argument, not the view.
 `.trim()

@@ -218,6 +218,10 @@ export interface BlockJudgement {
   coverage?: 'full' | 'partial'
   /** Q8 only: were both sides genuinely argued? The rubric's 5 demands it. */
   balanced?: boolean
+  /** Q8 only: did the candidate merely READ OUT the points printed on the task,
+   *  rather than argue them? That is the rubric's 1 as against its 2, and it is
+   *  the only thing separating them. Absent = not claimed = the higher mark. */
+  readsOutPrompt?: boolean
   reason: string
 }
 
@@ -272,7 +276,11 @@ export function scoreBlock(j: BlockJudgement): number {
       if (level >= LEVEL_RANK.B2) return on >= 3 ? 5 : on === 2 ? 4 : 3
       if (level === LEVEL_RANK.B1) return on >= 3 ? 4 : on === 2 ? 3 : 2
       if (level === LEVEL_RANK.A2) return on >= 2 ? 2 : 1
-      return 1
+      // "Nutq A2 darajasidan past ... 0" — this block's 0 row says in so many
+      // words that speech BELOW A2 scores nothing, however much of it there is.
+      // Marks 2 and 1 are the A2 tier; there is no rung underneath them. This
+      // returned 1, handing a free raw mark to a speaker the rubric places at 0.
+      return 0
 
     // One two-minute turn, anchored B2. 5 = above B2.
     case 'q7':
@@ -301,8 +309,13 @@ export function scoreBlock(j: BlockJudgement): number {
         return allAtLeast(j.criteria, LEVEL_RANK.C1) ? 6 : 5
       }
       if (level === LEVEL_RANK.B2) return j.balanced === false ? 3 : 4
-      if (level === LEVEL_RANK.B1) return 2
-      return 1
+      // 2 = "cannot answer coherently and mostly just REPEATS the points given
+      // in the task"; 1 = "the points given in the task are simply READ OUT".
+      // Both are the B1 tier, so a B1 profile cannot fall below 1 here.
+      if (level === LEVEL_RANK.B1) return j.readsOutPrompt === true ? 1 : 2
+      // "Nutq B1 darajasidan past ... 0", exactly as in Q7 above. This returned
+      // 1 — the same free mark as q4_6 had.
+      return 0
     }
   }
 }

@@ -123,10 +123,19 @@ export function scoreTask(task: TaskIn, judgement: TaskJudgement | undefined): G
   const resolved: Record<Criterion, number> =
     criteria ?? ({ task_achievement: 0, grammar: 0, vocabulary: 0, coherence: 0 } as Record<Criterion, number>)
 
-  const bandBeforeCap = criteria ? taskBandFromCriteria(resolved) : 0
+  // LENGTH IS BOOKED AGAINST CONTENT, NOT AGAINST EVERYTHING. The PDF prints
+  // its underlength lines inside the Task achievement column, so a short piece
+  // loses marks for what it failed to cover — while its grammar, vocabulary and
+  // coherence are still judged on what IS on the page. This used to cap the
+  // whole task band, which took a student's real grammar mark away for a fault
+  // the agency books against content alone.
   const cap = underlengthCap(meta.family, words, target)
-  const capped = criteria !== null && bandBeforeCap > cap
-  let band = criteria ? Math.min(bandBeforeCap, cap) : 0
+  const marked: Record<Criterion, number> = criteria
+    ? { ...resolved, task_achievement: Math.min(resolved.task_achievement, cap) }
+    : resolved
+  const bandBeforeCap = criteria ? taskBandFromCriteria(resolved) : 0
+  let band = criteria ? taskBandFromCriteria(marked) : 0
+  const capped = criteria !== null && band < bandBeforeCap
   if (zero) band = 0
 
   return {
@@ -134,7 +143,10 @@ export function scoreTask(task: TaskIn, judgement: TaskJudgement | undefined): G
     taskType: task.taskType,
     taskLabel: task.taskLabel || meta.label,
     band: clampBand(band),
-    criteria: resolved,
+    // The MARKED criteria, i.e. with the length cap already applied to task
+    // achievement — the report shows the numbers the band was computed from,
+    // and `underlengthCapped` explains why that one is lower than it reads.
+    criteria: marked,
     inferredCriteria: filledIn,
     points: taskPoints(band, meta.weight),
     weight: meta.weight,

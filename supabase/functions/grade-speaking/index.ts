@@ -381,6 +381,9 @@ interface BlockOut {
   offTopic: boolean
   coverage: 'full' | 'partial'
   balanced: boolean
+  /** Q8 only. The rubric's 1 as against its 2: the candidate did not argue the
+   *  printed points, they read them aloud. Affirmative-only — see scoreBlock. */
+  readsOutPrompt: boolean
   reason: string
 }
 
@@ -520,6 +523,7 @@ const RESPONSE_SCHEMA = {
           offTopic: { type: 'boolean' },
           coverage: { type: 'string', enum: ['full', 'partial'] },
           balanced: { type: 'boolean' },
+          readsOutPrompt: { type: 'boolean' },
           reason: { type: 'string' },
         },
         // coverage and balanced are REQUIRED now. Left optional, the model simply
@@ -527,8 +531,12 @@ const RESPONSE_SCHEMA = {
         // full answer from half of one. offTopic is required for the opposite
         // reason: it is the ONLY way the model can zero a block, so it must be
         // an answer it gives on purpose rather than a field it can forget.
-        required: ['block', 'onTopic', 'offTopic', 'coverage', 'balanced', 'reason'],
-        propertyOrdering: ['block', 'onTopic', 'offTopic', 'coverage', 'balanced', 'reason'],
+        required: [
+          'block', 'onTopic', 'offTopic', 'coverage', 'balanced', 'readsOutPrompt', 'reason',
+        ],
+        propertyOrdering: [
+          'block', 'onTopic', 'offTopic', 'coverage', 'balanced', 'readsOutPrompt', 'reason',
+        ],
       },
     },
     summary: { type: 'string' },
@@ -610,6 +618,11 @@ THEN one entry for each of these blocks — ${blocksPresent.join(', ')} — with
   "partial" if it covers it only in part. Required for every block.
 - "balanced": for Q8, true only if BOTH sides of the argument are genuinely made;
   a well-spoken one-sided answer is not balanced. Send false for other blocks.
+- "readsOutPrompt": for Q8, true ONLY if the candidate simply read the points
+  printed on the task aloud instead of arguing them — the rubric's lowest mark
+  above zero. Repeating a point and then developing it is NOT reading out. If
+  you are unsure, send false; this field can only cost a mark, never add one.
+  Send false for other blocks.
 - "reason": one sentence, naming what you heard.
 
 THE RECORDINGS, in the order they are attached:
@@ -748,6 +761,7 @@ async function gradeBlock(
           offTopic: true,
           coverage: 'partial',
           balanced: false,
+          readsOutPrompt: false,
           reason: 'No answer was recorded for this task.',
         },
       ],
@@ -1339,6 +1353,7 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
           onTopicCount,
           coverage: judged?.coverage === 'partial' ? 'partial' : 'full',
           balanced: judged?.balanced === true,
+          readsOutPrompt: judged?.readsOutPrompt === true,
           reason: judged?.reason ?? '',
         }
       : null
@@ -1355,6 +1370,7 @@ function score(answers: AnswerIn[], out: GeminiOut, scope: 'full' | 'part') {
       questionCount,
       coverage: judgement?.coverage,
       balanced: b.key === 'q8' ? judgement?.balanced : undefined,
+      readsOutPrompt: b.key === 'q8' ? judgement?.readsOutPrompt : undefined,
       // The recordings are deleted seconds after a successful grade, so the
       // quotes and their verdicts are the ONLY trace left of why a block did or
       // did not count as answered. A disputed mark is unarguable without them.

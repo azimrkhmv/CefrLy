@@ -65,6 +65,9 @@ export interface GradedBlock {
   /** Long turns: was the task covered fully, and (Part 3) both sides argued? */
   coverage?: 'full' | 'partial'
   balanced?: boolean
+  /** Q8 only: the candidate read the task's printed points aloud rather than
+   *  arguing them — the rubric's 1 as against its 2. */
+  readsOutPrompt?: boolean
 }
 
 export interface SpeakingResult {

@@ -319,8 +319,8 @@ export const WRITING_PREVIEWS: Record<string, WritingAttemptRow> = {
     "task_type": "part_2",
     "status": "done",
     "error_message": null,
-    "raw_score": 13.33,
-    "rating": 49,
+    "raw_score": 18.67,
+    "rating": 64,
     "band": null,
     "answers": [
       {
@@ -337,15 +337,15 @@ export const WRITING_PREVIEWS: Record<string, WritingAttemptRow> = {
           "taskId": "writing-mock-1-t3",
           "taskType": "part_2",
           "taskLabel": "Task 2",
-          "band": 5,
+          "band": 7,
           "criteria": {
-            "task_achievement": 8,
+            "task_achievement": 5,
             "grammar": 7,
             "vocabulary": 7,
             "coherence": 9
           },
           "inferredCriteria": [],
-          "points": 13.333333333333334,
+          "points": 18.666666666666668,
           "weight": 24,
           "wordCount": 115,
           "targetWords": 200,
@@ -390,10 +390,10 @@ export const WRITING_PREVIEWS: Record<string, WritingAttemptRow> = {
           "improved": "In recent years many people have claimed that physical libraries are a waste of public money, since everything can now be found online. While I understand the argument, I strongly disagree with it, and I will explain why.\n\nFirst of all, a library is far more than a place where books are stored. It is a public space in which people can study in silence — something a great many students simply do not have at home. In my city, for instance, whole families live in small flats where three or four people share a single room, so the reading room of our library is often the only quiet space available to them.\n\nSecondly, access to the internet is not equal. Older people often lack the digital skills to find reliable information online, and libraries provide free computers along with staff who can help. Closing these buildings would only widen the gap between those who can afford technology and those who cannot.\n\nThat said, I do accept that libraries must change. They should invest in digital resources and offer online courses rather than storing thousands of volumes nobody reads.\n\nIn conclusion, libraries are not a waste of money but a public service that underpins education and equality. Governments should modernise them, not close them."
         }
       ],
-      "raw36": 13.33,
+      "raw36": 18.67,
       "maxRaw": 36,
-      "rating": 49,
-      "band": "B1",
+      "rating": 64,
+      "band": "B2",
       "estimate": true,
       "summary": "What is here is good — a clear position and a genuinely specific example. The problem is that it stops less than halfway through: an argument this short cannot show a second reason, a concession or a conclusion, and the official length rules cap the mark before quality is even weighed.",
       "fixFirst": "Finish the essay. Length is costing you more here than any language fault.",

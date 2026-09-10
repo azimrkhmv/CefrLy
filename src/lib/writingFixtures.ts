@@ -60,7 +60,7 @@ const TASK_LEVEL = {
 export const TASK_BLURB: Record<WritingTaskType, string> = {
   task_1_1: 'Informal email · ~50 words',
   task_1_2: 'Formal email · ~120–150 words',
-  part_2: 'Forum post / article · ~180–200 words',
+  part_2: 'Forum post / article · ~250 words',
 }
 
 /** Default duration + word target per task type — used when a student adds a
@@ -71,7 +71,7 @@ export const TASK_DEFAULTS: Record<
 > = {
   task_1_1: { durationSec: min(12), minWords: 50, level: 'B1' },
   task_1_2: { durationSec: min(20), minWords: 120, maxWords: 150, level: 'B2' },
-  part_2: { durationSec: min(30), minWords: 180, maxWords: 200, level: 'C1' },
+  part_2: { durationSec: min(30), minWords: 250, level: 'C1' },
 }
 
 /** The example placeholder shown in the custom-question textarea per task type. */
@@ -133,14 +133,13 @@ const MOCK_1: WritingTest = {
       id: 'writing-mock-1-t3',
       taskType: 'part_2',
       label: 'Task 2',
-      minWords: 180,
-      maxWords: 200,
+      minWords: 250,
       prompt: {
         title: 'Are physical libraries still needed?',
         html: `<p>You have seen this comment on an online forum:</p>
 <blockquote>"Everything is online now — physical libraries are a waste of public money."</blockquote>
 <p>Write a <strong>forum post</strong> responding to this opinion. Explain whether you agree or disagree and give reasons and examples to support your view.</p>
-<p>Write <strong>180–200 words</strong>.</p>`,
+<p>Write <strong>about 250 words</strong>.</p>`,
       },
     },
   ],
@@ -232,39 +231,36 @@ const DRILLS: WritingTest[] = [
     taskType: 'part_2',
     title: 'Does social media do more harm than good?',
     durationMin: 30,
-    minWords: 180,
-    maxWords: 200,
+    minWords: 250,
     promptTitle: 'Does social media do more harm than good?',
     promptHtml: `<p>You have seen this comment on an online forum:</p>
 <blockquote>"Social media brings people together and helps them learn."</blockquote>
 <p>Write a <strong>forum post</strong> giving your opinion. Say whether you agree or disagree and support your view with reasons and examples.</p>
-<p>Write <strong>180–200 words</strong>.</p>`,
+<p>Write <strong>about 250 words</strong>.</p>`,
   }),
   drill({
     id: 'w-p2-cars',
     taskType: 'part_2',
     title: 'Should city centres ban private cars?',
     durationMin: 30,
-    minWords: 180,
-    maxWords: 200,
+    minWords: 250,
     promptTitle: 'Should city centres ban private cars?',
     promptHtml: `<p>You have seen this comment on an online forum:</p>
 <blockquote>"City centres would be cleaner and safer without private cars."</blockquote>
 <p>Write a <strong>forum post</strong> responding to this opinion. Explain whether you agree or disagree and give reasons and examples.</p>
-<p>Write <strong>180–200 words</strong>.</p>`,
+<p>Write <strong>about 250 words</strong>.</p>`,
   }),
   drill({
     id: 'w-p2-remote',
     taskType: 'part_2',
     title: 'Is working from home better than the office?',
     durationMin: 30,
-    minWords: 180,
-    maxWords: 200,
+    minWords: 250,
     promptTitle: 'Is working from home better than the office?',
     promptHtml: `<p>You have seen this comment on an online forum:</p>
 <blockquote>"People are more productive and happier when they work from home."</blockquote>
 <p>Write a <strong>forum post</strong> giving your view. Say whether you agree or disagree and support your opinion with reasons and examples.</p>
-<p>Write <strong>180–200 words</strong>.</p>`,
+<p>Write <strong>about 250 words</strong>.</p>`,
   }),
 ]
 

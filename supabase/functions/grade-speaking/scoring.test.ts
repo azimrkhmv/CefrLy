@@ -359,9 +359,24 @@ test('no block can exceed its maximum, at any profile', () => {
   }
 })
 
-test('a block with something on topic scores 0 only below B1 on the long turns', () => {
-  for (const block of ['q1_3', 'q4_6', 'q8'] as const) {
-    for (const level of ['A2', 'B1', 'B2', 'C1'] as CefrLevel[]) {
+test('each block zeroes below its OWN floor, and not above it', () => {
+  // Every block's 0 row names the level underneath which nothing scores:
+  //   Q1-3  no floor  — its 1-2 marks ARE the A1 tier
+  //   Q4-6  "Nutq A2 darajasidan past ... 0"
+  //   Q7    "Nutq B1 darajasidan past ... 0"
+  //   Q8    "Nutq B1 darajasidan past ... 0"
+  // q4_6 and q8 used to return 1 below their floor, which is a free raw mark
+  // the rubric does not allow.
+  const floor: Record<string, CefrLevel | null> = {
+    q1_3: null,
+    q4_6: 'A2',
+    q7: 'B1',
+    q8: 'B1',
+  }
+  const LEVELS = ['below_A2', 'A2', 'B1', 'B2', 'C1'] as CefrLevel[]
+
+  for (const block of ['q1_3', 'q4_6', 'q7', 'q8'] as const) {
+    for (const level of LEVELS) {
       const s = scoreBlock({
         block,
         criteria: profile(level),
@@ -370,9 +385,32 @@ test('a block with something on topic scores 0 only below B1 on the long turns',
         balanced: true,
         reason: '',
       })
-      assert.ok(s > 0, `${block} at ${level} with an answer on topic scored 0`)
+      const min = floor[block]
+      const belowFloor = min !== null && LEVEL_RANK[level] < LEVEL_RANK[min]
+      if (belowFloor) {
+        assert.equal(s, 0, `${block} at ${level} must be 0 — below the block's floor`)
+      } else {
+        assert.ok(s > 0, `${block} at ${level} with an answer on topic scored 0`)
+      }
     }
   }
+})
+
+test('Part 3 separates arguing the points from reading them out', () => {
+  // The rubric's 2 is "cannot answer coherently and mostly just REPEATS the
+  // points given in the task"; its 1 is "the points ... are simply READ OUT".
+  const base = {
+    block: 'q8' as const,
+    criteria: profile('B1'),
+    onTopicCount: 1,
+    coverage: 'full' as const,
+    balanced: true,
+    reason: '',
+  }
+  assert.equal(scoreBlock(base), 2)
+  assert.equal(scoreBlock({ ...base, readsOutPrompt: true }), 1)
+  // Not claimed is not proof. A missing signal may never cost a mark.
+  assert.equal(scoreBlock({ ...base, readsOutPrompt: undefined }), 2)
 })
 
 function normalized(s: string) {

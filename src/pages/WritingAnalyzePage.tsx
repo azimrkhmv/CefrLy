@@ -237,9 +237,11 @@ function TaskReport({ task, text }: { task: GradedWritingTask; text: string }) {
 
       {task.underlengthCapped && !task.zeroMark && (
         <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          The writing itself was worth <strong>band {task.bandBeforeCap}</strong>, but at{' '}
-          {task.wordCount} words it is too short for the task and the official length rules cap it
-          at <strong>band {task.band}</strong>. Length costs marks before quality is even weighed.
+          At {task.wordCount} words this is short of the {task.targetWords} the task asked for, so
+          the official length rules cap <strong>Task achievement</strong> — which brings the task
+          from <strong>band {task.bandBeforeCap}</strong> down to <strong>band {task.band}</strong>.
+          Your grammar, vocabulary and organisation are still marked on what you actually wrote;
+          length is charged against how much of the task you covered.
         </p>
       )}
 
