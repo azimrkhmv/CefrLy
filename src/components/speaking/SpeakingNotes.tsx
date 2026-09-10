@@ -72,7 +72,7 @@ export function SpeakingNotes({ step, testId }: { step: SpeakingStep; testId: st
   const twoUp = fields.length === 3 && fields[0].key === 'for'
 
   return (
-    <section className="mt-5 rounded-2xl border border-line bg-white p-5 shadow-card sm:p-6">
+    <section className="@container rounded-2xl border border-line bg-white p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 font-extrabold text-heading">
           <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-soft text-brand">
@@ -83,9 +83,9 @@ export function SpeakingNotes({ step, testId }: { step: SpeakingStep; testId: st
         <p className="text-xs text-ink-soft">Not marked — this is your paper</p>
       </div>
 
-      <div className={twoUp ? 'mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2' : 'mt-4 space-y-3'}>
+      <div className={twoUp ? 'mt-4 grid grid-cols-1 gap-4 @md:grid-cols-2' : 'mt-4 space-y-3'}>
         {fields.map((field, i) => (
-          <div key={field.key} className={twoUp && i === 2 ? 'sm:col-span-2' : undefined}>
+          <div key={field.key} className={twoUp && i === 2 ? '@md:col-span-2' : undefined}>
             <label
               htmlFor={`note-${step.id}-${field.key}`}
               className="block text-xs font-bold text-ink-soft"

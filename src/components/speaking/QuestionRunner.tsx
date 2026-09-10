@@ -6,6 +6,7 @@ import { playSignal, warningAt } from '../../lib/tone'
 import type { SpeakingStep } from '../../lib/speakingQuestions'
 import type { SpeakingDebate } from '../../types/test'
 import { SpeakingNotes } from './SpeakingNotes'
+import { fieldsFor } from '../../lib/speakingNotes'
 
 // ---------------------------------------------------------------------------
 // One question, one recording, on the exam's clock.
@@ -235,16 +236,35 @@ export function QuestionRunner({
       ? step.question.text.slice(debate.statement.length).trim() || step.question.text
       : step.question.text
 
+  // Only the long turns get a note sheet, and only they get the second column.
+  // Parts 1.1 and 1.2 have none: reserving the column for them would push the
+  // exam off-centre behind an empty gap for five of the mock's eight questions.
+  const hasNotes = fieldsFor(step) !== null
+
   // Multi-prompt turns carry their prompts as newline-separated lines (see the
   // part_2 builder in speakingFromSamples.ts). A student's own custom question
   // can be typed the same way, so this is not Part-2-only.
   const questionLines = shownQuestion.split('\n').map((l) => l.trim()).filter(Boolean)
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
-      <Stepper current={stepNumber} total={totalSteps} />
+    // TWO COLUMNS ON A WIDE SCREEN. The exam column is deliberately narrow — a
+    // question is easier to read at 42rem than at full width — which left a
+    // whole empty half of the page beside it while the note sheet sat below the
+    // fold. The notes move into that space and stick there, so they stay in
+    // view through preparation AND through the recording, which is the moment
+    // they are actually for. Below xl there is no room, and the source order
+    // gives the stacked layout the sensible reading: question, notes, clock.
+    <div
+      className={
+        hasNotes
+          ? 'mx-auto grid w-full max-w-2xl grid-cols-1 gap-5 xl:max-w-[68rem] xl:grid-cols-[minmax(0,42rem)_minmax(0,24rem)] xl:items-start xl:gap-6'
+          : 'mx-auto grid w-full max-w-2xl grid-cols-1 gap-5'
+      }
+    >
+      <div className="min-w-0 xl:col-start-1 xl:row-start-1">
+        <Stepper current={stepNumber} total={totalSteps} />
 
-      <TaskMaterial step={step} />
+        <TaskMaterial step={step} />
 
       <section className="mt-5 rounded-2xl border border-line bg-white p-6 shadow-card">
         <div className="flex flex-wrap items-center gap-2">
@@ -289,12 +309,19 @@ export function QuestionRunner({
         </button>
       </section>
 
-      {/* The note sheet, for the long turns only. Placed under the question and
-          above the clock: preparation is when it is used, and a card that moved
-          between phases would pull the eye off the countdown. */}
-      {phase !== 'review' && <SpeakingNotes step={step} testId={testId} />}
+      </div>
 
-      <div className="mt-5 rounded-2xl border border-line bg-white p-8 text-center shadow-card">
+      {/* The note sheet, for the long turns only. Second column on a wide screen
+          (sticky, so it survives scrolling); between the question and the clock
+          when stacked. */}
+      {hasNotes && (
+        <aside className="min-w-0 xl:col-start-2 xl:row-start-1 xl:row-span-2 xl:sticky xl:top-4">
+          <SpeakingNotes step={step} testId={testId} />
+        </aside>
+      )}
+
+      <div className="min-w-0 xl:col-start-1 xl:row-start-2">
+      <div className="rounded-2xl border border-line bg-white p-8 text-center shadow-card">
         {phase === 'asking' &&
           (needsTap ? (
             <div>
@@ -435,6 +462,7 @@ export function QuestionRunner({
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   )
