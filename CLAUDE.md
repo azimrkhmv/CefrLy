@@ -1150,11 +1150,12 @@ and where it DIVERGES from that document.
   5=B1). REPLACE IT WITH THE PDF's OWN WORDS — it is one exported constant and
   nothing else depends on its wording. The MATHS is from the PRD's transcription
   and is pinned by tests.
-- ⚠️ B2 FLOOR DISAGREES WITH SPEAKING. writing.md §4.4 puts B2 at 51-64;
-  `grade-speaking/rubric.ts` puts it at 50, from the same agency chart. One
-  transcription is off by a point and only the PDFs settle it. Flagged in
-  `bandForRating`, not silently unified — a student on exactly 50 is B1 in
-  writing and B2 in speaking today.
+- B2 FLOOR: SETTLED 2026-09-10 at 51. writing.md §4.4 said 51-64 and
+  `grade-speaking/rubric.ts` said 50, off the same agency chart, so a student on
+  exactly 50 was B1 in writing and B2 in speaking. The PDF ("Chet tili
+  (multilevel) baholash mezonlari - yangi", final table) reads B1 38-50 —
+  speaking was wrong and was moved to 51, with the test suite updated. Both
+  graders now carry the same table; never change one alone.
 - CLIENT: `src/types/writingResult.ts` (mirrors the function's output),
   `src/lib/writingGrading.ts` (submit / retry / fetch; `fetchWritingAttempts`
   does NOT select `result` or `answers` — same bug class as fetchMyAttempts),

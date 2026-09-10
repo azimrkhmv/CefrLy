@@ -226,10 +226,10 @@ export type Band = 'below_B1' | 'B1' | 'B2' | 'C1'
  * CEFR bands on the 75-point scale (writing.md §4.4): C1 65-75, B2 51-64,
  * B1 38-50.
  *
- * ⚠️ grade-speaking/rubric.ts puts the B2 floor at 50, not 51, from the same
- * agency chart. One of the two transcriptions is off by a point and only the
- * PDFs can settle it. Flagged rather than silently unified — a student on
- * exactly 50 is B1 in writing and B2 in speaking until somebody checks.
+ * SETTLED 2026-09-10: grade-speaking read 50 here, so a student on exactly 50
+ * was B1 in writing and B2 in speaking off one chart. The PDF's B1 row is
+ * "38-50", so 50 is the top of B1 — speaking was the wrong transcription and
+ * now matches. Both graders share this table; change neither alone.
  */
 export function bandForRating(rating: number): Band {
   if (rating >= 65) return 'C1'

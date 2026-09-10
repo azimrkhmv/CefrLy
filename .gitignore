@@ -39,6 +39,12 @@ Chet tili (multilevel) baholash mezonlari - yangi.pdf
 # speaking/writing grading criteria PDFs (same rule: source docs, not app code)
 Sample for ai/
 Speaking band score/
+speaking band criteria/
+writing band score/
+# the folder on disk really does end in a space; quotes are not special
+# in .gitignore, so the space has to be backslash-escaped or the pattern
+# matches nothing and a dropped PDF shows up as untracked.
+writing\ band\ score\ /
 
 # agent tooling / nested tool repos (not part of the app)
 caveman/

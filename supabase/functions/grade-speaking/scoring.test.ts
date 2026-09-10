@@ -328,7 +328,9 @@ test('band thresholds sit where the agency chart puts them', () => {
   assert.equal(bandForRating(37), 'below_B1')
   assert.equal(bandForRating(38), 'B1')
   assert.equal(bandForRating(49), 'B1')
-  assert.equal(bandForRating(50), 'B2')
+  // The chart's B1 row is "38-50": 50 is the TOP of B1, not the floor of B2.
+  assert.equal(bandForRating(50), 'B1')
+  assert.equal(bandForRating(51), 'B2')
   assert.equal(bandForRating(64), 'B2')
   assert.equal(bandForRating(65), 'C1')
 })

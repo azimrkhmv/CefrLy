@@ -63,13 +63,18 @@ export function ratingForRaw(raw: number): number {
 export type Band = 'below_B1' | 'B1' | 'B2' | 'C1'
 
 /**
- * CEFR bands on the 75-point scale, from the agency's standard-score chart:
- * B1 starts at 38, B2 at 50, C1 at 65. Nothing reaches C2 — the format has no
- * C2 tasks, which is why the app's ruler caps there too.
+ * CEFR bands on the 75-point scale, from the agency's standard-score chart
+ * ("Chet tili (multilevel) baholash mezonlari - yangi", final table):
+ * C1 65-75 · B2 51-64 · B1 38-50 · below B1 0-37. Nothing reaches C2 — the
+ * format has no C2 tasks, which is why the app's ruler caps there too.
+ *
+ * THE B2 FLOOR IS 51, NOT 50. It read 50 here until the PDF was checked
+ * (2026-09-10), which put a student on exactly 50 at B2 in speaking and B1 in
+ * writing off the same chart. The chart's B1 row is "38-50"; 50 is B1.
  */
 export function bandForRating(rating: number): Band {
   if (rating >= 65) return 'C1'
-  if (rating >= 50) return 'B2'
+  if (rating >= 51) return 'B2'
   if (rating >= 38) return 'B1'
   return 'below_B1'
 }
