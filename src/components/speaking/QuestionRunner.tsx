@@ -5,6 +5,7 @@ import { cancelSpeech, speak } from '../../lib/speech'
 import { playSignal, warningAt } from '../../lib/tone'
 import type { SpeakingStep } from '../../lib/speakingQuestions'
 import type { SpeakingDebate } from '../../types/test'
+import { SpeakingNotes } from './SpeakingNotes'
 
 // ---------------------------------------------------------------------------
 // One question, one recording, on the exam's clock.
@@ -56,11 +57,14 @@ export function QuestionRunner({
   onAnswered,
   onNext,
   isLast,
+  testId,
 }: {
   step: SpeakingStep
   stepNumber: number
   totalSteps: number
   existing?: StepAnswer
+  /** Scopes the note sheet's storage to this paper. */
+  testId: string
   onAnswered: (answer: StepAnswer) => void
   onNext: () => void
   isLast: boolean
@@ -284,6 +288,11 @@ export function QuestionRunner({
           {speaking ? 'Reading the question…' : 'Hear it again'}
         </button>
       </section>
+
+      {/* The note sheet, for the long turns only. Placed under the question and
+          above the clock: preparation is when it is used, and a card that moved
+          between phases would pull the eye off the countdown. */}
+      {phase !== 'review' && <SpeakingNotes step={step} testId={testId} />}
 
       <div className="mt-5 rounded-2xl border border-line bg-white p-8 text-center shadow-card">
         {phase === 'asking' &&

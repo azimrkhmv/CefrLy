@@ -73,8 +73,53 @@ export function saveSpeakingDraft(testId: string, draft: SpeakingDraft) {
 export function clearSpeakingDraft(testId: string) {
   try {
     localStorage.removeItem(key(testId))
+    localStorage.removeItem(notesKey(testId))
   } catch {
     // ignore
+  }
+}
+
+// ---------------------------------------------------------------------------
+// THE STUDENT'S NOTES.
+//
+// The real paper hands out a sheet for the 60 seconds of preparation before
+// each long turn, and Parts 2 and 3 are unanswerable without one — two minutes
+// of argument is not something anybody improvises straight through.
+//
+// These notes are SCRATCH. They are never uploaded, never sent to the grader
+// and never seen by anyone but the student, exactly like the paper: the exam
+// marks what was said, not what was jotted. They live here only so that a
+// reload in the middle of an attempt does not throw them away, and they are
+// cleared with the rest of the draft when the paper ends.
+//
+// Kept in their own storage key rather than inside SpeakingDraft: the draft is
+// the record of what has been ANSWERED, it is read to decide whether an attempt
+// can be resumed at all, and notes have no business in that decision.
+// ---------------------------------------------------------------------------
+
+/** field id ("<stepId>:for") → what the student typed. */
+export type SpeakingNotes = Record<string, string>
+
+const notesKey = (testId: string) => `cefrly-speaking-notes-${testId}`
+
+export function readSpeakingNotes(testId: string): SpeakingNotes {
+  try {
+    const raw = localStorage.getItem(notesKey(testId))
+    if (!raw) return {}
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    return parsed as SpeakingNotes
+  } catch {
+    return {}
+  }
+}
+
+export function saveSpeakingNotes(testId: string, notes: SpeakingNotes) {
+  try {
+    localStorage.setItem(notesKey(testId), JSON.stringify(notes))
+  } catch {
+    // Blocked or full storage must never interrupt an exam. Losing a note is
+    // survivable; a crash mid-recording is not.
   }
 }
 

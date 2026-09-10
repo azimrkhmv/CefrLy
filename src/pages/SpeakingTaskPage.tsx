@@ -410,6 +410,7 @@ function SpeakingRunner({ test, onLeave }: { test: SpeakingTest; onLeave: () => 
           totalSteps={steps.length}
           existing={answers[step.id]}
           isLast={isLast}
+          testId={test.id}
           onAnswered={(a) => {
             // Every take gets an id, so the upload that finishes last cannot
             // overwrite an answer the student has since re-recorded.
