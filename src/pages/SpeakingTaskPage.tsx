@@ -655,7 +655,7 @@ function AnswerRow({ n, text, answer }: { n: number; text: string; answer?: Step
       <div className="flex gap-3">
         <span className="tnum shrink-0 font-bold text-brand">{n}.</span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-ink">{text}</p>
+          <p className="whitespace-pre-line text-sm font-bold text-ink">{text}</p>
           {answer ? (
             <div className="mt-2.5 flex items-center gap-3">
               {/* No url = recorded before a reload. It is on the server and will

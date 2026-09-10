@@ -231,6 +231,11 @@ export function QuestionRunner({
       ? step.question.text.slice(debate.statement.length).trim() || step.question.text
       : step.question.text
 
+  // Multi-prompt turns carry their prompts as newline-separated lines (see the
+  // part_2 builder in speakingFromSamples.ts). A student's own custom question
+  // can be typed the same way, so this is not Part-2-only.
+  const questionLines = shownQuestion.split('\n').map((l) => l.trim()).filter(Boolean)
+
   return (
     <div className="mx-auto w-full max-w-2xl">
       <Stepper current={stepNumber} total={totalSteps} />
@@ -248,7 +253,26 @@ export function QuestionRunner({
           </span>
         </div>
 
-        <p className="mt-3 text-lg font-extrabold leading-snug text-heading">{shownQuestion}</p>
+        {/* A Part 2 turn asks THREE things in one recording, and the paper prints
+            them as a list. Run together as one paragraph they read as a wall of
+            text and the later prompts get missed — which costs a mark, since the
+            block is scored on how many were addressed. One row each, numbered
+            when there is more than one. */}
+        <div className="mt-3 space-y-2">
+          {questionLines.map((line, i) => (
+            <p
+              key={i}
+              className="flex gap-2 text-lg font-extrabold leading-snug text-heading"
+            >
+              {questionLines.length > 1 && (
+                <span aria-hidden className="tnum shrink-0 text-brand">
+                  {i + 1}.
+                </span>
+              )}
+              <span>{line}</span>
+            </p>
+          ))}
+        </div>
 
         <button
           type="button"

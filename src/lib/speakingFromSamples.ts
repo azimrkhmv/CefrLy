@@ -67,7 +67,12 @@ const STARTERS = [
   'In your',
 ].join('|')
 
-const BOUNDARY = new RegExp(`(?<=[a-z)”"])\\s+(?=(?:${STARTERS}))`, 'g')
+// A FULL STOP COUNTS AS A BOUNDARY TOO. Several papers end one prompt with a
+// period rather than a question mark ("…a critical decision you have made. How
+// has this decision influenced you?"), and without the '.' here both prompts
+// arrived as one line. The lookahead is still the capitalised starter list, so
+// ordinary prose does not split — only a full stop followed by a question word.
+const BOUNDARY = new RegExp(`(?<=[a-z.)”"])\\s+(?=(?:${STARTERS}))`, 'g')
 
 const words = (s: string) => s.trim().split(/\s+/).length
 
@@ -218,9 +223,15 @@ function toTask(sample: Sample): SpeakingTask | null {
     questions = parsed.map((text, i) => (i === 0 ? { text, ...PART_1_2_OPENING } : { text }))
   } else if (partType === 'part_2') {
     // One continuous two-minute turn covering all of the paper's prompts, so
-    // they are read out as a single question rather than recorded separately.
+    // they are ONE recording rather than three. They are joined with newlines,
+    // not spaces: the paper prints them as a numbered list and the student has
+    // to hold all three in their head while they talk. Run together as a single
+    // wall of prose (which is what a space gave) the second and third prompt
+    // are easy to miss entirely — and missing one costs a mark under the
+    // rubric, which scores this block by how many prompts were addressed.
+    // QuestionRunner renders each line as its own row.
     const prompts = splitQuestions(questionLine)
-    questions = prompts.length ? [{ text: prompts.join(' ') }] : undefined
+    questions = prompts.length ? [{ text: prompts.join('\n') }] : undefined
   } else {
     // Part 3 argues ONE proposition. Ask the statement in the paper's own words
     // — the sample title ("For and against: personal gun ownership") is a

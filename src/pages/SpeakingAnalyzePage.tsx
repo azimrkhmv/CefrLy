@@ -237,7 +237,7 @@ function AnswerCard({ n, answer }: { n: number; answer: GradedAnswer }) {
     <section className="rounded-2xl border border-line bg-white p-6 shadow-card">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="tnum font-extrabold text-brand">Q{n}</span>
-        <p className="min-w-0 flex-1 font-bold text-ink">{answer.questionText}</p>
+        <p className="min-w-0 flex-1 whitespace-pre-line font-bold text-ink">{answer.questionText}</p>
       </div>
 
       <div className="tnum mt-3 flex flex-wrap gap-2 text-xs">

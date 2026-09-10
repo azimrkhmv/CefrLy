@@ -32,15 +32,25 @@ export interface SpeakingStep {
 const asQuestion = (q: string | SpeakingQuestion): SpeakingQuestion =>
   typeof q === 'string' ? { text: q } : q
 
-/** Strip tags so a prompt written as HTML can still be spoken aloud. */
+/** Strip tags so a prompt written as HTML can still be spoken aloud.
+ *
+ *  LINE BREAKS SURVIVE. A long turn's prompt is often several questions — the
+ *  paper prints them as a list, and flattening them into one paragraph (which
+ *  collapsing all whitespace did) leaves a wall of text where the second and
+ *  third question are easy to miss. Block boundaries become newlines and the
+ *  renderer shows one row each; only runs of spaces inside a line collapse. */
 function plainText(html: string): string {
   return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6])>/gi, '\n')
     .replace(/<[^>]*>/g, ' ')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(/\s+/g, ' ')
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/ ?\n ?/g, '\n')
+    .replace(/\n{2,}/g, '\n')
     .trim()
 }
 
