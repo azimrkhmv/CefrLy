@@ -22,7 +22,6 @@ function drill(opts: {
   maxWords?: number
   promptTitle: string
   promptHtml: string
-  recommended?: boolean
 }): WritingTest {
   const partNumber = opts.taskType === 'task_1_1' ? 1 : opts.taskType === 'task_1_2' ? 2 : 3
   const task: WritingTask = {
@@ -32,7 +31,6 @@ function drill(opts: {
     minWords: opts.minWords,
     maxWords: opts.maxWords,
     prompt: { title: opts.promptTitle, html: opts.promptHtml },
-    recommended: opts.recommended,
   }
   return {
     id: opts.id,
@@ -158,7 +156,6 @@ const DRILLS: WritingTest[] = [
     title: 'A new fitness class',
     durationMin: 12,
     minWords: 50,
-    recommended: true,
     promptTitle: 'A new fitness class',
     promptHtml: `<p>You have started going to a new fitness class. Write an <strong>informal email</strong> to your friend Sam.</p>
 <p>In your email:</p>
@@ -197,7 +194,6 @@ const DRILLS: WritingTest[] = [
     durationMin: 20,
     minWords: 120,
     maxWords: 150,
-    recommended: true,
     promptTitle: 'A complaint about an online order',
     promptHtml: `<p>You ordered a product online and it arrived damaged. Write a <strong>formal email</strong> to the customer service manager.</p>
 <p>In your email:</p>
@@ -238,7 +234,6 @@ const DRILLS: WritingTest[] = [
     durationMin: 30,
     minWords: 180,
     maxWords: 200,
-    recommended: true,
     promptTitle: 'Does social media do more harm than good?',
     promptHtml: `<p>You have seen this comment on an online forum:</p>
 <blockquote>"Social media brings people together and helps them learn."</blockquote>

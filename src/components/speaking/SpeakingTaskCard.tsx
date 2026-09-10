@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import type { SpeakingCatalogItem } from '../../lib/speakingCatalog'
 import { PART_LABEL } from '../../lib/speakingFixtures'
 import { hasSpeakingDraft } from '../../lib/speakingDraft'
-import { CloseIcon, LockIcon, MicIcon, PlayIcon, StarIcon } from '../icons'
+import { CloseIcon, LockIcon, MicIcon, PlayIcon } from '../icons'
 
 // ONE tile for every speaking card — the yellow microphone, whatever the part
 // (owner call). Writing colour-codes its tiles per task type; Speaking
@@ -44,12 +44,6 @@ export function SpeakingTaskCard({
 
   return (
     <div className="group relative flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-card transition-shadow hover:shadow-md motion-safe:transition-transform motion-safe:hover:-translate-y-0.5">
-      {item.recommended && (
-        <span className="absolute -top-2.5 right-4 inline-flex items-center gap-1 rounded-full bg-brand px-2.5 py-1 text-xs font-bold text-white shadow-card">
-          <StarIcon width={12} height={12} />
-          Recommended
-        </span>
-      )}
       {onDelete && (
         <button
           type="button"

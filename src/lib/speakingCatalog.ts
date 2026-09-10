@@ -26,7 +26,6 @@ export interface SpeakingCatalogItem {
   durationSec: number
   /** Preparation window of the single part (undefined for the full mock). */
   prepSec?: number
-  recommended?: boolean
   custom?: boolean
 }
 
@@ -40,7 +39,6 @@ export function toCatalogItem(test: SpeakingTest): SpeakingCatalogItem {
     partType: scope === 'part' ? firstTask?.partType : undefined,
     durationSec: test.durationSec,
     prepSec: scope === 'part' ? firstTask?.prepSec : undefined,
-    recommended: test.tasks.some((t) => t.recommended),
     custom: isCustomSpeakingId(test.id),
   }
 }

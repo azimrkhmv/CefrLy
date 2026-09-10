@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import type { WritingCatalogItem } from '../../lib/writingCatalog'
 import { TASK_LABEL } from '../../lib/writingFixtures'
 import { hasWritingDraft } from '../../lib/writingDraft'
-import { CloseIcon, PenIcon, PlayIcon, StarIcon } from '../icons'
+import { CloseIcon, PenIcon, PlayIcon } from '../icons'
 
 // ONE TILE FOR EVERY WRITING PAPER. The tile used to change with the task —
 // lavender for 1.1, yellow for 1.2, green (and a *people* icon) for Task 2 —
@@ -38,12 +38,6 @@ export function WritingTaskCard({
 
   return (
     <div className="group relative flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-card transition-shadow hover:shadow-md motion-safe:transition-transform motion-safe:hover:-translate-y-0.5">
-      {item.recommended && (
-        <span className="absolute -top-2.5 right-4 inline-flex items-center gap-1 rounded-full bg-brand px-2.5 py-1 text-xs font-bold text-white shadow-card">
-          <StarIcon width={12} height={12} />
-          Recommended
-        </span>
-      )}
       {onDelete && (
         <button
           type="button"

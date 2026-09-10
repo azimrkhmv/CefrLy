@@ -250,8 +250,6 @@ export interface WritingTask {
   prompt: WritingTaskPrompt
   /** OPTIONAL — never required (no IELTS-style chart to describe). */
   image?: WritingTaskImage
-  /** Author pick — renders the brand "Recommended" badge on the card. */
-  recommended?: boolean
   /** SERVER-ONLY (future grader) — never delivered to the browser. */
   rubric?: string
   modelAnswer?: string[]
@@ -351,8 +349,6 @@ export interface SpeakingTask {
   /** Default speaking window for EACH question, in seconds. Hard: the recorder
    *  stops itself when it runs out. A question may override it. */
   speakSec: number
-  /** Author pick — renders the brand "Recommended" badge on the card. */
-  recommended?: boolean
   /** SERVER-ONLY (future grader) — never delivered to the browser. */
   rubric?: string
   modelAnswer?: string[]

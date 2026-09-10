@@ -18,7 +18,6 @@ export interface WritingCatalogItem {
   taskType?: WritingTaskType
   durationSec: number
   minWords?: number
-  recommended?: boolean
   custom?: boolean
 }
 
@@ -32,7 +31,6 @@ export function toCatalogItem(test: WritingTest): WritingCatalogItem {
     taskType: scope === 'part' ? firstTask?.taskType : undefined,
     durationSec: test.durationSec,
     minWords: scope === 'part' ? firstTask?.minWords : undefined,
-    recommended: test.tasks.some((t) => t.recommended),
     custom: isCustomWritingId(test.id),
   }
 }
