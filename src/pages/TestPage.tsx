@@ -485,11 +485,11 @@ export function TestPage() {
       queryClient.removeQueries({ queryKey: ['test', testId] })
       // The catalog's "Resume · N min left" card must stop saying that now.
       queryClient.invalidateQueries({ queryKey: ['open-sessions'] })
-      // Reading opens its Analysis page directly; listening keeps the score
-      // page (which carries the audio/transcript review link).
+      // Both skills open straight on the review — students never found the
+      // review button on the score page. The band score is one tab away.
       navigate(
         result.skill === 'listening'
-          ? `/results/${result.attemptId}`
+          ? `/review/${result.attemptId}`
           : `/analyze/${result.attemptId}`,
         { state: result, replace: true },
       )

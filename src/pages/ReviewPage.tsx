@@ -7,7 +7,7 @@ import { imageUrl } from '../lib/storage'
 import { BAND_INFO } from '../lib/bands'
 import { PracticeAudioPlayer } from '../components/test/PracticeAudioPlayer'
 import { PassageHtml } from '../components/test/PassageHtml'
-import { CloseIcon } from '../components/icons'
+import { CloseIcon, HomeIcon } from '../components/icons'
 import type { AttemptReview, ItemResult } from '../types/attempt'
 import type { Item, ListeningPart } from '../types/test'
 
@@ -113,13 +113,23 @@ function ReviewScreen({ review }: { review: AttemptReview }) {
       <header className="shrink-0 border-b border-line bg-white">
         <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-            <Link
-              to={`/results/${review.attemptId}`}
-              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
-            >
-              <CloseIcon width={18} height={18} />
-              <span className="hidden sm:inline">Back to results</span>
-            </Link>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                to="/"
+                aria-label="Home"
+                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-2 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+              >
+                <HomeIcon width={18} height={18} />
+                <span className="hidden sm:inline">Home</span>
+              </Link>
+              <Link
+                to="/dashboard"
+                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
+              >
+                <CloseIcon width={18} height={18} />
+                <span className="hidden sm:inline">My results</span>
+              </Link>
+            </div>
             <div className="min-w-0">
               <h1 className="truncate text-base font-extrabold text-heading">
                 {review.testTitle}
@@ -129,11 +139,25 @@ function ReviewScreen({ review }: { review: AttemptReview }) {
               </p>
             </div>
           </div>
-          <span className="tnum shrink-0 rounded-full bg-brand-soft px-3 py-1.5 text-xs font-bold text-brand">
-            {review.rawScore}/{review.total}
-            {/* part drills carry no CEFR band */}
-            {review.band ? ` · ${BAND_INFO[review.band].label}` : ''}
-          </span>
+          {/* Review ↔ band-score overview, same order as the reading analysis */}
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <div className="flex rounded-xl border border-line bg-white p-1">
+              <span className="rounded-lg bg-brand px-3 py-1.5 text-sm font-bold text-white sm:px-3.5">
+                Review<span className="hidden md:inline"> &amp; transcript</span>
+              </span>
+              <Link
+                to={`/results/${review.attemptId}`}
+                className="rounded-lg px-3 py-1.5 text-sm font-bold text-ink-soft transition-colors hover:text-ink sm:px-3.5"
+              >
+                Overview
+              </Link>
+            </div>
+            <span className="tnum hidden shrink-0 rounded-full bg-brand-soft px-3 py-1.5 text-xs font-bold text-brand sm:inline-block">
+              {review.rawScore}/{review.total}
+              {/* part drills carry no CEFR band */}
+              {review.band ? ` · ${BAND_INFO[review.band].label}` : ''}
+            </span>
+          </div>
         </div>
       </header>
 
@@ -154,7 +178,30 @@ function ReviewScreen({ review }: { review: AttemptReview }) {
         className="flex min-h-0 flex-1 flex-col lg:flex-row"
         style={{ ['--review-left' as never]: `${leftPct}%` }}
       >
-        <div className="min-w-0 overflow-y-auto p-4 sm:p-6 lg:w-[var(--review-left)]">
+        <div className="min-w-0 space-y-4 overflow-y-auto p-4 sm:p-6 lg:w-[var(--review-left)]">
+          {/* Overall score stays in view while reviewing */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-line bg-white px-4 py-3 shadow-card">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft">Overall</p>
+              <p className="tnum text-lg font-extrabold text-heading">
+                {review.rawScore} / {review.total} correct
+              </p>
+            </div>
+            {review.band && (
+              <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand">
+                {BAND_INFO[review.band].label}
+              </span>
+            )}
+            {part && review.parts.length > 1 && (
+              <p className="tnum ml-auto text-sm font-semibold text-ink-soft">
+                Part {part.number}:{' '}
+                <span className="font-bold text-ink">
+                  {partItemsOf(part).filter((item) => resultById[item.id]?.correct).length}/
+                  {partItemsOf(part).length}
+                </span>
+              </p>
+            )}
+          </div>
           {part && <ReviewPart part={part} resultById={resultById} />}
         </div>
         <div

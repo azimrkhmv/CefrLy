@@ -76,7 +76,8 @@ function FullScreen({ children, center }: { children: ReactNode; center?: boolea
 }
 
 function AnalyzeScreen({ review }: { review: AttemptReview }) {
-  const [view, setView] = useState<'overview' | 'review'>('overview')
+  // Opens on Review: students on the Overview never found the explanations.
+  const [view, setView] = useState<'overview' | 'review'>('review')
   const [partIndex, setPartIndex] = useState(0)
 
   // Reading parts come back as the FULL content (answers + explanations); the
@@ -133,7 +134,7 @@ function AnalyzeScreen({ review }: { review: AttemptReview }) {
           {/* Overview ↔ deep review toggle (always reachable, incl. mobile) */}
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <div className="flex rounded-xl border border-line bg-white p-1">
-              {(['overview', 'review'] as const).map((v) => (
+              {(['review', 'overview'] as const).map((v) => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
@@ -141,7 +142,13 @@ function AnalyzeScreen({ review }: { review: AttemptReview }) {
                     view === v ? 'bg-brand text-white' : 'text-ink-soft hover:text-ink'
                   }`}
                 >
-                  {v === 'overview' ? 'Overview' : 'Review'}
+                  {v === 'overview' ? (
+                    'Overview'
+                  ) : (
+                    <>
+                      Review<span className="hidden md:inline"> &amp; explanations</span>
+                    </>
+                  )}
                 </button>
               ))}
             </div>
@@ -166,6 +173,7 @@ function AnalyzeScreen({ review }: { review: AttemptReview }) {
         />
       ) : (
         <ReviewView
+          review={review}
           parts={parts}
           resultById={resultById}
           numberById={numberById}
@@ -326,12 +334,14 @@ function AnswerKeyRow({ item, res, n }: { item: Item; res?: ItemResult; n: numbe
 // ---- Review: split view — questions | passage with Qn highlights ------------
 
 function ReviewView({
+  review,
   parts,
   resultById,
   numberById,
   partIndex,
   setPartIndex,
 }: {
+  review: AttemptReview
   parts: Part[]
   resultById: Map<string, ItemResult>
   numberById: Map<string, number>
@@ -342,6 +352,8 @@ function ReviewView({
   const [focusedN, setFocusedN] = useState<number | null>(null)
   const paneRef = useRef<HTMLDivElement>(null)
   const part = parts[partIndex]
+  const band = review.band ? BAND_INFO[review.band] : null
+  const partCorrect = part.items.filter((it) => resultById.get(it.id)?.correct).length
 
   function startDrag(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault()
@@ -376,6 +388,23 @@ function ReviewView({
       >
         {/* Left: questions + the student's answers */}
         <div className="min-w-0 space-y-4 overflow-y-auto p-4 sm:p-6 lg:w-[var(--an-left)]">
+          {/* Overall score stays in view while reviewing */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-line bg-white px-4 py-3 shadow-card">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft">Overall</p>
+              <p className="tnum text-lg font-extrabold text-heading">
+                {review.rawScore} / {review.total} correct
+              </p>
+            </div>
+            {band && (
+              <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand">{band.label}</span>
+            )}
+            {parts.length > 1 && (
+              <p className="tnum ml-auto text-sm font-semibold text-ink-soft">
+                Part {part.number}: <span className="font-bold text-ink">{partCorrect}/{part.items.length}</span>
+              </p>
+            )}
+          </div>
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand">
               Part {part.number} · Questions

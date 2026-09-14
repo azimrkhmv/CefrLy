@@ -137,7 +137,7 @@ function AttemptCard({
     <li>
       <Link
         // Reading opens its Analysis page; listening keeps the score/results page.
-        to={attempt.skill === 'listening' ? `/results/${attempt.id}` : `/analyze/${attempt.id}`}
+        to={attempt.skill === 'listening' ? `/review/${attempt.id}` : `/analyze/${attempt.id}`}
         className={`group flex h-full flex-col rounded-2xl border bg-white p-5 shadow-card transition-[border-color,box-shadow] duration-200 ${
           isBest
             ? 'border-brand/40 shadow-soft'
