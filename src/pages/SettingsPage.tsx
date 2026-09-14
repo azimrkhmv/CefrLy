@@ -6,6 +6,7 @@ import type { DailyMinutes, HeardFrom, StudyPrefs, StudyTimeframe, WeakArea } fr
 import { Chip, OptionCard } from '../components/choice'
 import { GoalBandPicker } from '../components/GoalBandPicker'
 import { PlanSummary } from '../components/PlanSummary'
+import { ChangePasswordCard } from '../components/ChangePasswordCard'
 
 // Study preferences from onboarding, editable any time. Attribution
 // (heard_from) is shown but write-once; onboarded_at is never touched here.
@@ -185,6 +186,8 @@ export function SettingsPage() {
             </button>
           </div>
         </section>
+
+        <ChangePasswordCard />
 
         <section className="rounded-2xl bg-white p-6 shadow-soft ring-1 ring-line/50 sm:p-7">
           <h2 className="font-extrabold text-heading">Your goal</h2>

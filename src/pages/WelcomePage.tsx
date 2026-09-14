@@ -181,6 +181,16 @@ export function WelcomePage() {
       return
     }
     const meta = session?.user.user_metadata as Record<string, unknown> | undefined
+    // Telegram sign-up already collected first name + surname on its own form,
+    // so skip the name question and start at "first exam".
+    if (meta?.signup === 'telegram' && typeof meta.first_name === 'string') {
+      prefilledName.current = true
+      setState((s) => ({
+        step: s.step === 0 ? 1 : s.step,
+        draft: { ...s.draft, firstName: meta.first_name as string, lastName: (meta.last_name as string) ?? '' },
+      }))
+      return
+    }
     const full = ((meta?.full_name as string) || (meta?.name as string) || '').trim()
     if (!full) return
     prefilledName.current = true

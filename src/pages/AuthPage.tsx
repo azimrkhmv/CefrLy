@@ -3,31 +3,37 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { consumeSessionExpired } from '../lib/sessionExpiry'
+import {
+  completeTelegramSignup,
+  formatLocalPhone,
+  fullPhone,
+  loginEmailForPhone,
+  PhoneExistsError,
+  startTelegramAuth,
+  type TelegramStart,
+} from '../lib/phoneAuth'
 import { AuthShell } from '../components/auth/AuthShell'
-import { EyeIcon, EyeOffIcon, GoogleIcon } from '../components/auth/icons'
-import { authInputClass, PasswordStrength } from '../components/auth/formBits'
+import { TelegramCodeStep } from '../components/auth/TelegramCodeStep'
+import {
+  authInputClass,
+  PasswordField,
+  PasswordStrength,
+  PhoneField,
+} from '../components/auth/formBits'
 
-// The design includes a "Forgot password?" link beside a "Remember me" checkbox.
-// Neither ships yet, on purpose:
-//  · Remember me — Supabase already persists the session in localStorage, so the
-//    control would either do nothing or quietly make sessions worse (owner call).
-//  · Forgot password — the reset email needs SMTP, which this project has not
-//    configured (see CLAUDE.md). The screen IS built, at /forgot-password; only
-//    the link is withheld so no student hits a silent dead end. Flip this to true
-//    the day SMTP works and the designed row appears.
-const SHOW_FORGOT_PASSWORD = false
+// Sign up = name, surname, father's name, password → Telegram code (the phone
+// number comes from the student's own Telegram account, never typed here).
+// Log in = phone + password. (The email login for pre-Telegram accounts was
+// removed on the owner's call, 2026-09-14.)
+// "Remember me" is still not shipped: Supabase already persists the session.
+
+const primaryButton =
+  'mt-[18px] w-full rounded-xl border-0 bg-brand px-4 py-[15px] text-base font-extrabold text-white shadow-[0_8px_20px_color-mix(in_srgb,var(--color-brand)_22%,transparent)] transition-[background,transform] duration-150 hover:bg-brand-deep active:translate-y-px disabled:opacity-60'
 
 export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [info, setInfo] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [showPw, setShowPw] = useState(false)
-  const [expired, setExpired] = useState(false)
-  const navigate = useNavigate()
   const location = useLocation()
   const { session } = useAuth()
+  const [expired, setExpired] = useState(false)
 
   const from = (location.state as { from?: string } | null)?.from ?? '/'
   const isLogin = mode === 'login'
@@ -43,27 +49,97 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
 
   if (session) return <Navigate to={from} replace />
 
+  return (
+    <AuthShell
+      line={(cat) => (isLogin ? cat.hello : cat.helloSignup)}
+      // The design gives each screen its own steady second line under the
+      // cat's, rather than one shared reassurance string.
+      sub={isLogin ? 'The official reading format, timed and scored.' : 'One free account, all four papers.'}
+    >
+      {isLogin ? <LoginForm from={from} expired={expired} /> : <SignupFlow from={from} />}
+    </AuthShell>
+  )
+}
+
+function Heading({ title, intro }: { title: string; intro?: string }) {
+  return (
+    <>
+      {/* The desktop brand panel carries this eyebrow beside the headline. */}
+      <p className="mt-[34px] text-[10px] font-extrabold uppercase tracking-[0.16em] text-ink-soft lg:hidden">
+        CEFR · Reading paper
+      </p>
+      <h1 className="mt-2 text-[28px] font-black leading-[1.15] text-heading lg:mt-0 lg:text-[32px]">
+        {title}
+      </h1>
+      {intro ? (
+        <p className="mb-6 mt-2 text-[15px] font-semibold leading-[1.4] text-ink-soft">{intro}</p>
+      ) : (
+        <div className="h-5" />
+      )}
+    </>
+  )
+}
+
+function ErrorNote({ children }: { children: string }) {
+  return (
+    <p
+      role="alert"
+      className="mt-4 rounded-xl border-2 border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800"
+    >
+      {children}
+    </p>
+  )
+}
+
+function SwitchLine({ isLogin, from }: { isLogin: boolean; from: string }) {
+  return (
+    <div className="mt-6 border-t border-line pt-5 text-center">
+      <p className="text-[15px] font-bold text-ink-soft">
+        {isLogin ? 'New to Cefrly?' : 'Already have an account?'}
+      </p>
+      <Link
+        to={isLogin ? '/signup' : '/login'}
+        state={{ from }}
+        className="mt-3 block w-full rounded-xl border-2 border-brand bg-white px-4 py-[13px] text-base font-extrabold text-brand no-underline transition-colors hover:bg-brand-soft"
+      >
+        {isLogin ? 'Create an account' : 'Log in'}
+      </Link>
+    </div>
+  )
+}
+
+// ---- Log in ------------------------------------------------------------------
+
+function LoginForm({ from, expired }: { from: string; expired: boolean }) {
+  const navigate = useNavigate()
+  const [phone, setPhone] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPw, setShowPw] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
-    setInfo(null)
+    const full = fullPhone(phone)
+    if (!full) {
+      setError('Enter the 9 digits of your phone number after +998.')
+      return
+    }
     setBusy(true)
     try {
-      if (isLogin) {
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-        if (signInError) throw signInError
-        navigate(from, { replace: true })
-      } else {
-        const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
-        if (signUpError) throw signUpError
-        if (data.session) {
-          navigate(from, { replace: true })
-        } else {
-          setInfo(
-            'Account created. Check your email for a confirmation link, then come back and sign in.',
-          )
-        }
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: loginEmailForPhone(full),
+        password,
+      })
+      if (signInError) {
+        throw new Error(
+          /invalid login credentials/i.test(signInError.message)
+            ? 'Wrong phone number or password.'
+            : signInError.message,
+        )
       }
+      navigate(from, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
     } finally {
@@ -71,177 +147,208 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
     }
   }
 
-  // Google OAuth via Supabase. On success the browser redirects to Google (so we
-  // don't clear `busy` — the page navigates away); only reset it on error.
-  // NOTE: requires the Google provider to be enabled in the Supabase dashboard.
-  async function handleGoogle() {
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col">
+      <Heading title="Welcome back" intro="Sign in to continue your practice." />
+
+      <PhoneField value={phone} onChange={setPhone} />
+
+      <div className="h-3.5" />
+      <PasswordField
+        id="cef-pass"
+        label="Password"
+        value={password}
+        onChange={setPassword}
+        show={showPw}
+        onToggleShow={() => setShowPw((v) => !v)}
+        autoComplete="current-password"
+      />
+
+      <div className="mt-3.5 flex justify-end">
+        <Link to="/forgot-password" className="py-1 text-sm font-extrabold text-brand no-underline hover:underline">
+          Forgot password?
+        </Link>
+      </div>
+
+      {expired && !error && (
+        <p
+          role="status"
+          className="mt-4 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800"
+        >
+          Your session expired, so we signed you out. Please sign in again — your progress is saved.
+        </p>
+      )}
+      {error && <ErrorNote>{error}</ErrorNote>}
+
+      <button type="submit" disabled={busy} className={primaryButton}>
+        {busy ? 'Please wait…' : 'Sign in'}
+      </button>
+
+      <SwitchLine isLogin from={from} />
+    </form>
+  )
+}
+
+// ---- Sign up: form → Telegram code ---------------------------------------------
+
+function SignupFlow({ from }: { from: string }) {
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [fatherName, setFatherName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [phoneTaken, setPhoneTaken] = useState(false)
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [showPw, setShowPw] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [start, setStart] = useState<TelegramStart | null>(null)
+
+  async function handleContinue(e: FormEvent) {
+    e.preventDefault()
     setError(null)
-    setInfo(null)
+    setPhoneTaken(false)
+    if (!firstName.trim() || !lastName.trim() || !fatherName.trim()) {
+      setError("Please fill in your first name, surname and father's name.")
+      return
+    }
+    const full = fullPhone(phone)
+    if (!full) {
+      setError('Enter the 9 digits of your phone number after +998.')
+      return
+    }
+    if (password.length < 6) {
+      setError('Your password needs at least 6 characters.')
+      return
+    }
+    if (password !== confirm) {
+      setError('The two passwords don’t match.')
+      return
+    }
     setBusy(true)
     try {
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: `${window.location.origin}${from}` },
-      })
-      if (oauthError) throw oauthError
+      setStart(await startTelegramAuth('signup', full))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start Google sign-in.')
+      if (err instanceof PhoneExistsError) {
+        setPhoneTaken(true)
+        return
+      }
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+    } finally {
       setBusy(false)
     }
   }
 
+  if (start) {
+    return (
+      <TelegramCodeStep
+        start={start}
+        title="Enter the code"
+        intro={`Open our Telegram bot from the account with +998 ${formatLocalPhone(phone)} and press 📱 Send my number to get your code.`}
+        confirmLabel="Confirm"
+        onVerify={(code) =>
+          // On success the session appears and AuthPage redirects on its own.
+          completeTelegramSignup({
+            token: start.token,
+            code,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            fatherName: fatherName.trim(),
+            password,
+          })
+        }
+        onRestart={() => setStart(null)}
+      />
+    )
+  }
+
+  const nameInput = (id: string, label: string, value: string, set: (v: string) => void, placeholder: string, autoComplete: string) => (
+    <div className="flex min-w-0 flex-1 flex-col">
+      <label htmlFor={id} className="mb-2 text-sm font-extrabold text-ink">
+        {label}
+      </label>
+      <input
+        id={id}
+        required
+        maxLength={60}
+        value={value}
+        onChange={(e) => set(e.target.value)}
+        className={authInputClass}
+        autoComplete={autoComplete}
+        placeholder={placeholder}
+      />
+    </div>
+  )
+
   return (
-    <AuthShell
-      line={(cat) => (isLogin ? cat.hello : cat.helloSignup)}
-      // The design gives each screen its own steady second line under the
-      // cat's, rather than one shared reassurance string.
-      sub={
-        isLogin
-          ? 'The official reading format, timed and scored.'
-          : 'One free account, all four papers.'
-      }
-    >
-      <form onSubmit={handleSubmit} className="flex flex-col">
-        {/* The desktop brand panel carries this eyebrow beside the headline. */}
-        <p className="mt-[34px] text-[10px] font-extrabold uppercase tracking-[0.16em] text-ink-soft lg:hidden">
-          CEFR · Reading paper
-        </p>
-        <h1 className="mt-2 text-[28px] font-black leading-[1.15] text-heading lg:mt-0 lg:text-[32px]">
-          {isLogin ? 'Welcome back' : 'Create an account'}
-        </h1>
-        <p className="mb-6 mt-2 text-[15px] font-semibold leading-[1.4] text-ink-soft">
-          {isLogin
-            ? 'Sign in to continue your practice.'
-            : 'One free account for all your CEFR practice.'}
-        </p>
+    <form onSubmit={handleContinue} className="flex flex-col">
+      <Heading title="Create an account" />
 
-        <label htmlFor="cef-email" className="mb-2 text-sm font-extrabold text-ink">
-          Email
-        </label>
-        <input
-          id="cef-email"
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={authInputClass}
-          autoComplete="email"
-          inputMode="email"
-          placeholder="name@email.com"
-        />
+      <div className="flex flex-col gap-3.5 sm:flex-row">
+        {nameInput('cef-first', 'First name', firstName, setFirstName, 'Aziz', 'given-name')}
+        {nameInput('cef-last', 'Surname', lastName, setLastName, 'Karimov', 'family-name')}
+      </div>
+      <div className="h-3.5" />
+      {nameInput('cef-father', "Father's name", fatherName, setFatherName, 'Karimovich', 'additional-name')}
 
-        <div className="h-3.5" />
-
-        <label htmlFor="cef-pass" className="mb-2 text-sm font-extrabold text-ink">
-          Password
-        </label>
-        <div className="relative w-full">
-          <input
-            id="cef-pass"
-            type={showPw ? 'text' : 'password'}
-            required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={`${authInputClass} pr-12`}
-            autoComplete={isLogin ? 'current-password' : 'new-password'}
-            placeholder="••••••••••"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPw((v) => !v)}
-            aria-label={showPw ? 'Hide password' : 'Show password'}
-            className="absolute right-1.5 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center border-0 bg-transparent p-0 text-ink-soft transition-colors hover:text-ink"
-          >
-            {showPw ? <EyeOffIcon /> : <EyeIcon />}
-          </button>
-        </div>
-
-        {!isLogin && <PasswordStrength password={password} />}
-
-        {isLogin && SHOW_FORGOT_PASSWORD && (
-          <div className="mt-3.5 flex justify-end">
-            <Link
-              to="/forgot-password"
-              className="py-1 text-sm font-extrabold text-brand no-underline hover:underline"
-            >
-              Forgot password?
-            </Link>
-          </div>
-        )}
-
-        {expired && !error && (
-          <p
-            role="status"
-            className="mt-4 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800"
-          >
-            Your session expired, so we signed you out. Please sign in again — your progress is
-            saved.
-          </p>
-        )}
-        {error && (
-          <p
-            role="alert"
-            className="mt-4 rounded-xl border-2 border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800"
-          >
-            {error}
-          </p>
-        )}
-        {info && (
-          <p
-            role="status"
-            className="mt-4 rounded-xl border-2 border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800"
-          >
-            {info}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={busy}
-          className="mt-[18px] w-full rounded-xl border-0 bg-brand px-4 py-[15px] text-base font-extrabold text-white shadow-[0_8px_20px_color-mix(in_srgb,var(--color-brand)_22%,transparent)] transition-[background,transform] duration-150 hover:bg-brand-deep active:translate-y-px disabled:opacity-60"
+      <div className="h-3.5" />
+      <PhoneField
+        value={phone}
+        onChange={(v) => {
+          setPhone(v)
+          setPhoneTaken(false)
+        }}
+      />
+      {phoneTaken && (
+        <div
+          role="alert"
+          className="mt-3 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800"
         >
-          {busy ? 'Please wait…' : isLogin ? 'Sign in' : 'Create account'}
-        </button>
-
-        {/* Google sign-in / registration (needs the Google provider enabled in Supabase) */}
-        <button
-          type="button"
-          onClick={handleGoogle}
-          disabled={busy}
-          className="mt-3 flex w-full items-center justify-center gap-2.5 rounded-xl border-2 border-line bg-white px-4 py-3 text-[15px] font-bold text-ink transition-colors hover:border-ink-faint hover:bg-page disabled:opacity-60"
-        >
-          <GoogleIcon />
-          Continue with Google
-        </button>
-
-        {!isLogin && (
-          // The design links "Terms" and "Privacy Policy". Neither page exists in
-          // this app yet, so the words are plain text rather than dead links —
-          // swap them for <Link>s the moment those routes ship.
-          <p className="mt-[18px] text-center text-xs font-semibold leading-[1.5] text-ink-soft">
-            By continuing you agree to our{' '}
-            <span className="font-bold text-ink">Terms</span> and{' '}
-            <span className="font-bold text-ink">Privacy Policy</span>.
-          </p>
-        )}
-
-        {/* Account switch. It sits at the END of the form — directly under the
-            Google button when signing in, under the Terms line when signing up
-            (so "By continuing…" stays next to the buttons it refers to). It
-            used to be parked in the top corner, far from the point where a
-            visitor actually realises they are on the wrong screen. */}
-        <p className="mt-6 border-t border-line pt-5 text-center text-sm font-semibold text-ink-soft">
-          {isLogin ? 'New here? ' : 'Have an account? '}
-          <Link
-            to={isLogin ? '/signup' : '/login'}
-            state={{ from }}
-            className="font-extrabold text-brand no-underline hover:underline"
-          >
-            {isLogin ? 'Sign up' : 'Log in'}
+          This number already has a Cefrly account. Use a different number, or{' '}
+          <Link to="/login" state={{ from }} className="font-extrabold text-brand underline">
+            log in with it
           </Link>
-        </p>
-      </form>
-    </AuthShell>
+          .
+        </div>
+      )}
+
+      <div className="h-3.5" />
+      <PasswordField
+        id="cef-pass"
+        label="Password"
+        value={password}
+        onChange={setPassword}
+        show={showPw}
+        onToggleShow={() => setShowPw((v) => !v)}
+        autoComplete="new-password"
+        placeholder="At least 6 characters"
+      />
+      <PasswordStrength password={password} />
+
+      <div className="h-3.5" />
+      <PasswordField
+        id="cef-confirm"
+        label="Confirm password"
+        value={confirm}
+        onChange={setConfirm}
+        show={showPw}
+        autoComplete="new-password"
+        placeholder="Type your password again"
+      />
+
+      {error && <ErrorNote>{error}</ErrorNote>}
+
+      <button type="submit" disabled={busy} className={primaryButton}>
+        {busy ? 'Please wait…' : 'Continue'}
+      </button>
+
+      {/* "Terms" and "Privacy Policy" stay plain text until those pages exist. */}
+      <p className="mt-[18px] text-center text-xs font-semibold leading-[1.5] text-ink-soft">
+        By continuing you agree to our <span className="font-bold text-ink">Terms</span> and{' '}
+        <span className="font-bold text-ink">Privacy Policy</span>.
+      </p>
+
+      <SwitchLine isLogin={false} from={from} />
+    </form>
   )
 }

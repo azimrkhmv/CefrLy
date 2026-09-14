@@ -1,5 +1,5 @@
-import { Suspense, lazy, useState, type ReactNode } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useState, type ReactNode } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { BandRuler } from '../components/BandRuler'
 import { Skeleton } from '../components/Skeleton'
@@ -31,56 +31,14 @@ import {
 export function WritingAnalyzePage() {
   const { attemptId } = useParams()
 
-  // DEV ONLY — /writing/analyze/preview renders a sample marked paper so the
-  // report can be reviewed without a deployed grader. Its numbers come from
-  // running the real scoring code (see src/lib/writingPreview.ts), so what is
-  // on screen is what the grader computes. Same spirit as /?band= and
-  // /login?cat=; remove it before launch, like /cat-preview.
-  const isPreview = attemptId === 'preview'
-  const [params] = useSearchParams()
-
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['writing-attempt', attemptId],
     queryFn: () => fetchWritingAttempt(attemptId!),
-    enabled: !!attemptId && !isPreview,
+    enabled: !!attemptId,
     // Marking takes a few seconds; keep looking until it lands.
     refetchInterval: (q) => (q.state.data?.status === 'grading' ? 3000 : false),
   })
 
-  if (isPreview) {
-    const key = params.get('case') ?? 'full'
-    return (
-      <>
-        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <p className="font-bold">
-            Preview — a sample marked paper, scored by the real grading code. No student wrote this.
-          </p>
-          <p className="mt-1">
-            {(
-              [
-                ['full', 'Full paper'],
-                ['short', 'Half-finished essay (length cap)'],
-                ['drill', 'One task only (estimate)'],
-              ] as const
-            ).map(([k, label], i) => (
-              <span key={k}>
-                {i > 0 && ' · '}
-                <Link
-                  to={`/writing/analyze/preview?case=${k}`}
-                  className={key === k ? 'font-extrabold underline' : 'font-bold hover:underline'}
-                >
-                  {label}
-                </Link>
-              </span>
-            ))}
-          </p>
-        </div>
-        <Suspense fallback={<LoadingState />}>
-          <PreviewReport caseKey={key} />
-        </Suspense>
-      </>
-    )
-  }
   if (isLoading) return <LoadingState />
   if (error) return <Notice title="Could not load this report" body={(error as Error).message} />
   if (!data) {
@@ -98,18 +56,6 @@ export function WritingAnalyzePage() {
 
   return <Report attempt={data} />
 }
-
-/** The sample papers are loaded ONLY when the preview route is opened, so the
- *  fixture (~22 KB of marked-up essays) never ships to a student reading their
- *  own report. DEV ONLY — remove with the route before launch. */
-const PreviewReport = lazy(async () => {
-  const { WRITING_PREVIEWS } = await import('../lib/writingPreview')
-  return {
-    default: ({ caseKey }: { caseKey: string }) => (
-      <Report attempt={WRITING_PREVIEWS[caseKey] ?? WRITING_PREVIEWS.full} />
-    ),
-  }
-})
 
 function Report({ attempt }: { attempt: WritingAttemptRow }) {
   const result = attempt.result!

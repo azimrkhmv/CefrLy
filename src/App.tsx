@@ -5,7 +5,6 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { FullScreenFallback } from './components/RouteFallback'
 import { HomePage } from './pages/HomePage'
 import { AuthPage } from './pages/AuthPage'
-import { Cat } from './components/Cat'
 
 /**
  * Every page below the two entry points (/ and /login) is code-split, so the
@@ -81,20 +80,6 @@ function AdminMoved() {
   )
 }
 
-// DEV ONLY: mascot pose sheet for design review. Remove before launch.
-function CatPreview() {
-  return (
-    <div className="flex flex-wrap items-end gap-10 bg-white p-10">
-      {(['celebrate', 'encourage', 'read', 'nap', 'welcome', 'peek', 'avatar'] as const).map((pose) => (
-        <div key={pose} className="text-center">
-          <Cat pose={pose} width={180} height={pose === 'peek' ? 84 : 160} />
-          <p className="mt-2 text-sm text-ink-soft">{pose}</p>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 export default function App() {
   return (
     <Suspense fallback={<FullScreenFallback />}>
@@ -106,7 +91,6 @@ export default function App() {
             configured — see ForgotPasswordPage and AuthPage's
             SHOW_FORGOT_PASSWORD flag. Registered so it can be tested. */}
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/cat-preview" element={<CatPreview />} />
 
         {/* Handoff is public: it exchanges a MilliyMock token before a session exists. */}
         <Route element={<Layout />}>

@@ -1,3 +1,6 @@
+import { EyeIcon, EyeOffIcon } from './icons'
+import { formatLocalPhone } from '../../lib/phoneAuth'
+
 /** The design's text-field treatment, shared by every auth form so sign in,
  *  sign up and reset stay identical. Focus lifts the border to accent and adds
  *  the soft accent ring from the design. */
@@ -23,7 +26,7 @@ const BANDS = {
 } as const
 
 /** Meter + hint under the sign-up password field (design 1c "Sign up"). */
-export function PasswordStrength({ password }: { password: string }) {
+export function PasswordStrength({ password, hint = true }: { password: string; hint?: boolean }) {
   const score = scorePassword(password)
   // Narrow here rather than inline: `score > 0` inside JSX does not narrow the
   // 0 | 1 | 2 | 3 union down to a valid BANDS key.
@@ -44,9 +47,90 @@ export function PasswordStrength({ password }: { password: string }) {
           </span>
         </div>
       )}
-      <p className="mt-2 text-xs font-semibold leading-[1.4] text-ink-soft">
-        At least 6 characters. Add a number to make it strong.
-      </p>
+      {hint && (
+        <p className="mt-2 text-xs font-semibold leading-[1.4] text-ink-soft">
+          At least 6 characters. Add a number to make it strong.
+        </p>
+      )}
+    </>
+  )
+}
+
+/** Label + password input with the show/hide eye, shared by every auth form. */
+export function PasswordField({
+  id,
+  label,
+  value,
+  onChange,
+  show,
+  onToggleShow,
+  autoComplete,
+  placeholder = '••••••••••',
+}: {
+  id: string
+  label: string
+  value: string
+  onChange: (value: string) => void
+  show: boolean
+  onToggleShow?: () => void
+  autoComplete: string
+  placeholder?: string
+}) {
+  return (
+    <>
+      <label htmlFor={id} className="mb-2 text-sm font-extrabold text-ink">
+        {label}
+      </label>
+      <div className="relative w-full">
+        <input
+          id={id}
+          type={show ? 'text' : 'password'}
+          required
+          minLength={6}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={`${authInputClass} ${onToggleShow ? 'pr-12' : ''}`}
+          autoComplete={autoComplete}
+          placeholder={placeholder}
+        />
+        {onToggleShow && (
+          <button
+            type="button"
+            onClick={onToggleShow}
+            aria-label={show ? 'Hide password' : 'Show password'}
+            className="absolute right-1.5 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center border-0 bg-transparent p-0 text-ink-soft transition-colors hover:text-ink"
+          >
+            {show ? <EyeOffIcon /> : <EyeIcon />}
+          </button>
+        )}
+      </div>
+    </>
+  )
+}
+
+/** "+998" fixed prefix + 9 local digits, formatted as typed. */
+export function PhoneField({ value, onChange }: { value: string; onChange: (digits: string) => void }) {
+  return (
+    <>
+      <label htmlFor="cef-phone" className="mb-2 text-sm font-extrabold text-ink">
+        Phone number
+      </label>
+      <div className="relative w-full">
+        <span className="tnum pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[15px] font-bold text-ink-soft">
+          +998
+        </span>
+        <input
+          id="cef-phone"
+          type="tel"
+          required
+          value={formatLocalPhone(value)}
+          onChange={(e) => onChange(e.target.value.replace(/\D/g, '').slice(0, 9))}
+          className={`${authInputClass} tnum pl-[62px]`}
+          autoComplete="tel-national"
+          inputMode="numeric"
+          placeholder="90 123 45 67"
+        />
+      </div>
     </>
   )
 }

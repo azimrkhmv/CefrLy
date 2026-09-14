@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { Logo } from './Logo'
 import { SHOW_WRITING } from '../lib/features'
+import { formatPhone, isPhoneLoginEmail } from '../lib/phoneAuth'
 import { NavDrawerContext } from './navDrawer'
 import {
   BookIcon,
@@ -297,7 +298,9 @@ export function Layout() {
                       />
                       <div className="absolute right-0 top-12 z-20 w-60 rounded-2xl border border-line bg-white py-1.5 shadow-pop">
                         <p className="truncate border-b border-line px-4 py-2.5 text-sm text-ink-soft">
-                          {session.user.email}
+                          {isPhoneLoginEmail(session.user.email)
+                            ? formatPhone(session.user.email!.split('@')[0])
+                            : session.user.email}
                         </p>
                         <Link
                           to="/dashboard"

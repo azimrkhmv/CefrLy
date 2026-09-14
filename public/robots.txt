@@ -13,6 +13,5 @@ Disallow: /dashboard
 Disallow: /settings
 Disallow: /welcome
 Disallow: /handoff
-Disallow: /cat-preview
 
 Sitemap: https://cefrly.vercel.app/sitemap.xml

@@ -1,40 +1,43 @@
-import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { useState } from 'react'
+import { Link, Navigate } from 'react-router-dom'
+import { useAuth } from '../lib/auth'
+import { completeTelegramReset, startTelegramAuth, type TelegramStart } from '../lib/phoneAuth'
 import { AuthShell } from '../components/auth/AuthShell'
 import { ChevronLeftIcon } from '../components/auth/icons'
-import { authInputClass } from '../components/auth/formBits'
+import { PasswordField } from '../components/auth/formBits'
+import { TelegramCodeStep, TelegramIcon } from '../components/auth/TelegramCodeStep'
 
-/** "Reset your password" from design 1c.
- *
- *  ⚠️ BUILT BUT NOT YET LINKED. Supabase sends the reset email through SMTP,
- *  which this project has not configured (see CLAUDE.md — the dev-only
- *  auto_confirm_on_signup trigger exists precisely because there is no mail
- *  server). Until SMTP is set up the request below succeeds and no email ever
- *  arrives, so AuthPage keeps SHOW_FORGOT_PASSWORD = false and nothing links
- *  here. The route stays registered so the screen can be opened and tested
- *  directly; flip that flag once mail actually sends. */
+/** "Reset your password" through @CefrLy_bot: the student shares their number
+ *  in the bot, gets a code, and sets a new password here. Only accounts that
+ *  signed up with Telegram (phone) can use it; the bot tells anyone else. */
 export function ForgotPasswordPage() {
-  const [email, setEmail] = useState('')
+  const { session } = useAuth()
+  const [start, setStart] = useState<TelegramStart | null>(null)
   const [busy, setBusy] = useState(false)
-  const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [showPw, setShowPw] = useState(false)
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
+  // A successful reset signs the student in; send them home.
+  if (session) return <Navigate to="/" replace />
+
+  async function begin() {
     setError(null)
     setBusy(true)
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/login`,
-      })
-      if (resetError) throw resetError
-      setSent(true)
+      setStart(await startTelegramAuth('reset'))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send the reset link.')
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
     } finally {
       setBusy(false)
     }
+  }
+
+  async function verify(code: string) {
+    if (password.length < 6) throw new Error('Your new password needs at least 6 characters.')
+    if (password !== confirm) throw new Error('The two passwords don’t match.')
+    await completeTelegramReset({ token: start!.token, code, password })
   }
 
   return (
@@ -49,65 +52,73 @@ export function ForgotPasswordPage() {
         </Link>
       }
       line={(cat) => cat.bye}
-      sub="The link expires in 1 hour."
+      sub="Your code comes from our Telegram bot."
     >
-      <form onSubmit={handleSubmit} className="flex flex-col">
-        <p className="mt-[34px] text-[10px] font-extrabold uppercase tracking-[0.16em] text-ink-soft lg:hidden">
-          Account
-        </p>
-        <h1 className="mt-2 text-[28px] font-black leading-[1.15] text-heading lg:mt-0 lg:text-[32px]">
-          Reset your password
-        </h1>
-        <p className="mb-6 mt-2 text-[15px] font-semibold leading-[1.4] text-ink-soft">
-          Enter your email and we’ll send you a reset link.
-        </p>
-
-        <label htmlFor="cef-reset-email" className="mb-2 text-sm font-extrabold text-ink">
-          Email
-        </label>
-        <input
-          id="cef-reset-email"
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={authInputClass}
-          autoComplete="email"
-          inputMode="email"
-          placeholder="name@email.com"
-        />
-
-        {error && (
-          <p
-            role="alert"
-            className="mt-4 rounded-xl border-2 border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800"
-          >
-            {error}
-          </p>
-        )}
-        {sent && (
-          // Supabase deliberately reports success whether or not the address has
-          // an account, so we must not claim an email was definitely sent to it.
-          <p
-            role="status"
-            className="mt-4 rounded-xl border-2 border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800"
-          >
-            If an account exists for {email}, a reset link is on its way.
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={busy}
-          className="mt-[22px] w-full rounded-xl border-0 bg-brand px-4 py-[15px] text-base font-extrabold text-white shadow-[0_8px_20px_color-mix(in_srgb,var(--color-brand)_22%,transparent)] transition-[background,transform] duration-150 hover:bg-brand-deep active:translate-y-px disabled:opacity-60"
+      {start ? (
+        <TelegramCodeStep
+          start={start}
+          title="Reset your password"
+          intro="Open our Telegram bot and press 📱 Send my number. Enter the code and your new password below."
+          confirmLabel="Save new password"
+          onVerify={verify}
+          onRestart={() => setStart(null)}
         >
-          {busy ? 'Sending…' : 'Send reset link'}
-        </button>
+          <div className="flex flex-col">
+            <PasswordField
+              id="cef-new-pass"
+              label="New password"
+              value={password}
+              onChange={setPassword}
+              show={showPw}
+              onToggleShow={() => setShowPw((v) => !v)}
+              autoComplete="new-password"
+              placeholder="At least 6 characters"
+            />
+            <div className="h-3.5" />
+            <PasswordField
+              id="cef-new-confirm"
+              label="Confirm new password"
+              value={confirm}
+              onChange={setConfirm}
+              show={showPw}
+              autoComplete="new-password"
+              placeholder="Type it again"
+            />
+          </div>
+        </TelegramCodeStep>
+      ) : (
+        <div className="flex flex-col">
+          <p className="mt-[34px] text-[10px] font-extrabold uppercase tracking-[0.16em] text-ink-soft lg:hidden">
+            Account
+          </p>
+          <h1 className="mt-2 text-[28px] font-black leading-[1.15] text-heading lg:mt-0 lg:text-[32px]">
+            Reset your password
+          </h1>
+          <p className="mb-6 mt-2 text-[15px] font-semibold leading-[1.4] text-ink-soft">
+            We’ll confirm it’s you through our Telegram bot, using the phone number on your account.
+          </p>
 
-        <p className="mt-[18px] text-center text-[13px] font-semibold leading-[1.5] text-ink-soft">
-          The link expires in 1 hour. Check your spam folder if it doesn’t arrive.
-        </p>
-      </form>
+          {error && (
+            <p
+              role="alert"
+              className="mb-4 rounded-xl border-2 border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800"
+            >
+              {error}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={begin}
+            disabled={busy}
+            className="flex w-full items-center justify-center gap-2.5 rounded-xl border-0 bg-brand px-4 py-[15px] text-base font-extrabold text-white shadow-[0_8px_20px_color-mix(in_srgb,var(--color-brand)_22%,transparent)] transition-[background,transform] duration-150 hover:bg-brand-deep active:translate-y-px disabled:opacity-60"
+          >
+            <TelegramIcon />
+            {busy ? 'Please wait…' : 'Get a code in Telegram'}
+          </button>
+
+        </div>
+      )}
     </AuthShell>
   )
 }

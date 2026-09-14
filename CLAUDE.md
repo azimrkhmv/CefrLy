@@ -57,6 +57,66 @@ change is a student-app code deploy, not a console edit. And
 `speaking_grade_alerts` (migration 0025) has no screen: it is service-role SQL
 only, though any row in it is by definition a live problem.
 
+## ⚠️ ACCOUNTS ARE PHONE-ONLY, VIA TELEGRAM (built 2026-09-14)
+EVERY "email", "Google", "SMTP", "auto_confirm" and "owner accounts" note further
+down this file is STALE. What is true now:
+- NO EMAIL ACCOUNTS EXIST. All 58 were deleted on 2026-09-14 (owner's call,
+  admins included); a JSON backup of them and all their attempts is in the
+  gitignored `backups/2026-09-14-email-accounts/`. The only account left is
+  +998 90 508 39 95, super_admin. Public sign-up is OFF in Auth settings
+  (`disable_signup: true`) and the `auto_confirm_on_signup` trigger is dropped
+  (migration 0033). Google sign-in and the email reset page were deleted.
+- LOGIN = +998 phone + password. Supabase's phone provider is off (it needs an
+  SMS vendor), so each account's auth email is SYNTHETIC:
+  `<998XXXXXXXXX>@phone.cefrly.app`, mailed nothing, ever. The mapping lives in
+  THREE places that must stay identical: `src/lib/phoneAuth.ts`,
+  `supabase/functions/telegram-auth/index.ts`, and `../CefrLyAdmin/src/lib/phone.ts`.
+- BOT: @CefrLy_bot is Cefrly's OFFICIAL bot, not just an OTP sender. Webhook =
+  edge function `telegram-bot` (verify_jwt OFF; authenticated by
+  `X-Telegram-Bot-Api-Secret-Token` = secret TELEGRAM_WEBHOOK_SECRET). Updates:
+  message + callback_query. Every /start: welcome videos (FIRST start only, and
+  only once TELEGRAM_WELCOME_VIDEO / TELEGRAM_WELCOME_VIDEO_NOTE file_ids are set
+  — the owner will supply the videos; `welcomed_at` is stamped only when they
+  were actually sent), greeting, persistent menu: 📱 Send my number
+  (request_contact) · 📖 Guide · ❓ FAQ · 🌐 Open Cefrly · 👥 Community. English.
+- SIGN-UP (AuthPage SignupFlow): first name, surname, father's name (required),
+  +998 phone, password, confirm → `telegram-auth` action `start` REFUSES a phone
+  that already has an account (409 `phone_exists`, shown inline with a log-in
+  link) → code screen (TelegramCodeStep: bot button + QR via qrcode-generator +
+  6 boxes + 30-min countdown + Start over). The deep link
+  `t.me/CefrLy_bot?start=<token>` ties the request to the Telegram account; the
+  student shares their contact; the bot requires (a) contact.user_id == sender
+  (no forwarded contacts), (b) +998, (c) the number == the one typed on the site
+  (`expected_phone`), (d) not already registered — then sends a 6-digit code
+  (sha256-hashed, 5-min life, 5 wrong tries, resend gap 30 s, max 5 per
+  request). `signup` action creates the user with the admin API
+  (email_confirm + phone_confirm, user_metadata.signup='telegram' so WelcomePage
+  skips its name step) and fills profiles first/last/father_name, phone,
+  telegram_user_id. The code is consumed BEFORE the account is made (no replay).
+- PASSWORD RESET, two doors: (1) /forgot-password → same code flow with
+  purpose 'reset' → new password typed on the site. (2) In the bot: sharing a
+  registered number shows "Your login: +998 …" and a 🔑 Get a new password
+  button; the tap sets a random password (e.g. kTmz-4829) and sends it. It only
+  acts on a number THAT Telegram user verified (own contact) in the last 15 min
+  (`telegram_bot_users.verified_phone/verified_at`), one per verification, max
+  one a minute. Passwords are hashed — the bot can never send the OLD one; the
+  owner asked for that and accepted this. Settings has a "Login & password" card
+  (current password checked by re-signing-in, then updateUser).
+- TABLES (all RLS on, no policies, revoked from anon/authenticated):
+  `telegram_auth_requests` (0029, +expected_phone 0032), `telegram_bot_users`
+  (0030, +verified_phone 0031). profiles gained father_name, phone (unique
+  partial index), telegram_user_id — no UPDATE grant, service-role only.
+- SECRETS: TELEGRAM_BOT_TOKEN (⚠️ was pasted in chat 2026-09-14 — rotate with
+  @BotFather /revoke and re-set), TELEGRAM_BOT_USERNAME, TELEGRAM_WEBHOOK_SECRET.
+  Re-running setWebhook needs the secret; it is only in Supabase secrets (hashed)
+  — generate a new one and set both if it is ever lost.
+- KNOWN TRADE-OFF: the sign-up phone check reveals whether a number is
+  registered (standard for phone sign-up; limited to 20 starts/hour per IP).
+- ADMIN CONSOLE logs in with phone too; admin-users returns phone, father_name
+  and telegram_linked. Test flows end-to-end WITHOUT a phone by planting a known
+  code_hash in `telegram_auth_requests` via the management API (see the
+  2026-09-14 session) and deleting the throwaway user afterwards.
+
 ## Stack (do not change without asking)
 - Frontend: Vite + React + TypeScript + Tailwind CSS + React Router
 - Backend: Supabase (Postgres, Auth, Storage, Edge Functions)
@@ -1322,14 +1382,21 @@ and where it DIVERGES from that document.
   highlighting the wrong words — the "missing evidence never harms" rule doing
   its job on live output. If cross-task bleed becomes common, tighten the prompt
   rather than loosening the verification.
-- ⚠️ PROD SECRETS, CHECKED 2026-09-10: `GEMINI_MODEL` is set to
-  `gemini-3.1-flash-lite` — the model CLAUDE.md already records as too weak to
-  put a band on. grade-writing IGNORES it (RETIRED_MODELS blocklist) and used
-  gemini-3.7-flash, which is why the guard exists; grade-speaking has the same
-  blocklist. THE SECRET ITSELF IS STILL WRONG and should be unset or updated.
-  `OPENROUTER_FIRST=1` is also still set from the 2026-09-02 Google incident —
-  unset it now Google has recovered, the direct lane is cheaper.
-  (The secrets API returns SHA-256 hashes, not values; both were identified by
+- PROD SECRETS, FIXED 2026-09-14: `GEMINI_MODEL` (was the too-weak
+  gemini-3.1-flash-lite, already ignored via RETIRED_MODELS) and
+  `OPENROUTER_FIRST` were both DELETED. Both graders now run GEMINI DIRECT FIRST
+  (gemini-3.7-flash) with OpenRouter as the backup only — and the backup ladder
+  deliberately stays GPT-led (writing: openai/gpt-5.1 → gemini → claude-sonnet;
+  speaking audio: openai/gpt-audio → gemini; owner's call 2026-09-14: "backup
+  should be gpt"). Do not re-set OPENROUTER_FIRST without the owner.
+  COST ESTIMATE (2026-09-14, from code + backup sizes, NOT measured — no usage is
+  logged): Gemini first ≈ $0.06 per full essay, $0.035 per writing task,
+  $0.08–0.10 per full speaking mock (incl. retries), $0.03 per speaking part.
+  OpenRouter-first had been ≈ $0.11 / $0.06 / $0.35–0.40 / $0.10 — gpt-audio's
+  $32/M audio tokens made speaking ~4× dearer. A Pro user maxing 10+10 checks
+  costs ≈ $1.50 on Gemini (≈ 25% of the 75 000 so'm price) vs ≈ $4.90 before.
+  A grade that falls back to GPT during a Google outage costs the higher price.
+  (The secrets API returns SHA-256 hashes, not values; identify a value by
   hashing candidates.)
 - The deploy token is in .env.local (gitignored) as SUPABASE_ACCESS_TOKEN.
   `supabase login` still cannot run here (non-TTY, even behind `!`); deploys go

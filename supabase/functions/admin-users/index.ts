@@ -11,6 +11,13 @@
 // score means nothing on the 28/18/10 thresholds), so "last band" and "best"
 // summarise ONLY attempts where band IS NOT NULL. Drills still count toward
 // attempts_count and last_attempt_at.
+//
+// THREE TABLES, NOT ONE. Reading and Listening are rows in `attempts`; Speaking
+// and Writing each have their own table because their papers are not rows in
+// `tests` at all (they come from fixtures). A student's record is the union of
+// all three, so every one of them has to be fetched and joined here — miss one
+// and that whole skill is invisible in the directory, which is exactly what
+// happened to Writing between 2026-09-10 and this change.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders, json } from './cors.ts'
 import { isPlanId } from './plans.ts'
@@ -18,7 +25,7 @@ import { isPlanId } from './plans.ts'
 const PROFILE_FIELDS =
   'id, name, first_name, last_name, role, plan, plan_expires_at, created_at, onboarded_at, ' +
   'first_exam, self_level, target_band, study_timeframe, weak_areas, daily_minutes, ' +
-  'heard_from, heard_from_note, source'
+  'heard_from, heard_from_note, source, father_name, phone, telegram_user_id'
 
 const ATTEMPT_FIELDS =
   'id, user_id, raw_score, total, band, created_at, tests(slug, title, skill, scope, part_number)'
@@ -29,6 +36,16 @@ const ATTEMPT_FIELDS =
 const SPEAKING_FIELDS = 'id, user_id, rating, band, scope, status, created_at'
 const SPEAKING_DETAIL_FIELDS =
   'id, test_id, test_title, scope, part_type, status, error_message, raw_score, rating, band, result, created_at, graded_at'
+
+// Writing is the same shape as Speaking: its own table, a /75 rating, a band
+// only on full papers. NEITHER LIST SELECTS `result` OR `answers` — a marked
+// paper carries every correction and the student's whole script, and shipping
+// all of that just to draw a row is the bug fetchMyAttempts, fetchSpeakingAttempts
+// and fetchWritingAttempts each had to be fixed for. `getWritingAttempt` fetches
+// the one row an admin actually opens.
+const WRITING_FIELDS = 'id, user_id, rating, band, scope, status, created_at'
+const WRITING_DETAIL_FIELDS =
+  'id, test_id, test_title, scope, task_type, status, error_message, raw_score, rating, band, created_at, graded_at'
 
 // deno-lint-ignore no-explicit-any
 type Row = any
@@ -51,9 +68,27 @@ function shapeSpeaking(r: Row) {
   }
 }
 
-/** Last and best SPEAKING band. Only full papers carry a band — a drill's score
- *  is an estimate from one part and would flatter the student's record. */
-function summariseSpeaking(rows: Row[]) {
+function shapeWriting(r: Row) {
+  return {
+    id: r.id,
+    test_id: r.test_id,
+    test_title: r.test_title,
+    scope: r.scope ?? 'full',
+    task_type: r.task_type ?? null,
+    status: r.status,
+    error_message: r.error_message ?? null,
+    raw_score: r.raw_score ?? null,
+    rating: r.rating ?? null,
+    band: r.band ?? null,
+    created_at: r.created_at,
+    graded_at: r.graded_at ?? null,
+  }
+}
+
+/** Last and best band for a /75 skill. Only full papers carry a band — a drill's
+ *  score is an estimate from one task or part and would flatter the record.
+ *  `rows` must be newest-first. */
+function rollupRated(rows: Row[]) {
   const graded = rows.filter((r) => r.status === 'done')
   const banded = graded.filter((r) => r.band !== null && r.scope === 'full')
   const best = banded.reduce(
@@ -61,11 +96,36 @@ function summariseSpeaking(rows: Row[]) {
     null,
   )
   return {
-    speaking_count: graded.length,
-    speaking_last_band: banded[0]?.band ?? null,
-    speaking_last_rating: banded[0]?.rating ?? null,
-    speaking_best_rating: best?.rating ?? null,
-    speaking_last_at: graded[0]?.created_at ?? null,
+    count: graded.length,
+    lastBand: banded[0]?.band ?? null,
+    lastRating: banded[0]?.rating ?? null,
+    bestRating: best?.rating ?? null,
+    lastAt: graded[0]?.created_at ?? null,
+  }
+}
+
+// Speaking and Writing roll up identically; only the key names differ, and they
+// are spelled out rather than built from a prefix so the response shape stays
+// greppable from the admin console.
+function summariseSpeaking(rows: Row[]) {
+  const r = rollupRated(rows)
+  return {
+    speaking_count: r.count,
+    speaking_last_band: r.lastBand,
+    speaking_last_rating: r.lastRating,
+    speaking_best_rating: r.bestRating,
+    speaking_last_at: r.lastAt,
+  }
+}
+
+function summariseWriting(rows: Row[]) {
+  const r = rollupRated(rows)
+  return {
+    writing_count: r.count,
+    writing_last_band: r.lastBand,
+    writing_last_rating: r.lastRating,
+    writing_best_rating: r.bestRating,
+    writing_last_at: r.lastAt,
   }
 }
 
@@ -181,6 +241,19 @@ Deno.serve(async (req) => {
         else speakingByUser.set(s.user_id, [s])
       }
 
+      // Writing, same story as speaking: its own table, so its own fetch.
+      const { data: writing } = await admin
+        .from('writing_attempts')
+        .select(WRITING_FIELDS)
+        .eq('status', 'done')
+        .order('created_at', { ascending: false })
+      const writingByUser = new Map<string, Row[]>()
+      for (const w of (writing ?? []) as Row[]) {
+        const list = writingByUser.get(w.user_id)
+        if (list) list.push(w)
+        else writingByUser.set(w.user_id, [w])
+      }
+
       const byId = new Map<string, Row>((profiles ?? []).map((p: Row) => [p.id, p]))
       const attemptsByUser = new Map<string, ReturnType<typeof shapeAttempt>[]>()
       for (const a of (attempts ?? []) as Row[]) {
@@ -198,6 +271,8 @@ Deno.serve(async (req) => {
             name: p?.name ?? null,
             first_name: p?.first_name ?? null,
             last_name: p?.last_name ?? null,
+            father_name: p?.father_name ?? null,
+            phone: p?.phone ?? null,
             role: p?.role ?? 'student',
             plan: p?.plan ?? 'free',
             plan_expires_at: p?.plan_expires_at ?? null,
@@ -208,6 +283,7 @@ Deno.serve(async (req) => {
             target_band: p?.target_band ?? null,
             ...summarise(attemptsByUser.get(u.id) ?? []),
             ...summariseSpeaking(speakingByUser.get(u.id) ?? []),
+            ...summariseWriting(writingByUser.get(u.id) ?? []),
           }
         })
         .sort((a, b) => (a.created_at < b.created_at ? 1 : -1)) // newest signup first
@@ -244,6 +320,13 @@ Deno.serve(async (req) => {
         .order('created_at', { ascending: false })
       const speakingAttempts = ((speakingRows ?? []) as Row[]).map(shapeSpeaking)
 
+      const { data: writingRows } = await admin
+        .from('writing_attempts')
+        .select(WRITING_DETAIL_FIELDS)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+      const writingAttempts = ((writingRows ?? []) as Row[]).map(shapeWriting)
+
       const { data: rechecks } = await admin
         .from('speaking_recheck_requests')
         .select('id, attempt_id, reason, status, admin_note, created_at, reviewed_at')
@@ -259,6 +342,9 @@ Deno.serve(async (req) => {
           name: p?.name ?? null,
           first_name: p?.first_name ?? null,
           last_name: p?.last_name ?? null,
+          father_name: p?.father_name ?? null,
+          phone: p?.phone ?? null,
+          telegram_linked: p?.telegram_user_id != null,
           role: p?.role ?? 'student',
           plan: p?.plan ?? 'free',
           plan_expires_at: p?.plan_expires_at ?? null,
@@ -270,6 +356,9 @@ Deno.serve(async (req) => {
           ...summarise(shaped),
           ...summariseSpeaking(
             ((speakingRows ?? []) as Row[]).filter((r) => r.status === 'done'),
+          ),
+          ...summariseWriting(
+            ((writingRows ?? []) as Row[]).filter((r) => r.status === 'done'),
           ),
         },
         onboarding: {
@@ -285,6 +374,7 @@ Deno.serve(async (req) => {
         },
         attempts: shaped,
         speakingAttempts,
+        writingAttempts,
         rechecks: rechecks ?? [],
       })
     }
@@ -311,6 +401,122 @@ Deno.serve(async (req) => {
         .eq('id', recheckId)
       if (error) return json({ error: error.message }, 500)
       return json({ ok: true })
+    }
+
+    // One marked paper in full. Split out of getUser so the history list stays
+    // cheap: `result` holds every correction and `answers` the student's whole
+    // script, and an admin opens one of them, not all of them.
+    case 'getWritingAttempt': {
+      const attemptId = body.attemptId
+      if (typeof attemptId !== 'string' || !attemptId) {
+        return json({ error: 'attemptId is required' }, 400)
+      }
+      const { data: row, error } = await admin
+        .from('writing_attempts')
+        .select('*')
+        .eq('id', attemptId)
+        .maybeSingle()
+      if (error) return json({ error: error.message }, 500)
+      if (!row) return json({ error: 'Attempt not found' }, 404)
+      return json({ attempt: row })
+    }
+
+    // The speaking anomaly queue (migration 0025). The nightly sweep at 02:15
+    // UTC writes alert rows and nothing has ever read them back — this is that
+    // missing screen's API.
+    //
+    // `unswept` is the view's own rows minus everything the sweep has already
+    // recorded. Without it the queue is up to 24h behind the grade it exists to
+    // catch, which for a student disputing a mark today is useless. Dedupe runs
+    // against EVERY alert row, open or resolved: an anomaly is a permanent fact
+    // about a stored grade, so a resolved one would otherwise reappear here
+    // forever as if nobody had looked at it.
+    case 'listGradeAlerts': {
+      const includeResolved = body.includeResolved === true
+      let query = admin
+        .from('speaking_grade_alerts')
+        .select('id, attempt_id, kind, detail, detected_at, resolved_at, note')
+        .order('detected_at', { ascending: false })
+        .limit(200)
+      if (!includeResolved) query = query.is('resolved_at', null)
+      const { data: alertRows, error: alertError } = await query
+      if (alertError) return json({ error: alertError.message }, 500)
+      const alerts = (alertRows ?? []) as Row[]
+
+      const { data: liveRows, error: liveError } = await admin
+        .from('speaking_grade_anomalies')
+        .select('attempt_id, user_id, created_at, kind, detail')
+        .order('created_at', { ascending: false })
+        .limit(200)
+      if (liveError) return json({ error: liveError.message }, 500)
+
+      const { data: everySwept } = await admin
+        .from('speaking_grade_alerts')
+        .select('attempt_id, kind')
+      const swept = new Set(
+        ((everySwept ?? []) as Row[]).map((a) => `${a.attempt_id}:${a.kind}`),
+      )
+      const unswept = ((liveRows ?? []) as Row[]).filter(
+        (v) => !swept.has(`${v.attempt_id}:${v.kind}`),
+      )
+
+      // Name the student and the paper, or the queue is a list of uuids nobody
+      // can act on. Two queries for the whole page, never one per row.
+      const attemptIds = [...new Set([...alerts, ...unswept].map((r) => r.attempt_id))]
+      const owners = new Map<string, Row>()
+      if (attemptIds.length) {
+        const { data: ownerRows } = await admin
+          .from('speaking_attempts')
+          .select('id, user_id, test_title, scope, status, rating, band, created_at')
+          .in('id', attemptIds)
+        const userIds = [...new Set(((ownerRows ?? []) as Row[]).map((r) => r.user_id))]
+        const { data: people } = userIds.length
+          ? await admin.from('profiles').select('id, name, first_name, last_name').in('id', userIds)
+          : { data: [] as Row[] }
+        const byUser = new Map(((people ?? []) as Row[]).map((pr) => [pr.id, pr]))
+        for (const r of (ownerRows ?? []) as Row[]) {
+          owners.set(r.id, { ...r, profile: byUser.get(r.user_id) ?? null })
+        }
+      }
+      const nameOf = (pr: Row | null) => {
+        if (!pr) return null
+        const joined = [pr.first_name, pr.last_name].filter(Boolean).join(' ').trim()
+        return pr.name ?? (joined || null)
+      }
+      const decorate = (r: Row) => {
+        const owner = owners.get(r.attempt_id) ?? null
+        return {
+          ...r,
+          user_id: owner?.user_id ?? r.user_id ?? null,
+          user_name: nameOf(owner?.profile ?? null),
+          test_title: owner?.test_title ?? null,
+          attempt_scope: owner?.scope ?? null,
+          attempt_status: owner?.status ?? null,
+          rating: owner?.rating ?? null,
+          band: owner?.band ?? null,
+        }
+      }
+
+      return json({ alerts: alerts.map(decorate), unswept: unswept.map(decorate) })
+    }
+
+    // Mark one alert seen. This NEVER changes a mark — 0025 built a detector,
+    // not a gate — it only records that a human has looked.
+    case 'resolveGradeAlert': {
+      const alertId = body.alertId
+      if (typeof alertId !== 'string' || !alertId) {
+        return json({ error: 'alertId is required' }, 400)
+      }
+      const reopen = body.resolved === false
+      const note = typeof body.note === 'string' && body.note.trim()
+        ? body.note.trim().slice(0, 2000)
+        : null
+      const { error } = await admin
+        .from('speaking_grade_alerts')
+        .update({ resolved_at: reopen ? null : new Date().toISOString(), note })
+        .eq('id', alertId)
+      if (error) return json({ error: error.message }, 500)
+      return json({ ok: true, alertId, resolved: !reopen })
     }
 
     case 'setUserRole': {

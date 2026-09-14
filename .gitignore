@@ -53,3 +53,6 @@ skills-lock.json
 
 # supabase CLI scratch (npx writes a version marker here)
 supabase/.temp/
+
+# Local data backups (personal data, never commit)
+backups/
