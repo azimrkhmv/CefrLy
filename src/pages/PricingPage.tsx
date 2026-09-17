@@ -231,6 +231,12 @@ function PlanCard({
   )
 }
 
+const MOBILE_ORDER: Record<Plan['id'], string> = {
+  premium: 'order-1',
+  pro: 'order-2',
+  free: 'order-3',
+}
+
 export function PricingPage() {
   const { session, plan: currentPlan } = useAuth()
   // The ring follows the student's pick rather than being nailed to Pro. Pro
@@ -242,9 +248,7 @@ export function PricingPage() {
       <div>
         <h1 className="text-2xl font-extrabold text-heading">Pricing</h1>
         <p className="mt-1.5 max-w-2xl text-sm text-ink-soft">
-          Free practice tests are unlimited and always open — no card, no limits. Upgrade to Pro or
-          Premium to unlock the premium mock tests; your subscription renews monthly and you can
-          cancel anytime.
+          Free tests are always open. Upgrade to unlock premium mocks.
         </p>
       </div>
 
@@ -255,14 +259,17 @@ export function PricingPage() {
         className="grid grid-cols-1 gap-6 md:grid-cols-3 md:items-stretch"
       >
         {PLANS.map((plan) => (
-          <PlanCard
-            key={plan.id}
-            plan={plan}
-            selected={selected === plan.id}
-            // Only show "Your plan" to signed-in students on their actual tier.
-            current={!!session && currentPlan === plan.id}
-            onSelect={() => setSelected(plan.id)}
-          />
+          // Stacked on mobile the most expensive plan leads and Free comes last
+          // (owner call 2026-09-16); from md up the columns keep PLANS order.
+          <div key={plan.id} className={`${MOBILE_ORDER[plan.id]} md:order-none`}>
+            <PlanCard
+              plan={plan}
+              selected={selected === plan.id}
+              // Only show "Your plan" to signed-in students on their actual tier.
+              current={!!session && currentPlan === plan.id}
+              onSelect={() => setSelected(plan.id)}
+            />
+          </div>
         ))}
       </div>
     </div>

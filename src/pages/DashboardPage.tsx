@@ -81,7 +81,8 @@ function ProgressPanel({ skill, mocks }: { skill: Filter; mocks: BandedAttempt[]
   const label = skillMeta(skill).label
 
   return (
-    <section className="rounded-2xl bg-brand-soft p-6 sm:p-7">
+    // Hidden on phones (owner call 2026-09-16): the attempt cards carry the scores.
+    <section className="hidden rounded-2xl bg-brand-soft p-6 sm:block sm:p-7">
       <div className="grid grid-cols-1 gap-7 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
         <div className="min-w-0">
           <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-brand/80">
@@ -126,11 +127,9 @@ function ProgressPanel({ skill, mocks }: { skill: Filter; mocks: BandedAttempt[]
 
 function AttemptCard({
   attempt,
-  isBest,
   delta,
 }: {
   attempt: AttemptSummary
-  isBest: boolean
   delta: number | null | undefined
 }) {
   return (
@@ -138,25 +137,14 @@ function AttemptCard({
       <Link
         // Reading opens its Analysis page; listening keeps the score/results page.
         to={attempt.skill === 'listening' ? `/review/${attempt.id}` : `/analyze/${attempt.id}`}
-        className={`group flex h-full flex-col rounded-2xl border bg-white p-5 shadow-card transition-[border-color,box-shadow] duration-200 ${
-          isBest
-            ? 'border-brand/40 shadow-soft'
-            : 'border-line hover:border-brand/30 hover:shadow-soft'
-        }`}
+        className="group flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-card transition-[border-color,box-shadow] duration-200 hover:border-brand/30 hover:shadow-soft"
       >
         <div className="flex items-center gap-3">
-          <SkillTile skill={attempt.skill} className={isBest ? 'bg-brand text-white' : undefined} />
+          <SkillTile skill={attempt.skill} />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="truncate font-extrabold leading-snug text-heading">
-                {attempt.testTitle}
-              </p>
-              {isBest && (
-                <span className="shrink-0 rounded-full bg-brand px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.06em] text-white">
-                  Best
-                </span>
-              )}
-            </div>
+            <p className="truncate font-extrabold leading-snug text-heading">
+              {attempt.testTitle}
+            </p>
             <p className="mt-0.5 text-xs font-semibold text-ink-soft">
               {new Date(attempt.createdAt).toLocaleString(undefined, {
                 dateStyle: 'medium',
@@ -253,7 +241,7 @@ function WritingResults({
 
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {attempts.map((a) => (
-          <WritingAttemptCard key={a.id} attempt={a} isBest={best?.id === a.id} />
+          <WritingAttemptCard key={a.id} attempt={a} />
         ))}
         {unchecked.map((a) => (
           <UncheckedWritingCard key={a.id} attempt={a} />
@@ -265,10 +253,8 @@ function WritingResults({
 
 function WritingAttemptCard({
   attempt,
-  isBest,
 }: {
   attempt: WritingAttemptSummary
-  isBest: boolean
 }) {
   const done = attempt.status === 'done'
   const chip =
@@ -280,14 +266,12 @@ function WritingAttemptCard({
 
   return (
     <li
-      className={`flex h-full flex-col rounded-2xl border bg-white p-5 shadow-card transition-shadow ${
-        isBest ? 'border-brand' : 'border-line'
-      }`}
+      className="flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-card transition-shadow"
     >
       <div className="flex items-center gap-3">
         <span
           className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${
-            isBest ? 'bg-brand text-white' : 'bg-brand-soft text-brand'
+            'bg-brand-soft text-brand'
           }`}
         >
           <PenIcon width={20} height={20} />
@@ -301,11 +285,6 @@ function WritingAttemptCard({
             })}
           </p>
         </div>
-        {isBest && (
-          <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-extrabold text-brand">
-            BEST
-          </span>
-        )}
       </div>
 
       <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3.5">
@@ -447,7 +426,7 @@ function SpeakingResults({
 
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {attempts.map((a) => (
-          <SpeakingAttemptCard key={a.id} attempt={a} isBest={best?.id === a.id} />
+          <SpeakingAttemptCard key={a.id} attempt={a} />
         ))}
         {ungraded.map((a) => (
           <UncheckedSpeakingCard key={a.id} attempt={a} />
@@ -497,10 +476,8 @@ function UncheckedSpeakingCard({ attempt }: { attempt: SpeakingAttempt }) {
 
 function SpeakingAttemptCard({
   attempt,
-  isBest,
 }: {
   attempt: SpeakingAttemptSummary
-  isBest: boolean
 }) {
   const done = attempt.status === 'done'
   const chip =
@@ -510,14 +487,12 @@ function SpeakingAttemptCard({
 
   return (
     <li
-      className={`flex h-full flex-col rounded-2xl border bg-white p-5 shadow-card transition-shadow ${
-        isBest ? 'border-brand' : 'border-line'
-      }`}
+      className="flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-card transition-shadow"
     >
       <div className="flex items-center gap-3">
         <span
           className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${
-            isBest ? 'bg-brand text-white' : 'bg-rose-50 text-rose-800'
+            'bg-rose-50 text-rose-800'
           }`}
         >
           <MicIcon width={20} height={20} />
@@ -531,11 +506,6 @@ function SpeakingAttemptCard({
             })}
           </p>
         </div>
-        {isBest && (
-          <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-extrabold text-brand">
-            BEST
-          </span>
-        )}
       </div>
 
       <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3.5">
@@ -679,7 +649,6 @@ export function DashboardPage() {
 
   // Full mocks carry the band and sit on the /35 scale; part drills don't.
   const mocks = shown.filter((a): a is BandedAttempt => a.scope !== 'part' && a.band !== null)
-  const best = mocks.length > 0 ? mocks.reduce((a, b) => (b.rawScore > a.rawScore ? b : a)) : null
 
   // Score change vs the previous mock (chronological): map by attempt id so the
   // newest-first cards can look it up. First mock → null ("First attempt").
@@ -793,7 +762,6 @@ export function DashboardPage() {
                   <AttemptCard
                     key={attempt.id}
                     attempt={attempt}
-                    isBest={best?.id === attempt.id}
                     delta={attempt.scope === 'part' ? undefined : deltaById.get(attempt.id)}
                   />
                 ))}
