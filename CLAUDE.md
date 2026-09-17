@@ -47,15 +47,18 @@ difference is Writing/Speaking or session-rescue types (SpeakingDebate,
 OpenSession, ExpiredAttempt, attempt.late/autoSubmitted) that the console never
 authors. Skeleton/RouteFallback drift is the `grid-cols-1` mobile fix (419463e)
 that the admin app never got; index.css may legitimately differ.
-ADMIN BLIND SPOTS (verified 2026-09-10, all real): admin-users reads `profiles`
-+ `attempts` + `speaking_attempts` + `speaking_recheck_requests` but NOT
-`writing_attempts`, so writing activity and bands are INVISIBLE in the user
-directory even though writing shipped to prod 2026-09-10. There is no admin
-authoring for Writing or Speaking papers at all — they are fixtures in
-`src/lib/writingFixtures.ts` / `src/lib/speakingFixtures.ts` HERE, so a content
-change is a student-app code deploy, not a console edit. And
-`speaking_grade_alerts` (migration 0025) has no screen: it is service-role SQL
-only, though any row in it is by definition a live problem.
+ADMIN BLIND SPOTS — UPDATED 2026-09-17: the writing blind spot is CLOSED
+(admin-users reads `writing_attempts`; the console shows Writing columns and
+history — deployed v15, 2026-09-14). WRITING AND SPEAKING PAPERS ARE AUTHORED
+IN THE CONSOLE NOW, through /admin/samples: both exams are built from the
+`sample_prompts` view (speakingFromSamples.ts / writingFromSamples.ts), so
+publishing a sample publishes a paper — no code deploy. Speaking mocks group by
+slug (`sp-tNN-…`); Writing mocks group by sort_order (migration 0034 added it
+to the view): the writing1_1 + writing1_2 + writing2 samples sharing sort_order
+N = "CEFR Writing Mock N" (id `writing-paper-N`); every sample is also a drill
+(`writing-<slug>`). The old placeholder papers in writingFixtures.ts are GONE —
+that file keeps only labels/blurbs/timings. The `speaking_grade_alerts` queue
+HAS a screen too: /admin/alerts in the console.
 
 ## ⚠️ ACCOUNTS ARE PHONE-ONLY, VIA TELEGRAM (built 2026-09-14)
 EVERY "email", "Google", "SMTP", "auto_confirm" and "owner accounts" note further

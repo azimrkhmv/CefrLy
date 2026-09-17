@@ -107,4 +107,8 @@ export interface Sample {
   badge: string
   title: string
   content: SampleContent
+  /** Display order within a category. For WRITING it is also the paper number:
+   *  the writing1_1, writing1_2 and writing2 samples sharing a sort_order make
+   *  one mock (see writingFromSamples.ts). */
+  sort_order?: number
 }

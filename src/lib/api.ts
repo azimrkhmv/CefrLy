@@ -100,7 +100,7 @@ export async function listTests(): Promise<TestCatalogEntry[]> {
 export async function fetchSamplePrompts(): Promise<Sample[]> {
   const { data, error } = await supabase
     .from('sample_prompts')
-    .select('id, slug, category, badge, title, content')
+    .select('id, slug, category, badge, title, content, sort_order')
     .order('category', { ascending: true })
   if (error) throw new Error(error.message)
   return (data ?? []) as Sample[]

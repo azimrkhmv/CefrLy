@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { TabStrip } from '../components/TabStrip'
+import { TestGridSkeleton } from '../components/Skeleton'
 import { Dropdown } from '../components/Dropdown'
 import { Toast } from '../components/Toast'
 import { PaidSkillDialog } from '../components/PaidSkillDialog'
@@ -47,7 +48,7 @@ export function WritingPage() {
   const locked = !hasPremiumAccess(plan)
   const [paywall, setPaywall] = useState(false)
 
-  const { items } = useWritingItems(tab)
+  const { items, isLoading, error } = useWritingItems(tab)
   // Attempts live in two stores: everything the student handed in is recorded
   // locally the instant they press Submit, and everything that reached the
   // server comes back marked. A card counts BOTH — but a local attempt whose
@@ -88,7 +89,15 @@ export function WritingPage() {
         />
       </div>
 
-      {tab === 'custom' ? (
+      {error && (
+        <p className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          Writing papers could not be loaded. Check your connection and refresh.
+        </p>
+      )}
+
+      {isLoading ? (
+        <TestGridSkeleton />
+      ) : tab === 'custom' ? (
         <WritingCustomTab
           items={shown}
           attemptCount={attemptCount}

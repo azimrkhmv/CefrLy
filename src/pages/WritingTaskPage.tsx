@@ -9,8 +9,7 @@ import { hasPremiumAccess } from '../lib/plans'
 import { useAuth } from '../lib/auth'
 import { WritingModePicker } from '../components/writing/WritingModePicker'
 import { CloseIcon } from '../components/icons'
-import { findWritingTest } from '../lib/writingCatalog'
-import { useCustomWritingTests } from '../lib/writingCustom'
+import { useWritingTest } from '../lib/writingCatalog'
 import {
   clearWritingDraft,
   readWritingDraft,
@@ -60,8 +59,20 @@ const wordGuidance = (task: WritingTask) =>
 export function WritingTaskPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const custom = useCustomWritingTests()
-  const test = id ? findWritingTest(id, custom) : undefined
+  const { test, isLoading } = useWritingTest(id)
+
+  // The papers are fetched from the samples library, so a direct link (or a
+  // reload mid-attempt) can land here before they arrive.
+  if (isLoading) {
+    return (
+      <ExamScreen center>
+        <div className="space-y-3 text-center">
+          <div className="skeleton mx-auto h-6 w-52 rounded-full" />
+          <div className="skeleton mx-auto h-4 w-36 rounded-full" />
+        </div>
+      </ExamScreen>
+    )
+  }
 
   if (!test) {
     return (
