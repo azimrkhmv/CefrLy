@@ -109,8 +109,12 @@ down this file is STALE. What is true now:
   `telegram_auth_requests` (0029, +expected_phone 0032), `telegram_bot_users`
   (0030, +verified_phone 0031). profiles gained father_name, phone (unique
   partial index), telegram_user_id — no UPDATE grant, service-role only.
-- SECRETS: TELEGRAM_BOT_TOKEN (⚠️ was pasted in chat 2026-09-14 — rotate with
-  @BotFather /revoke and re-set), TELEGRAM_BOT_USERNAME, TELEGRAM_WEBHOOK_SECRET.
+- SECRETS: TELEGRAM_BOT_TOKEN (ROTATED 2026-09-17 via @BotFather /revoke),
+  TELEGRAM_BOT_USERNAME, TELEGRAM_WEBHOOK_SECRET (regenerated the same day).
+  ⚠️ /revoke CLEARS THE WEBHOOK: after any token rotation, set the new token
+  AND a new webhook secret in Supabase, then setWebhook (url
+  …/functions/v1/telegram-bot, secret_token, allowed_updates
+  [message, callback_query]) — or the bot silently stops answering.
   Re-running setWebhook needs the secret; it is only in Supabase secrets (hashed)
   — generate a new one and set both if it is ever lost.
 - KNOWN TRADE-OFF: the sign-up phone check reveals whether a number is
