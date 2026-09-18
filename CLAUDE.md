@@ -449,7 +449,8 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   + home carry per-attempt skill (src/lib/skills.ts). MY RESULTS (/dashboard,
   REDESIGNED 2026-07-10 from the user's "My Results" claude.ai Design import,
   superseding the 2026-07-06 layout): shared `<TabStrip>` section strip (Reading
-  · Listening + inert Writing/Speaking "soon" — NO "All" tab, default Reading) →
+  · Listening + Writing + Speaking — NO "All" tab, default Reading. All four are
+  real tabs now; the inert "soon" markers described here are gone) →
   then, for the active skill: a lavender `ProgressPanel` (bg-brand-soft) shown
   only when there are FULL-MOCK banded attempts — "<Skill> · Your progress"
   eyebrow, big best score + band pill, the shared `BandRuler`, and (from the 2nd
@@ -464,7 +465,9 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   was extracted from HomePage to src/components/Sparkline.tsx (shared). Per-tab
   EmptyState (bored cat) with a "Go to <skill>" CTA. Verified end-to-end 2026-07-06:
   sanitization (no answers/transcripts pre-submit), grading (gap multi-spellings +
-  grouped Part 5), history skill, public asset URLs 200. Writing/Speaking still NOT built.
+  grouped Part 5), history skill, public asset URLs 200. (Writing and Speaking
+  were NOT built at the time of that 2026-07-06 verification. Both are live and
+  graded now — see the Writing and Speaking sections below.)
 
 ## Design system v3 ("friendly scholar" — keep new UI consistent with this)
 - Voice: warm, friendly ed-tech with a cat mascot (Cathoven-inspired), in
@@ -654,7 +657,8 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   defaults to a mid-band score) — same spirit as /login?cat=; only the
   LevelSnapshot is overridden, stats/sparkline/activity stay real.
   Both states end with the "Your CEFR skills" roadmap (Reading Available →
-  Practice; Listening/Writing/Speaking "soon") — the one surface that shows
+  Practice; all four skills are Available now, none carries a "soon" chip —
+  verified 2026-09-18) — the one surface that shows
   Cefrly as a full 4-skill platform. Greeting name comes from Google
   user_metadata.full_name/name else the email local part.
 - Results header: friendly light card — big Nunito band label + count-up score,
@@ -787,8 +791,10 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   comparison → speaking1_2 · 2 photo talk → speaking2 · 3 for/against →
   speaking3. The /samples tabs are now TWO-TIER: a Writing/Speaking skill toggle,
   then that skill's part sub-tabs (driven off SAMPLE_CATEGORIES.skill/partLabel).
-  (This samples library is SEPARATE from the future Writing/Speaking mock-test
-  skills — the "soon" roadmap chips — which are NOT built yet.)
+  (This samples library WAS separate from the Writing/Speaking mock-test skills
+  while those were unbuilt. IT IS NOT ANY MORE: since 2026-09-14 both exams are
+  BUILT FROM these samples — speakingFromSamples.ts / writingFromSamples.ts read
+  the `sample_prompts` view, so publishing a sample publishes a paper.)
 - Table `samples` (migration 0011; category CHECK swapped by 0012 to add the
   writing split, then by migration 0013 (2026-07-09) to the current 7:
   writing1_1|writing1_2|writing2|speaking1_1|speaking1_2|speaking2|speaking3 —
@@ -964,9 +970,10 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
 - ACTION TYPES + mapping (actionForTest, identical client+server): scope 'full' →
   full_mock (any skill); scope 'part' reading → reading_set; part listening →
   listening_set; skill writing → writing_check; skill speaking → speaking_check.
-  Writing/Speaking checks are SCHEMA-ONLY today (those skills aren't built) —
-  their limits are stored + will enforce when the features ship; only full_mock /
-  reading_set / listening_set are live and shown in the UI.
+  writing_check / speaking_check were SCHEMA-ONLY when this was written. THEY
+  ENFORCE NOW: grade-writing and grade-speaking both read PLAN_LIMITS and return
+  403 premium_only / plan_limit, exactly like start-session does for the other
+  three actions. All five actions are live.
 - SCHEMA (migration 0015, NOT yet applied to prod — see the launch rule):
   profiles gains plan (check free/pro/premium, default 'free'), plan_expires_at,
   plan_source, plan_updated_at, plan_updated_by. These columns are DELIBERATELY
@@ -988,10 +995,37 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   (free/premium toggle).
 - ACTIVATION is MANUAL (no checkout wired, owner call 2026-07-28): a super_admin
   grants a plan + optional expiry from /admin/users/:id (admin-users action
-  setUserPlan, super_admin-only like setUserRole, writes plan_changes). Pricing
-  page paid CTAs open Telegram (COMMUNITY_URL) to "Contact us on Telegram to
-  upgrade"; a plan's checkoutUrl, once pasted in PricingPage.tsx, overrides that
+  setUserPlan, super_admin-only like setUserRole, writes plan_changes). A plan's
+  checkoutUrl, once pasted in PricingPage.tsx, overrides the Telegram flow below
   with a real checkout link. Free CTA still → /reading.
+- PAYING IS A PREFILLED TELEGRAM ORDER (built 2026-09-18). The paid CTAs no
+  longer just open a chat — `src/lib/upgradeRequest.ts` composes the whole order
+  and the button opens `ADMIN_URL?text=<encoded>`, so the student presses send
+  and nothing is typed by hand. The message is BILINGUAL, Uzbek block first then
+  English, and carries: plan name + price, "To'lov usuli: UZCARD", the card
+  5614 6824 1850 4058 (AZIMBEK RAHIMOV), a promise to send the receipt in the
+  thread, and the account to upgrade. Pattern copied from the owner's own real
+  order messages.
+  · ACCOUNT ID = THE PHONE NUMBER (owner confirmed 2026-09-18). Cefrly has no
+    short per-user number; the phone IS the login and is what /admin/users is
+    searched by, so `accountRef()` derives it from the synthetic login email
+    (998…@phone.cefrly.app) and falls back to email, then user id. Giving out a
+    short numeric ID instead would need a new profiles column + migration.
+  · THE CARD NUMBER IS NOT A SECRET and ships in the public bundle by design —
+    it is the number students pay INTO and it is printed in every one of these
+    messages. Never put anything in upgradeRequest.ts that needs protecting.
+  · Prices live in TWO places that must agree: PLANS[] in PricingPage.tsx and
+    PLAN_ORDER in upgradeRequest.ts. Change one, change the other, or the button
+    offers a price the page does not show.
+- ⚠️ TELEGRAM: TWO DESTINATIONS, DO NOT MERGE (2026-09-18). COMMUNITY_URL
+  (t.me/cefrly) is the PUBLIC channel other learners read — "Join CEFR Community"
+  only. ADMIN_URL (t.me/cefr_qabul) is the super_admin's own account and takes
+  everything a student would not want read in public: support, bug reports, a
+  challenged mark (/analyze "Report"), and upgrade orders. Before this, ALL FOUR
+  pointed at the public channel, so disputing a score or buying a plan meant
+  posting into a group. Both constants are exported from src/components/Layout.tsx;
+  the bot keeps its own copy of each in supabase/functions/telegram-bot/index.ts
+  (its FAQ "still stuck?" line now points at ADMIN_URL too).
 - FRONTEND: api.ts fetchEntitlements() + PlanLimitError (invokeFunction throws it
   on code:'plan_limit' OR 'premium_only'; carries .code); auth.tsx exposes `plan`
   (effective, staff→premium) with role. Catalog: listTests + TestCatalogEntry gain
@@ -1066,17 +1100,37 @@ Already handled in 2026-07 and NOT part of this deferral: RLS/security (no clien
 bypass), expiry stored end-of-day (T23:59:59Z), admin views show effective/expired
 plan via PlanChip, stale "free allowances refresh monthly" copy removed.
 
-## ⚠️ SPEAKING IS LIVE BUT UNFINISHED (shipped 2026-08-28, commit 3f87462)
-The owner chose to deploy the in-progress Speaking section to production with
-the performance work. What is live: the 6-part catalog, task pages, the mic
-check, and custom questions — all FRONTEND ONLY, driven by
-src/lib/speakingFixtures.ts and localStorage (speakingAttempts/speakingDraft/
-speakingCustom). There is NO backend: no DB table, no edge function, no AI
-grading, no band score. Students can reach it from the sidebar.
-The sections above still describe Writing/Speaking as "not built" and mark them
-"soon" on the roadmap chips — that copy is STALE for Speaking. Reconcile it when
-the Speaking backend lands (grading rubric work is in the gitignored
-`Speaking band score/` and `Sample for ai/` folders).
+## SPEAKING IS FULLY BUILT AND GRADED (first shipped 2026-08-28, backend since 2026-08-31)
+⚠️ THIS SECTION REPLACES the old "SPEAKING IS LIVE BUT UNFINISHED" note, which
+claimed there was "NO backend: no DB table, no edge function, no AI grading, no
+band score". Every clause of that was true on 2026-08-28 and false within days;
+it survived in this file until 2026-09-18 and misled a session into reporting
+Speaking as frontend-only. What is actually true:
+- DB: `speaking_attempts` (migration 0017) + manifest (0018), recheck (0021),
+  double-grade guards (0024), the anomalies view and `speaking_grade_alerts`
+  (0025), sweep cron (0019). Same security shape as `writing_attempts` —
+  select-own, no insert/update policy, so only the service_role function writes
+  a band.
+- Edge functions: `grade-speaking` (async, v30 in prod) and
+  `sweep-speaking-audio`. Real AI grading, real /75 and CEFR band.
+- Client: `src/lib/speakingGrading.ts` (upload + submit + retry + fetch),
+  `speakingAttempts.ts`, `src/types/speakingResult.ts`; the dashboard renders
+  real results and /admin/alerts serves the alert queue.
+- PAPERS COME FROM THE SAMPLES LIBRARY, not fixtures. `speakingFromSamples.ts`
+  builds them from the `sample_prompts` view (grouped by slug `sp-tNN-…`), so
+  publishing a sample in the admin console publishes a paper with no code
+  deploy. `speakingFixtures.ts` keeps ONLY labels, blurbs and the exam clock —
+  the placeholder papers it used to hold are gone.
+- localStorage still holds speakingDraft/speakingCustom, and
+  `cefrly-speaking-attempts` holds UNGRADED attempts only — an attempt is
+  removed from there the moment grading succeeds, so nothing is counted twice.
+- The roadmap chips are NOT stale: `SHOW_WRITING = true` in src/lib/features.ts,
+  and the HomePage Speaking card carries a real `to: '/speaking'` with no `soon`
+  marker. Verified 2026-09-18.
+WHAT IS GENUINELY LEFT for Speaking is in the two sections below (the async
+rework, the defects log) and comes down to: NO CALIBRATION SET, Q7 scored by a
+boolean `coverage` instead of a 3-prompt count, and min-of-two-judges where the
+agency takes the mean.
 
 ## GRADE-SPEAKING is ASYNC now (audit + rework 2026-08-31, deployed v8)
 An efficiency audit answered the "are we re-sending the prompt every time?"

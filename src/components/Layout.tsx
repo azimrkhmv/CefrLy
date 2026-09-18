@@ -25,8 +25,17 @@ import {
   UsersIcon,
 } from './icons'
 
-// TODO: point this at the real community invite (Telegram/Discord/etc.).
+// TWO DIFFERENT TELEGRAM DESTINATIONS — do not collapse them into one.
+//
+// COMMUNITY_URL is the PUBLIC channel: other learners can read it. It is for
+// the "Join CEFR Community" CTA and nothing else.
+//
+// ADMIN_URL is the super_admin's OWN account. Anything a student would not want
+// posted in front of other learners goes here: support requests, bug reports,
+// a challenge to a mark, and upgrade requests (the admin grants the plan by
+// hand, so the student has to reach a person, not a group).
 export const COMMUNITY_URL = 'https://t.me/cefrly'
+export const ADMIN_URL = 'https://t.me/cefr_qabul'
 
 // Sidebar design "2b — Rail & tint": quiet muted rows; the active row gets a
 // 3px brand rail on the left plus a lavender tint fading to the right.

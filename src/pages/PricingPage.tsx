@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckIcon, CloseIcon } from '../components/icons'
 import { useAuth } from '../lib/auth'
-import { COMMUNITY_URL } from '../components/Layout'
+import { ADMIN_URL } from '../components/Layout'
+import { accountRef, upgradeTelegramUrl } from '../lib/upgradeRequest'
 import type { PlanId } from '../types/plan'
 
 // Owner-set tiers (from the Pricing design, 2026-07-10). Prices are in so'm.
@@ -123,7 +124,18 @@ function FeatureRow({ lead, text, note, excluded }: Feature) {
   )
 }
 
-function PlanCta({ cta, current }: { cta: Plan['cta']; current: boolean }) {
+function PlanCta({
+  plan,
+  cta,
+  current,
+  accountLabel,
+}: {
+  plan: Plan['id']
+  cta: Plan['cta']
+  current: boolean
+  /** How the admin will identify this student — their phone, normally. */
+  accountLabel: string
+}) {
   const cls = `flex w-full items-center justify-center rounded-xl px-6 py-3.5 text-base font-bold transition-colors ${CTA_VARIANT[cta.variant]}`
   // The plan the student is already on: no action to take.
   if (current) {
@@ -143,7 +155,12 @@ function PlanCta({ cta, current }: { cta: Plan['cta']; current: boolean }) {
       </Link>
     )
   }
-  const href = cta.checkoutUrl || COMMUNITY_URL
+  // No checkout wired → open the admin's Telegram chat with the whole order
+  // already written: plan, price, card details and which account to upgrade.
+  // The student presses send, pays, and sends the receipt in the same thread.
+  const href =
+    cta.checkoutUrl ||
+    (plan === 'free' ? ADMIN_URL : upgradeTelegramUrl(ADMIN_URL, plan, accountLabel))
   const external = !cta.checkoutUrl // Telegram fallback opens in a new tab
   return (
     <a
@@ -161,11 +178,13 @@ function PlanCard({
   selected,
   current,
   onSelect,
+  accountLabel,
 }: {
   plan: Plan
   selected: boolean
   current: boolean
   onSelect: () => void
+  accountLabel: string
 }) {
   const isFree = plan.id === 'free'
   return (
@@ -222,7 +241,7 @@ function PlanCard({
       </div>
 
       <div className="mt-auto pt-6">
-        <PlanCta cta={plan.cta} current={current} />
+        <PlanCta plan={plan.id} cta={plan.cta} current={current} accountLabel={accountLabel} />
         <p className="mt-2.5 text-center text-sm font-semibold text-ink-soft">
           {current ? 'You’re on this plan' : plan.cta.helper}
         </p>
@@ -239,6 +258,8 @@ const MOBILE_ORDER: Record<Plan['id'], string> = {
 
 export function PricingPage() {
   const { session, plan: currentPlan } = useAuth()
+  // Written into the upgrade message so the admin knows which account paid.
+  const accountLabel = accountRef(session?.user)
   // The ring follows the student's pick rather than being nailed to Pro. Pro
   // starts selected because it's the recommended plan; the "Recommended" pill
   // is a property of the plan, so it stays put as the ring moves.
@@ -268,6 +289,7 @@ export function PricingPage() {
               // Only show "Your plan" to signed-in students on their actual tier.
               current={!!session && currentPlan === plan.id}
               onSelect={() => setSelected(plan.id)}
+              accountLabel={accountLabel}
             />
           </div>
         ))}

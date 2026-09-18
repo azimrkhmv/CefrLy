@@ -30,6 +30,10 @@ const WELCOME_VIDEO = Deno.env.get('TELEGRAM_WELCOME_VIDEO') ?? ''
 const WELCOME_VIDEO_NOTE = Deno.env.get('TELEGRAM_WELCOME_VIDEO_NOTE') ?? ''
 const SITE_URL = 'https://cefrly.vercel.app'
 const COMMUNITY_URL = 'https://t.me/cefrly'
+// The super_admin's own account. A student who is stuck, disputes a mark or
+// wants to pay is sent HERE, not to the public channel — same split as the web
+// app's ADMIN_URL (src/components/Layout.tsx).
+const ADMIN_URL = 'https://t.me/cefr_qabul'
 
 const CODE_TTL_MS = 5 * 60 * 1000
 const RESEND_GAP_MS = 30 * 1000
@@ -113,7 +117,7 @@ Press ${BTN_PHONE} here and tap <b>🔑 Get a new password</b>. Or press <b>Forg
 <b>Is Cefrly free?</b>
 Free tests are open to everyone. Premium tests need a Pro or Premium plan, see Pricing on the website.
 
-Still stuck? Ask in our community: ${COMMUNITY_URL}`
+Still stuck? Message us directly: ${ADMIN_URL}`
 
 type TgUser = { id: number; first_name?: string; username?: string }
 type TgCallback = {

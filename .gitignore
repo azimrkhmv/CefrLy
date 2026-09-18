@@ -56,3 +56,5 @@ supabase/.temp/
 
 # Local data backups (personal data, never commit)
 backups/
+# owner-supplied source papers + audio (PDFs, mp3) — content to ingest, never app code
+testes/

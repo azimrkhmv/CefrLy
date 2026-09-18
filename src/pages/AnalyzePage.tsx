@@ -6,7 +6,7 @@ import { fetchAttemptReview } from '../lib/api'
 import { BAND_INFO } from '../lib/bands'
 import { BandRuler } from '../components/BandRuler'
 import { useCountUp } from '../lib/motion'
-import { COMMUNITY_URL } from '../components/Layout'
+import { ADMIN_URL } from '../components/Layout'
 import { HighlightedPassage, HighlightedText, type GapFill, type QuoteHighlight } from '../lib/passageHighlights'
 import { ArrowRightIcon, BookIcon, CloseIcon, FlagIcon, HomeIcon } from '../components/icons'
 import type { Item, Part } from '../types/test'
@@ -531,8 +531,10 @@ function QuestionCard({
         >
           Explain
         </button>
+        {/* A challenged mark goes to the admin privately — never to the public
+            channel, where other learners would read the student's score. */}
         <a
-          href={COMMUNITY_URL}
+          href={ADMIN_URL}
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-bold text-ink-soft transition-colors hover:border-ink-faint hover:text-ink"

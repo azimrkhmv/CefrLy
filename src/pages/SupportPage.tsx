@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { COMMUNITY_URL } from '../components/Layout'
-import { UsersIcon } from '../components/icons'
+import { ADMIN_URL, COMMUNITY_URL } from '../components/Layout'
+import { LifebuoyIcon, UsersIcon } from '../components/icons'
 
 const FAQ: { q: string; a: ReactNode }[] = [
   {
@@ -58,20 +58,40 @@ export function SupportPage() {
         </p>
       </div>
 
+      {/* TWO doors, in this order on purpose. A support request is often about
+          the student's own marks or payment, which does not belong in a channel
+          other learners read — so the private one leads. */}
       <section className="max-w-xl rounded-2xl border border-line bg-white p-6 shadow-card sm:p-7">
-        <h2 className="text-base font-extrabold text-heading">Talk to us on Telegram</h2>
+        <h2 className="text-base font-extrabold text-heading">Message us directly</h2>
         <p className="mt-1 text-sm text-ink-soft">
-          The CEFR Community is the fastest way to reach the team — and to swap tips with other
-          learners preparing for the same exam.
+          A problem with your score, your plan or a payment goes straight to the team on Telegram.
+          Private — nobody else sees it.
+        </p>
+        <a
+          href={ADMIN_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
+        >
+          <LifebuoyIcon width={17} height={17} />
+          Contact support
+        </a>
+      </section>
+
+      <section className="max-w-xl rounded-2xl border border-line bg-white p-6 shadow-card sm:p-7">
+        <h2 className="text-base font-extrabold text-heading">Join the community</h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          The CEFR Community channel is where learners preparing for the same exam swap tips and
+          study together.
         </p>
         <a
           href={COMMUNITY_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-accent-deep"
+          className="mt-4 inline-flex items-center gap-2 rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:border-ink-faint"
         >
           <UsersIcon width={17} height={17} />
-          Join the community
+          Open the channel
         </a>
       </section>
 
