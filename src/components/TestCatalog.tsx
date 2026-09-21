@@ -149,8 +149,8 @@ export function TestCatalog({ skill }: { skill: Skill }) {
 
       <ConfirmDialog
         open={tooSmallOpen}
-        title="This one needs a bigger screen"
-        message={`A full ${meta.label.toLowerCase()} test is a long paper with the questions beside it, so it opens on a laptop or a tablet — if you're on a tablet, turning it sideways is usually enough. Part practice works well on your phone in the meantime.`}
+        title="Open this on a bigger screen"
+        message="Full mock tests work on a laptop or a tablet held sideways. On your phone, try part practice."
         cancelLabel="Close"
         onCancel={() => setTooSmallOpen(false)}
       />

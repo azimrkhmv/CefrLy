@@ -623,16 +623,11 @@ export function TestPage() {
             />
             <div className="space-y-2">
               <h2 className="text-xl font-extrabold text-heading">
-                This paper needs a bigger screen
+                Open this on a bigger screen
               </h2>
               <p className="text-sm text-ink-soft">
-                A full {attempt.skill === 'listening' ? 'listening' : 'reading'} mock runs{' '}
-                {Math.round(attempt.durationSec / 60)} minutes with the passage and the questions
-                side by side. A laptop or a tablet both work — on a tablet, turning it sideways is
-                usually enough.
-              </p>
-              <p className="text-sm text-ink-soft">
-                On your phone, part practice works well: one short passage, a handful of questions.
+                Full mock tests work on a laptop or a tablet held sideways. On your phone, try part
+                practice.
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-3">

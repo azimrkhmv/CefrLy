@@ -321,7 +321,9 @@ function NewUserHome({ exam }: { exam?: ExamChip | null }) {
           <div className="min-w-0 flex-1 basis-72">
             <p className={KICKER}>Start here</p>
             <h2 className="mt-2 text-2xl font-extrabold text-heading">Discover your real CEFR level</h2>
-            <p className="mt-2 max-w-md text-ink-soft">
+            {/* Desktop only: on a phone it pushed the band ruler below the fold
+                (owner call 2026-09-21). */}
+            <p className="mt-2 hidden max-w-md text-ink-soft sm:block">
               Take your first mock reading test — 35 questions, 5 parts, 60 minutes — and get an
               indicative band with an explanation for every answer.
             </p>
@@ -351,7 +353,9 @@ function NewUserHome({ exam }: { exam?: ExamChip | null }) {
         </div>
       </section>
 
-      <section>
+      {/* Desktop only (owner call 2026-09-21): on a phone three stacked cards
+          were a long scroll between the hero and the skills. */}
+      <section className="hidden sm:block">
         <h2 className="mb-4 text-xl font-extrabold text-heading">How it works</h2>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
           {steps.map((s) => (
