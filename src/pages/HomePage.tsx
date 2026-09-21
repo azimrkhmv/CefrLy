@@ -99,7 +99,9 @@ type ExamChip = { label: string; past: boolean }
  */
 function HeroCat({ exam, width, height }: { exam?: ExamChip | null; width: number; height: number }) {
   return (
-    <div className="relative flex shrink-0 items-start">
+    // ml-auto: on a phone the cat wraps onto its own line, and must still sit
+    // on the right of the card, not drift to the left edge.
+    <div className="relative ml-auto flex shrink-0 items-start">
       {exam && (
         <Link
           to="/settings"

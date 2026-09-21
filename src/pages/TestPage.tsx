@@ -623,11 +623,11 @@ export function TestPage() {
             />
             <div className="space-y-2">
               <h2 className="text-xl font-extrabold text-heading">
-                Open this on a bigger screen
+                Use a tablet or laptop
               </h2>
               <p className="text-sm text-ink-soft">
-                Full mock tests work on a laptop or a tablet held sideways. On your phone, try part
-                practice.
+                Reading and Listening mock tests can't be opened on a phone. To take them, use a
+                tablet or a laptop.
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-3">

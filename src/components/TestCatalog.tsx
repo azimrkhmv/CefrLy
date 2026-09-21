@@ -149,8 +149,8 @@ export function TestCatalog({ skill }: { skill: Skill }) {
 
       <ConfirmDialog
         open={tooSmallOpen}
-        title="Open this on a bigger screen"
-        message="Full mock tests work on a laptop or a tablet held sideways. On your phone, try part practice."
+        title="Use a tablet or laptop"
+        message="Reading and Listening mock tests can't be opened on a phone. To take them, use a tablet or a laptop."
         cancelLabel="Close"
         onCancel={() => setTooSmallOpen(false)}
       />
