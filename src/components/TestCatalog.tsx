@@ -59,9 +59,14 @@ export function TestCatalog({ skill }: { skill: Skill }) {
   // 'mock' = the full papers; a number = single-part drills for that part.
   const [tab, setTab] = useState<'mock' | number>('mock')
   const skillTests = allTests?.filter((t) => t.skill === skill)
-  const tests = skillTests?.filter((t) =>
-    tab === 'mock' ? (t.scope ?? 'full') === 'full' : t.scope === 'part' && t.part_number === tab,
-  )
+  // FREE TESTS FIRST (owner call 2026-09-21): a free student sees what they can
+  // open before the locked premium cards. sort() is stable, so each group keeps
+  // listTests' oldest-first order.
+  const tests = skillTests
+    ?.filter((t) =>
+      tab === 'mock' ? (t.scope ?? 'full') === 'full' : t.scope === 'part' && t.part_number === tab,
+    )
+    .sort((a, b) => Number(a.access !== 'free') - Number(b.access !== 'free'))
   const attemptInfo = buildAttemptInfo(attempts)
   const partTabs = Array.from({ length: meta.parts }, (_, i) => i + 1)
   const tabLabel = tab === 'mock' ? 'mock test' : `Part ${tab} drill`
