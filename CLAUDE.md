@@ -275,6 +275,16 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   picked at random in JS), so it carries fetchPriority="high".
 - Measured after the work, prod build, local preview: LCP 575 ms, CLS 0.
 
+## MOBILE ZOOM IS OFF (owner call 2026-09-21)
+index.html's viewport is `maximum-scale=1, user-scalable=no`, index.css sets
+`touch-action: manipulation` (no double-tap zoom) + `overflow-x: clip` on html,
+and forces 16px text in inputs on touch screens (iOS zooms into any field under
+16px on focus). Same in the admin repo. THIS COSTS LIGHTHOUSE A11Y POINTS: the
+`meta-viewport` audit fails by design, so the "Accessibility 100" figures below
+no longer hold. It was a deliberate trade — do not "fix" it back without the
+owner. Do not add `viewport-fit=cover` without safe-area padding on the fixed
+bars, or they slide under the notch.
+
 ## Second perf/a11y/SEO pass (2026-08-28, from a /dashboard audit)
 - fetchMyAttempts (src/lib/api.ts) NO LONGER selects the whole `result` jsonb.
   It was shipping every graded item + explanation of every past attempt just to

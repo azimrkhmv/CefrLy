@@ -36,6 +36,35 @@ body {
   color: var(--color-ink);
 }
 
+/* MOBILE FEELS LIKE AN APP, NOT A ZOOMABLE PAGE (owner call 2026-09-21).
+   index.html's viewport locks the scale; these cover what it can't:
+   · touch-action: manipulation — no double-tap zoom anywhere, and no 300 ms
+     tap delay, while normal scrolling still works.
+   · text-size-adjust — iOS stops inflating text when the phone turns sideways.
+   · overflow-x: clip — with zoom gone, a stray wide element must not make the
+     whole page pan sideways. `clip`, not `hidden`: hidden would turn <html>
+     into a scroll container and break the exam's sticky audio bar.
+   · tap highlight off — our buttons have their own pressed states. */
+html {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow-x: clip;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS zooms into any field whose text is under 16px the moment it is focused
+   (most of ours are 14-15px). 16px on touch screens stops that at the source,
+   so it holds even where the viewport lock is ignored. Desktop keeps the
+   design's sizes. */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Keyboard focus: one visible, consistent ring. */
 :focus-visible {
   outline: 2px solid var(--color-accent);
