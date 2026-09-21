@@ -1,3 +1,7 @@
+-- RENUMBERED 2026-09-21 from 0025: it shared that version with
+-- 0025_speaking_grade_anomalies, which the Supabase CLI rejects. Applied to
+-- prod long before 0035; the number is only its identity in the history table.
+
 -- Answers-so-far, on the server.
 --
 -- Until now an in-progress attempt lived ONLY in the browser's localStorage.

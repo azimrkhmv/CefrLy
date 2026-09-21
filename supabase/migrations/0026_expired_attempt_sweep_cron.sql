@@ -3,7 +3,7 @@
 -- A simulation keeps counting down while the student is away — that is what
 -- makes it a mock exam. Until now, hitting zero with the tab closed left the
 -- attempt open and ungraded forever; the student had to reopen the paper and
--- hand it in by hand. With the answers mirrored to `session_answers` (0025) the
+-- hand it in by hand. With the answers mirrored to `session_answers` (0036) the
 -- server can do it: this job grades expired attempts, marks them late +
 -- auto-submitted, and closes the session. Empty ones are just closed.
 --

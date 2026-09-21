@@ -62,6 +62,20 @@ N = "CEFR Writing Mock N" (id `writing-paper-N`); every sample is also a drill
 that file keeps only labels/blurbs/timings. The `speaking_grade_alerts` queue
 HAS a screen too: /admin/alerts in the console.
 
+## MIGRATION HISTORY IS CLEAN (repaired 2026-09-21)
+prod's `supabase_migrations.schema_migrations` now lists EXACTLY the files in
+supabase/migrations — 36 rows, version = the file's number prefix, statements =
+the file body. Before, it held 21 timestamp-named rows written by MCP
+apply_migration (some one-off data fixes with no file) and nothing for most of
+the files, so `supabase db push` would have tried to re-run them. The old rows
+are backed up in the gitignored backups/2026-09-21-schema_migrations.json.
+`0025_session_answers` was renumbered to `0036_session_answers` (it collided
+with 0025_speaking_grade_anomalies; the CLI needs unique versions).
+WHEN YOU APPLY A MIGRATION THROUGH THE SQL API, ALSO INSERT ITS ROW:
+`insert into supabase_migrations.schema_migrations (version, name, statements)
+values ('0037', 'my_change', array[$m$<file body>$m$])`. Check with
+`GET /v1/projects/<ref>/database/migrations` against `ls supabase/migrations`.
+
 ## ⚠️ ACCOUNTS ARE PHONE-ONLY, VIA TELEGRAM (built 2026-09-14)
 EVERY "email", "Google", "SMTP", "auto_confirm" and "owner accounts" note further
 down this file is STALE. What is true now:
@@ -1063,8 +1077,8 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   get-entitlements (v2), admin-users. NOT yet deployed there: admin-tests (its
   two ~9KB validators make hand-transcription risky — deploy via CLI). Two compact
   seed reading tests: reading-sub-full (premium) + reading-sub-part1 (free).
-  .env.local points at staging; prod values saved in .env.local.prod-backup.
-  Delete the staging project when done (idle cost ~$0.32/day).
+  DELETED 2026-09-21 — the staging project no longer exists; .env.local points
+  at prod.
 - DEPLOYED TO PRODUCTION 2026-07-29 (owner approved): migrations 0015 + 0016
   applied to prod; edge functions get-entitlements (v1 new), admin-users (v3),
   admin-tests (v5), start-session (v5, enforcement) deployed; frontend pushed to
