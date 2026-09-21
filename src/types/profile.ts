@@ -29,8 +29,10 @@ export type HeardFrom =
 export interface OnboardingAnswers {
   /** What the student wants to be called. */
   firstName: string
-  /** Surname (optional). */
-  lastName: string | null
+  /** Surname. Required since names moved from sign-up to the wizard. */
+  lastName: string
+  /** Father's name (otchestvo). Required, same reason. */
+  fatherName: string
   firstExam: FirstExam
   selfLevel: SelfLevel
   targetBand: TargetBand
@@ -56,6 +58,7 @@ export interface StudentProfile {
   name: string | null
   firstName: string | null
   lastName: string | null
+  fatherName: string | null
   onboardedAt: string | null
   firstExam: FirstExam | null
   selfLevel: SelfLevel | null

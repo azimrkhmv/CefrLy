@@ -5,7 +5,7 @@
 //                                       (signup: phone required; 409
 //                                       code 'phone_exists' if it has an account)
 //  · status {token}                   → has the bot sent a code yet? (masked phone)
-//  · signup {token, code, firstName, lastName, fatherName, password}
+//  · signup {token, code, password}   (names are asked later, in /welcome)
 //  · reset  {token, code, password}
 // signup/reset return the account's login email; the browser then signs in with
 // signInWithPassword. Phone accounts log in with a synthetic address derived
@@ -160,15 +160,15 @@ async function verify(admin: Admin, body: Record<string, unknown>) {
   if (typeof password !== 'string' || password.length < 6 || password.length > 72) {
     return json({ error: 'Password must be 6 to 72 characters.' }, 400)
   }
+  // NAMES ARE OPTIONAL HERE since 2026-09-21: the sign-up form no longer asks
+  // for them — the first /welcome step does, and every account goes through it.
+  // A form still open from before the change sends all three; keep them if so.
   let names: { first: string; last: string; father: string } | null = null
   if (action === 'signup') {
     const first = cleanName(body.firstName)
     const last = cleanName(body.lastName)
     const father = cleanName(body.fatherName)
-    if (!first || !last || !father) {
-      return json({ error: "Please fill in your first name, surname and father's name." }, 400)
-    }
-    names = { first, last, father }
+    if (first && last && father) names = { first, last, father }
   }
   const code = typeof body.code === 'string' ? body.code.trim() : ''
   if (!/^\d{6}$/.test(code)) return json({ error: 'Enter the 6-digit code from the bot.' }, 400)
@@ -220,21 +220,23 @@ async function verify(admin: Admin, body: Record<string, unknown>) {
       return json({ error: 'This number already has an account. Log in instead.', code: 'exists' }, 409)
     }
     const email = loginEmailForPhone(phone)
-    const fullName = `${names!.first} ${names!.last}`
+    const fullName = names ? `${names.first} ${names.last}` : null
     const { data: created, error: createError } = await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
       phone,
       phone_confirm: true,
-      user_metadata: {
-        name: fullName,
-        full_name: fullName,
-        first_name: names!.first,
-        last_name: names!.last,
-        father_name: names!.father,
-        signup: 'telegram',
-      },
+      user_metadata: names
+        ? {
+            name: fullName,
+            full_name: fullName,
+            first_name: names.first,
+            last_name: names.last,
+            father_name: names.father,
+            signup: 'telegram',
+          }
+        : { signup: 'telegram' },
     })
     if (createError || !created?.user) {
       console.error('createUser failed', createError)
@@ -250,10 +252,9 @@ async function verify(admin: Admin, body: Record<string, unknown>) {
     const { error: profileError } = await admin
       .from('profiles')
       .update({
-        name: fullName,
-        first_name: names!.first,
-        last_name: names!.last,
-        father_name: names!.father,
+        ...(names
+          ? { name: fullName, first_name: names.first, last_name: names.last, father_name: names.father }
+          : {}),
         phone,
         telegram_user_id: request.telegram_user_id,
       })

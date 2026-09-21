@@ -322,7 +322,7 @@ export async function fetchMyAttempts(): Promise<AttemptSummary[]> {
 }
 
 const PROFILE_COLUMNS =
-  'id, name, first_name, last_name, onboarded_at, first_exam, self_level, target_band, study_timeframe, weak_areas, daily_minutes, heard_from, heard_from_note'
+  'id, name, first_name, last_name, father_name, onboarded_at, first_exam, self_level, target_band, study_timeframe, weak_areas, daily_minutes, heard_from, heard_from_note'
 
 function mapProfile(row: Record<string, unknown>): StudentProfile {
   return {
@@ -330,6 +330,7 @@ function mapProfile(row: Record<string, unknown>): StudentProfile {
     name: (row.name as string | null) ?? null,
     firstName: (row.first_name as string | null) ?? null,
     lastName: (row.last_name as string | null) ?? null,
+    fatherName: (row.father_name as string | null) ?? null,
     onboardedAt: (row.onboarded_at as string | null) ?? null,
     firstExam: (row.first_exam as FirstExam | null) ?? null,
     selfLevel: (row.self_level as SelfLevel | null) ?? null,
@@ -365,7 +366,8 @@ export async function fetchMyProfile(): Promise<StudentProfile> {
  *  constraints re-validate every value server-side. */
 export async function saveOnboarding(answers: OnboardingAnswers): Promise<StudentProfile> {
   const firstName = answers.firstName.trim()
-  const lastName = answers.lastName?.trim() || null
+  const lastName = answers.lastName.trim() || null
+  const fatherName = answers.fatherName.trim() || null
   // Keep the display `name` in sync so greetings work everywhere it's read.
   const fullName = [firstName, lastName].filter(Boolean).join(' ') || null
   const { data, error } = await supabase
@@ -374,6 +376,7 @@ export async function saveOnboarding(answers: OnboardingAnswers): Promise<Studen
       name: fullName,
       first_name: firstName || null,
       last_name: lastName,
+      father_name: fatherName,
       first_exam: answers.firstExam,
       self_level: answers.selfLevel,
       target_band: answers.targetBand,
@@ -391,19 +394,21 @@ export async function saveOnboarding(answers: OnboardingAnswers): Promise<Studen
   return mapProfile(data as Record<string, unknown>)
 }
 
-/** Update the student's display name (first name + surname) from /settings.
- *  Column grants allow name/first_name/last_name; scoped to the caller's own
- *  row. Keeps `name` in sync so greetings work everywhere it's read. */
+/** Update the student's names from /settings. Column grants allow name/
+ *  first_name/last_name/father_name (0037); scoped to the caller's own row.
+ *  Keeps `name` in sync so greetings work everywhere it's read. */
 export async function updateNames(
   firstName: string,
-  lastName: string | null,
+  lastName: string,
+  fatherName: string,
 ): Promise<StudentProfile> {
   const fn = firstName.trim()
-  const ln = lastName?.trim() || null
+  const ln = lastName.trim() || null
+  const fa = fatherName.trim() || null
   const fullName = [fn, ln].filter(Boolean).join(' ') || null
   const { data, error } = await supabase
     .from('profiles')
-    .update({ name: fullName, first_name: fn || null, last_name: ln })
+    .update({ name: fullName, first_name: fn || null, last_name: ln, father_name: fa })
     .eq('id', await ownUserId())
     .select(PROFILE_COLUMNS)
     .single()

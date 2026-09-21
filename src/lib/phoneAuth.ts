@@ -74,9 +74,6 @@ export const fetchTelegramStatus = (token: string) =>
 export async function completeTelegramSignup(input: {
   token: string
   code: string
-  firstName: string
-  lastName: string
-  fatherName: string
   password: string
 }) {
   const { email } = await call<{ email: string }>({ action: 'signup', ...input })

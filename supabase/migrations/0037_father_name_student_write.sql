@@ -1,0 +1,11 @@
+-- Names move from the sign-up form to the one-time /welcome questions.
+--
+-- Sign-up now asks only phone + password; the student gives first name,
+-- surname and father's name on the first step of the onboarding wizard, and can
+-- correct them later in Settings. first_name/last_name were already writable by
+-- the student (0014); father_name was service-role only (0029), because the
+-- telegram-auth function used to write it at account creation. It is a name
+-- like the other two, not an authority field like role, plan or phone, so it
+-- gets the same column grant. The existing "own profile update" RLS policy
+-- still limits the write to the student's own row, and the 60-char CHECK stays.
+grant update (father_name) on public.profiles to authenticated;

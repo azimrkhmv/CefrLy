@@ -98,8 +98,11 @@ down this file is STALE. What is true now:
   — the owner will supply the videos; `welcomed_at` is stamped only when they
   were actually sent), greeting, persistent menu: 📱 Send my number
   (request_contact) · 📖 Guide · ❓ FAQ · 🌐 Open Cefrly · 👥 Community. English.
-- SIGN-UP (AuthPage SignupFlow): first name, surname, father's name (required),
-  +998 phone, password, confirm → `telegram-auth` action `start` REFUSES a phone
+- SIGN-UP (AuthPage SignupFlow): +998 phone + password ONLY (since 2026-09-21 —
+  names moved to the FIRST /welcome step: first name, surname, father's name,
+  all three required; editable in Settings; father_name got a student column
+  grant in migration 0037. No confirm-password field — the eye toggle covers
+  it. telegram-auth `signup` accepts names but no longer needs them) → `telegram-auth` action `start` REFUSES a phone
   that already has an account (409 `phone_exists`, shown inline with a log-in
   link) → code screen (TelegramCodeStep: bot button + QR via qrcode-generator +
   6 boxes + 30-min countdown + Start over). The deep link
@@ -109,9 +112,8 @@ down this file is STALE. What is true now:
   (`expected_phone`), (d) not already registered — then sends a 6-digit code
   (sha256-hashed, 5-min life, 5 wrong tries, resend gap 30 s, max 5 per
   request). `signup` action creates the user with the admin API
-  (email_confirm + phone_confirm, user_metadata.signup='telegram' so WelcomePage
-  skips its name step) and fills profiles first/last/father_name, phone,
-  telegram_user_id. The code is consumed BEFORE the account is made (no replay).
+  (email_confirm + phone_confirm, user_metadata.signup='telegram') and fills
+  profiles phone + telegram_user_id (plus names only if an old form sent them). The code is consumed BEFORE the account is made (no replay).
 - PASSWORD RESET, two doors: (1) /forgot-password → same code flow with
   purpose 'reset' → new password typed on the site. (2) In the bot: sharing a
   registered number shows "Your login: +998 …" and a 🔑 Get a new password

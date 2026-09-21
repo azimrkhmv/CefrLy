@@ -29,6 +29,7 @@ const STEP_COUNT = 8
 type Draft = {
   firstName: string
   lastName: string
+  fatherName: string
   firstExam?: FirstExam
   selfLevel?: SelfLevel
   targetBand?: TargetBand
@@ -42,6 +43,7 @@ type Draft = {
 const EMPTY_DRAFT: Draft = {
   firstName: '',
   lastName: '',
+  fatherName: '',
   weakAreas: [],
   heardFromNote: '',
 }
@@ -97,8 +99,8 @@ const SOURCE_OPTIONS: { value: HeardFrom; label: string }[] = [
 
 const STEP_META: { title: string; sub: string; quip?: string }[] = [
   {
-    title: 'What should we call you?',
-    sub: 'Your name is how the cat greets you around here.',
+    title: 'What’s your name?',
+    sub: 'Your full name, as on your exam registration. The cat will stick to your first name.',
     quip: 'First things first.',
   },
   {
@@ -143,9 +145,14 @@ function loadDraft(): { step: number; draft: Draft } {
     const raw = localStorage.getItem(DRAFT_KEY)
     if (raw) {
       const parsed = JSON.parse(raw) as { step?: number; draft?: Partial<Draft> }
+      const draft = { ...EMPTY_DRAFT, ...parsed.draft }
+      // A draft saved before the name step asked for all three names (e.g. one
+      // past step 0 with no father's name) goes back to that step, or the
+      // wizard would finish with an empty name.
+      const namesDone = !!(draft.firstName.trim() && draft.lastName.trim() && draft.fatherName.trim())
       return {
-        step: Math.min(Math.max(parsed.step ?? 0, 0), STEP_COUNT - 1),
-        draft: { ...EMPTY_DRAFT, ...parsed.draft },
+        step: namesDone ? Math.min(Math.max(parsed.step ?? 0, 0), STEP_COUNT - 1) : 0,
+        draft,
       }
     }
   } catch {
@@ -171,31 +178,28 @@ export function WelcomePage() {
     setState((s) => ({ ...s, draft: { ...s.draft, ...patch } }))
   const goTo = (next: number) => setState((s) => ({ ...s, step: next }))
 
-  // Prefill the name from Google metadata once, only while it's untouched, so
-  // OAuth users don't retype what we already know.
+  // Names are asked HERE, not on the sign-up form (owner call 2026-09-21: the
+  // form had six fields). Every account passes through this step. An account
+  // made before the move already has its names in user_metadata, so they are
+  // prefilled once, while the step is untouched — but still shown, so they can
+  // be checked.
   const prefilledName = useRef(false)
   useEffect(() => {
     if (prefilledName.current) return
-    if (draft.firstName || draft.lastName) {
+    if (draft.firstName || draft.lastName || draft.fatherName) {
       prefilledName.current = true
       return
     }
     const meta = session?.user.user_metadata as Record<string, unknown> | undefined
-    // Telegram sign-up already collected first name + surname on its own form,
-    // so skip the name question and start at "first exam".
-    if (meta?.signup === 'telegram' && typeof meta.first_name === 'string') {
+    const str = (v: unknown) => (typeof v === 'string' ? v : '')
+    if (str(meta?.first_name)) {
       prefilledName.current = true
-      setState((s) => ({
-        step: s.step === 0 ? 1 : s.step,
-        draft: { ...s.draft, firstName: meta.first_name as string, lastName: (meta.last_name as string) ?? '' },
-      }))
-      return
+      setDraft({
+        firstName: str(meta?.first_name),
+        lastName: str(meta?.last_name),
+        fatherName: str(meta?.father_name),
+      })
     }
-    const full = ((meta?.full_name as string) || (meta?.name as string) || '').trim()
-    if (!full) return
-    prefilledName.current = true
-    const parts = full.split(/\s+/)
-    setDraft({ firstName: parts[0] ?? '', lastName: parts.slice(1).join(' ') })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session])
 
@@ -204,7 +208,7 @@ export function WelcomePage() {
   // Every step is REQUIRED (owner call 2026-08-31): nothing here may be skipped,
   // so Continue stays disabled until that step's answer exists.
   const canContinue = [
-    !!draft.firstName.trim(),
+    !!draft.firstName.trim() && !!draft.lastName.trim() && !!draft.fatherName.trim(),
     !!draft.firstExam,
     !!draft.selfLevel,
     !!draft.targetBand,
@@ -220,7 +224,8 @@ export function WelcomePage() {
     const note = draft.heardFromNote.trim()
     const answers: OnboardingAnswers = {
       firstName: draft.firstName.trim(),
-      lastName: draft.lastName.trim() || null,
+      lastName: draft.lastName.trim(),
+      fatherName: draft.fatherName.trim(),
       firstExam: draft.firstExam!,
       selfLevel: draft.selfLevel!,
       targetBand: draft.targetBand!,
@@ -335,7 +340,7 @@ export function WelcomePage() {
                 </div>
                 <div>
                   <label htmlFor="ob-last" className="mb-1.5 block text-sm font-bold text-ink">
-                    Surname <span className="font-semibold text-ink-soft">(optional)</span>
+                    Surname
                   </label>
                   <input
                     id="ob-last"
@@ -345,6 +350,21 @@ export function WelcomePage() {
                     maxLength={60}
                     autoComplete="family-name"
                     placeholder="e.g. Karimov"
+                    className="w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-brand"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="ob-father" className="mb-1.5 block text-sm font-bold text-ink">
+                    Father's name
+                  </label>
+                  <input
+                    id="ob-father"
+                    type="text"
+                    value={draft.fatherName}
+                    onChange={(e) => setDraft({ fatherName: e.target.value })}
+                    maxLength={60}
+                    autoComplete="additional-name"
+                    placeholder="e.g. Karimovich"
                     className="w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-brand"
                   />
                 </div>

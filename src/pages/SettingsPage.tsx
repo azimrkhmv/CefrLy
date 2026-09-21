@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchMyProfile, updateNames, updateStudyPrefs } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import type { DailyMinutes, HeardFrom, StudyPrefs, StudyTimeframe, WeakArea } from '../types/profile'
+import type { DailyMinutes, HeardFrom, StudentProfile, StudyPrefs, StudyTimeframe, WeakArea } from '../types/profile'
 import { Chip, OptionCard } from '../components/choice'
 import { GoalBandPicker } from '../components/GoalBandPicker'
 import { PlanSummary } from '../components/PlanSummary'
@@ -59,6 +59,14 @@ function prefsOf(p: {
   }
 }
 
+type Names = { firstName: string; lastName: string; fatherName: string }
+
+const namesOf = (p: StudentProfile): Names => ({
+  firstName: p.firstName ?? '',
+  lastName: p.lastName ?? '',
+  fatherName: p.fatherName ?? '',
+})
+
 export function SettingsPage() {
   const { session } = useAuth()
   const queryClient = useQueryClient()
@@ -69,14 +77,11 @@ export function SettingsPage() {
   } = useQuery({ queryKey: ['my-profile'], queryFn: fetchMyProfile, enabled: !!session })
 
   const [prefs, setPrefs] = useState<StudyPrefs | null>(null)
-  const [names, setNames] = useState<{ firstName: string; lastName: string } | null>(null)
+  const [names, setNames] = useState<Names | null>(null)
   useEffect(() => {
     if (profile) {
       setPrefs((current) => current ?? prefsOf(profile))
-      setNames(
-        (current) =>
-          current ?? { firstName: profile.firstName ?? '', lastName: profile.lastName ?? '' },
-      )
+      setNames((current) => current ?? namesOf(profile))
     }
   }, [profile])
 
@@ -89,10 +94,10 @@ export function SettingsPage() {
   })
 
   const saveNames = useMutation({
-    mutationFn: () => updateNames(names!.firstName, names!.lastName),
+    mutationFn: () => updateNames(names!.firstName, names!.lastName, names!.fatherName),
     onSuccess: (updated) => {
       queryClient.setQueryData(['my-profile'], updated)
-      setNames({ firstName: updated.firstName ?? '', lastName: updated.lastName ?? '' })
+      setNames(namesOf(updated))
     },
   })
 
@@ -101,8 +106,11 @@ export function SettingsPage() {
   const nameDirty =
     !!profile &&
     !!names &&
-    (names.firstName.trim() !== (profile.firstName ?? '').trim() ||
-      names.lastName.trim() !== (profile.lastName ?? '').trim())
+    (Object.keys(names) as (keyof Names)[]).some(
+      (k) => names[k].trim() !== namesOf(profile)[k].trim(),
+    )
+  const namesComplete =
+    !!names && !!(names.firstName.trim() && names.lastName.trim() && names.fatherName.trim())
 
   if (isLoading || (!profile && !error)) {
     return (
@@ -134,7 +142,9 @@ export function SettingsPage() {
 
         <section className="rounded-2xl bg-white p-6 shadow-soft ring-1 ring-line/50 sm:p-7">
           <h2 className="font-extrabold text-heading">Your name</h2>
-          <p className="mt-0.5 text-sm text-ink-soft">How Cefrly greets you across the app.</p>
+          <p className="mt-0.5 text-sm text-ink-soft">
+            Your full name. Cefrly greets you by your first name.
+          </p>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="set-first" className="mb-1.5 block text-sm font-bold text-ink">
@@ -153,7 +163,7 @@ export function SettingsPage() {
             </div>
             <div>
               <label htmlFor="set-last" className="mb-1.5 block text-sm font-bold text-ink">
-                Surname <span className="font-semibold text-ink-soft">(optional)</span>
+                Surname
               </label>
               <input
                 id="set-last"
@@ -163,6 +173,21 @@ export function SettingsPage() {
                 maxLength={60}
                 autoComplete="family-name"
                 placeholder="e.g. Karimov"
+                className="w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-brand"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label htmlFor="set-father" className="mb-1.5 block text-sm font-bold text-ink">
+                Father's name
+              </label>
+              <input
+                id="set-father"
+                type="text"
+                value={names.fatherName}
+                onChange={(e) => setNames({ ...names, fatherName: e.target.value })}
+                maxLength={60}
+                autoComplete="additional-name"
+                placeholder="e.g. Karimovich"
                 className="w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-brand"
               />
             </div>
@@ -178,7 +203,7 @@ export function SettingsPage() {
             )}
             <button
               type="button"
-              disabled={!nameDirty || !names.firstName.trim() || saveNames.isPending}
+              disabled={!nameDirty || !namesComplete || saveNames.isPending}
               onClick={() => saveNames.mutate()}
               className="rounded-xl bg-brand px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep disabled:cursor-not-allowed disabled:opacity-40"
             >

@@ -15,14 +15,16 @@ import {
 import { AuthShell } from '../components/auth/AuthShell'
 import { TelegramCodeStep } from '../components/auth/TelegramCodeStep'
 import {
-  authInputClass,
   PasswordField,
   PasswordStrength,
   PhoneField,
 } from '../components/auth/formBits'
 
-// Sign up = name, surname, father's name, password → Telegram code (the phone
-// number comes from the student's own Telegram account, never typed here).
+// Sign up = phone + password → Telegram code (the bot checks the number typed
+// here against the student's own Telegram contact). Names are NOT asked here:
+// they are the first step of /welcome, which every new account goes through
+// (owner call 2026-09-21 — the form had six fields). No confirm-password field
+// either: the eye toggle lets the student check what they typed.
 // Log in = phone + password. (The email login for pre-Telegram accounts was
 // removed on the owner's call, 2026-09-14.)
 // "Remember me" is still not shipped: Supabase already persists the session.
@@ -192,13 +194,9 @@ function LoginForm({ from, expired }: { from: string; expired: boolean }) {
 // ---- Sign up: form → Telegram code ---------------------------------------------
 
 function SignupFlow({ from }: { from: string }) {
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [fatherName, setFatherName] = useState('')
   const [phone, setPhone] = useState('')
   const [phoneTaken, setPhoneTaken] = useState(false)
   const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -208,10 +206,6 @@ function SignupFlow({ from }: { from: string }) {
     e.preventDefault()
     setError(null)
     setPhoneTaken(false)
-    if (!firstName.trim() || !lastName.trim() || !fatherName.trim()) {
-      setError("Please fill in your first name, surname and father's name.")
-      return
-    }
     const full = fullPhone(phone)
     if (!full) {
       setError('Enter the 9 digits of your phone number after +998.')
@@ -219,10 +213,6 @@ function SignupFlow({ from }: { from: string }) {
     }
     if (password.length < 6) {
       setError('Your password needs at least 6 characters.')
-      return
-    }
-    if (password !== confirm) {
-      setError('The two passwords don’t match.')
       return
     }
     setBusy(true)
@@ -248,50 +238,17 @@ function SignupFlow({ from }: { from: string }) {
         confirmLabel="Confirm"
         onVerify={(code) =>
           // On success the session appears and AuthPage redirects on its own.
-          completeTelegramSignup({
-            token: start.token,
-            code,
-            firstName: firstName.trim(),
-            lastName: lastName.trim(),
-            fatherName: fatherName.trim(),
-            password,
-          })
+          completeTelegramSignup({ token: start.token, code, password })
         }
         onRestart={() => setStart(null)}
       />
     )
   }
 
-  const nameInput = (id: string, label: string, value: string, set: (v: string) => void, placeholder: string, autoComplete: string) => (
-    <div className="flex min-w-0 flex-1 flex-col">
-      <label htmlFor={id} className="mb-2 text-sm font-extrabold text-ink">
-        {label}
-      </label>
-      <input
-        id={id}
-        required
-        maxLength={60}
-        value={value}
-        onChange={(e) => set(e.target.value)}
-        className={authInputClass}
-        autoComplete={autoComplete}
-        placeholder={placeholder}
-      />
-    </div>
-  )
-
   return (
     <form onSubmit={handleContinue} className="flex flex-col">
-      <Heading title="Create an account" />
+      <Heading title="Create an account" intro="Your number and a password. We’ll ask your name next." />
 
-      <div className="flex flex-col gap-3.5 sm:flex-row">
-        {nameInput('cef-first', 'First name', firstName, setFirstName, 'Aziz', 'given-name')}
-        {nameInput('cef-last', 'Surname', lastName, setLastName, 'Karimov', 'family-name')}
-      </div>
-      <div className="h-3.5" />
-      {nameInput('cef-father', "Father's name", fatherName, setFatherName, 'Karimovich', 'additional-name')}
-
-      <div className="h-3.5" />
       <PhoneField
         value={phone}
         onChange={(v) => {
@@ -324,17 +281,6 @@ function SignupFlow({ from }: { from: string }) {
         placeholder="At least 6 characters"
       />
       <PasswordStrength password={password} />
-
-      <div className="h-3.5" />
-      <PasswordField
-        id="cef-confirm"
-        label="Confirm password"
-        value={confirm}
-        onChange={setConfirm}
-        show={showPw}
-        autoComplete="new-password"
-        placeholder="Type your password again"
-      />
 
       {error && <ErrorNote>{error}</ErrorNote>}
 
