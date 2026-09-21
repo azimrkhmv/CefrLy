@@ -52,6 +52,8 @@ const DashboardPage = page(() => import('./pages/DashboardPage'), 'DashboardPage
 const HandoffPage = page(() => import('./pages/HandoffPage'), 'HandoffPage')
 const WelcomePage = page(() => import('./pages/WelcomePage'), 'WelcomePage')
 const SettingsPage = page(() => import('./pages/SettingsPage'), 'SettingsPage')
+const TermsPage = page(() => import('./pages/TermsPage'), 'TermsPage')
+const PrivacyPage = page(() => import('./pages/PrivacyPage'), 'PrivacyPage')
 
 /**
  * The admin console left this app on 2026-08-28 — it is its own deployment now
@@ -91,6 +93,9 @@ export default function App() {
             configured — see ForgotPasswordPage and AuthPage's
             SHOW_FORGOT_PASSWORD flag. Registered so it can be tested. */}
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        {/* Public: the sign-up screen links here, before any account exists. */}
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
 
         {/* Handoff is public: it exchanges a MilliyMock token before a session exists. */}
         <Route element={<Layout />}>

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { AudioAsset } from '../../types/test'
-import { audioUrl } from '../../lib/storage'
+import { fetchListeningAudio } from '../../lib/api'
+import { useAudioSource } from '../../lib/audioSource'
 import { useAudioStore } from '../../store/audio'
 import { VolumeControl } from './VolumeControl'
 
@@ -29,7 +31,22 @@ export function PracticeAudioPlayer({
   /** Review surfaces pass false — the student presses play themselves. */
   autoStart?: boolean
 }) {
-  const url = audioUrl(audio.assetPath)
+  // The audio bucket is private: the URL is signed by listening-audio for this
+  // session (or reviewed attempt). Signed for 2h, so reuse it well inside that.
+  const source = useAudioSource()
+  const urlQuery = useQuery({
+    queryKey: ['listening-audio', source, audio.assetPath],
+    queryFn: async () => {
+      const reply = await fetchListeningAudio(source!, audio.assetPath)
+      return 'url' in reply ? reply.url : (reply.active?.url ?? '')
+    },
+    enabled: !!source && !!audio.assetPath,
+    staleTime: 90 * 60 * 1000,
+    gcTime: 90 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  })
+  const url = urlQuery.data ?? ''
   const audioRef = useRef<HTMLAudioElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [current, setCurrent] = useState(0)
@@ -57,15 +74,21 @@ export function PracticeAudioPlayer({
   // after a refresh) degrades to the ordinary play button, not a retry loop.
   const started = useAudioStore((s) => (s.plays[audio.assetPath] ?? 0) > 0)
   const usePlay = useAudioStore((s) => s.usePlay)
+  // Waits for the signed URL, which arrives a moment after mount.
+  const autoTried = useRef(false)
   useEffect(() => {
+    if (autoTried.current || !url) return
+    autoTried.current = true
     if (!autoStart || started || failed) return
     usePlay(audio.assetPath)
     void audioRef.current?.play().catch(() => {
       /* autoplay blocked — the student presses play instead */
     })
-    // Intentionally mount-only: one attempt per first visit.
+    // One attempt per first visit, once the URL exists.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [url])
+
+  const loadFailed = failed || urlQuery.isError
 
   function toggle() {
     const el = audioRef.current
@@ -104,7 +127,7 @@ export function PracticeAudioPlayer({
         <button
           type="button"
           onClick={() => skip(-SKIP)}
-          disabled={failed}
+          disabled={loadFailed || !url}
           aria-label="Rewind 10 seconds"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line bg-white text-ink transition-colors hover:border-ink-faint disabled:opacity-40"
         >
@@ -114,7 +137,7 @@ export function PracticeAudioPlayer({
         <button
           type="button"
           onClick={toggle}
-          disabled={failed}
+          disabled={loadFailed || !url}
           aria-label={isPlaying ? 'Pause' : 'Play'}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand text-white transition-colors hover:bg-brand-deep disabled:opacity-40"
         >
@@ -124,7 +147,7 @@ export function PracticeAudioPlayer({
         <button
           type="button"
           onClick={() => skip(SKIP)}
-          disabled={failed}
+          disabled={loadFailed || !url}
           aria-label="Forward 10 seconds"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line bg-white text-ink transition-colors hover:border-ink-faint disabled:opacity-40"
         >
@@ -140,13 +163,13 @@ export function PracticeAudioPlayer({
           onChange={(e) => seek(Number(e.target.value))}
           aria-label="Seek"
           className="accent-brand h-1.5 flex-1 cursor-pointer"
-          disabled={failed || duration === 0}
+          disabled={loadFailed || duration === 0}
         />
 
         <VolumeControl value={volume} onChange={setVolume} />
       </div>
 
-      {failed && (
+      {loadFailed && (
         <p className="mt-2 text-xs text-rose-700">This recording could not be loaded.</p>
       )}
 

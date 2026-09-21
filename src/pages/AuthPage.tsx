@@ -342,10 +342,17 @@ function SignupFlow({ from }: { from: string }) {
         {busy ? 'Please wait…' : 'Continue'}
       </button>
 
-      {/* "Terms" and "Privacy Policy" stay plain text until those pages exist. */}
+      {/* New tab: following a link in place would throw away the half-filled form. */}
       <p className="mt-[18px] text-center text-xs font-semibold leading-[1.5] text-ink-soft">
-        By continuing you agree to our <span className="font-bold text-ink">Terms</span> and{' '}
-        <span className="font-bold text-ink">Privacy Policy</span>.
+        By continuing you agree to our{' '}
+        <Link to="/terms" target="_blank" className="font-bold text-brand hover:underline">
+          Terms
+        </Link>{' '}
+        and{' '}
+        <Link to="/privacy" target="_blank" className="font-bold text-brand hover:underline">
+          Privacy Policy
+        </Link>
+        .
       </p>
 
       <SwitchLine isLogin={false} from={from} />

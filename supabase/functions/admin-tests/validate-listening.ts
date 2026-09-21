@@ -55,6 +55,22 @@ export function validateListeningTest(content: any, partNumber?: number): string
     }
     if (typeof a.playLimit !== 'number' || a.playLimit < 1) err(`${where}: playLimit must be at least 1.`)
     if (typeof a.previewSec !== 'number' || a.previewSec < 0) err(`${where}: previewSec must be 0 or more.`)
+    if (a.repeatsIncluded !== undefined && typeof a.repeatsIncluded !== 'boolean') {
+      err(`${where}: repeatsIncluded must be true or false.`)
+    }
+    // THE EXAM RULE: every question is heard exactly twice — by playing the
+    // recording twice, or by a recording that contains its own second play.
+    // Mirrors the console's listeningValidation.ts.
+    if (typeof a.playLimit === 'number' && a.playLimit >= 1) {
+      const listens = a.playLimit * (a.repeatsIncluded ? 2 : 1)
+      if (listens !== 2) {
+        err(
+          `${where}: every question must be heard exactly twice, but this is ${listens}. ` +
+            `Use playLimit 2 for a recording played twice, or playLimit 1 with ` +
+            `repeatsIncluded for a recording that already contains its second play.`,
+        )
+      }
+    }
   }
   if (content.audioMode === 'single') checkAudio(content.singleAudio, 'Section audio')
 

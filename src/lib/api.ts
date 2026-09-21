@@ -226,6 +226,32 @@ export function cancelSession(sessionId: string): Promise<{ ok: true }> {
   return invokeFunction<{ ok: true }>('session-control', { sessionId, action: 'cancel' })
 }
 
+/** Where a listening recording is being played from: a live exam session, or
+ *  the post-submit review of an attempt. */
+export type AudioSource = { sessionId: string } | { attemptId: string }
+
+/** What listening-audio answers. Practice and review get a plain URL; a
+ *  simulation gets its play count and, if a play is running, where it is. */
+export type ListeningAudioReply =
+  | { mode: 'practice' | 'review'; url: string }
+  | {
+      mode: 'simulation'
+      playLimit: number
+      playsUsed: number
+      active: { url: string; offsetSec: number } | null
+    }
+
+/** The audio bucket is private: every recording URL comes from here, signed and
+ *  short-lived. 'start' spends one simulation play (the server refuses once they
+ *  are used up); 'status' never spends anything. */
+export function fetchListeningAudio(
+  source: AudioSource,
+  assetPath: string,
+  action: 'status' | 'start' = 'status',
+): Promise<ListeningAudioReply> {
+  return invokeFunction<ListeningAudioReply>('listening-audio', { ...source, assetPath, action })
+}
+
 /** Grades server-side and returns the full result with explanations. */
 export function submitTest(
   testId: string,

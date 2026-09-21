@@ -6,6 +6,7 @@ import { fetchAttemptReview } from '../lib/api'
 import { imageUrl } from '../lib/storage'
 import { BAND_INFO } from '../lib/bands'
 import { PracticeAudioPlayer } from '../components/test/PracticeAudioPlayer'
+import { AudioSourceContext } from '../lib/audioSource'
 import { PassageHtml } from '../components/test/PassageHtml'
 import { CloseIcon, HomeIcon } from '../components/icons'
 import type { AttemptReview, ItemResult } from '../types/attempt'
@@ -164,11 +165,14 @@ function ReviewScreen({ review }: { review: AttemptReview }) {
       {/* The recording — free controls, never auto-plays in review */}
       {partAudio && (
         <div className="shrink-0 border-b border-line bg-white px-4 py-2.5 sm:px-6">
-          <PracticeAudioPlayer
-            audio={partAudio}
-            label={review.audioMode === 'single' ? 'Full recording' : `Part ${part?.number} recording`}
-            autoStart={false}
-          />
+          {/* The practice player only keys a query on this, so an inline value is fine. */}
+          <AudioSourceContext.Provider value={{ attemptId: review.attemptId }}>
+            <PracticeAudioPlayer
+              audio={partAudio}
+              label={review.audioMode === 'single' ? 'Full recording' : `Part ${part?.number} recording`}
+              autoStart={false}
+            />
+          </AudioSourceContext.Provider>
         </div>
       )}
 

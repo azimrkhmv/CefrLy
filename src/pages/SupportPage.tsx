@@ -28,21 +28,19 @@ const FAQ: { q: string; a: ReactNode }[] = [
     q: 'I closed the tab mid-test — is my attempt lost?',
     a: (
       <>
-        No. Reopen the test on the same device and browser and you’ll get a Resume banner — your
+        No. Reopen the test — on this device or another one — and you’ll get a Resume banner. Your
         answers are saved as you type. Only the Exit button cancels an attempt (it asks you to
         confirm first).
       </>
     ),
   },
   {
-    q: 'When are Writing and Speaking coming?',
+    q: 'How are Writing and Speaking marked?',
     a: (
       <>
-        They’re in the works. Until then, study the model answers on the{' '}
-        <Link to="/samples" className="font-bold text-brand hover:underline">
-          Samples
-        </Link>{' '}
-        page to see what a strong response looks like.
+        An AI examiner marks them against the official CEFR (multilevel) criteria and gives you a
+        score out of 75 with feedback. Like every band on Cefrly it’s an estimate. If a mark looks
+        wrong, use “Ask for a recheck” on a Speaking result or message us, and we’ll look at it.
       </>
     ),
   },
@@ -104,6 +102,16 @@ export function SupportPage() {
           </div>
         ))}
       </section>
+
+      <p className="max-w-xl text-xs text-ink-soft">
+        <Link to="/terms" className="font-bold text-brand hover:underline">
+          Terms of Use
+        </Link>{' '}
+        ·{' '}
+        <Link to="/privacy" className="font-bold text-brand hover:underline">
+          Privacy Policy
+        </Link>
+      </p>
     </div>
   )
 }

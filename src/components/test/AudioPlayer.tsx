@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AudioAsset } from '../../types/test'
-import { audioUrl } from '../../lib/storage'
+import { fetchListeningAudio } from '../../lib/api'
+import { useAudioSource } from '../../lib/audioSource'
 import { useAudioStore } from '../../store/audio'
 import { VolumeControl } from './VolumeControl'
 
@@ -11,21 +12,44 @@ function fmt(sec: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+/** Resolve once the element knows the file's duration, so a seek lands. */
+function whenReady(el: HTMLAudioElement): Promise<void> {
+  if (el.readyState >= 1) return Promise.resolve()
+  return new Promise((resolve, reject) => {
+    const done = () => {
+      el.removeEventListener('loadedmetadata', done)
+      el.removeEventListener('error', fail)
+      resolve()
+    }
+    const fail = () => {
+      el.removeEventListener('loadedmetadata', done)
+      el.removeEventListener('error', fail)
+      reject(new Error('audio failed to load'))
+    }
+    el.addEventListener('loadedmetadata', done)
+    el.addEventListener('error', fail)
+  })
+}
+
 // One audio control governing a single recording. Placement decides the mode:
 //   per_part  -> one <AudioPlayer> inside each part
 //   single    -> one <AudioPlayer> at the top of the whole section
-// Exam rules enforced here: a previewSec countdown gates the FIRST play (audio
-// locked, questions visible); playback is capped at playLimit; there is no
-// seek/pause (a recording plays right through, exactly like a real exam). The
-// FIRST play starts automatically as soon as the recording unlocks — in the
-// real hall the tape rolls on its own. If the browser blocks the autoplay (no
-// user gesture yet, e.g. straight after a refresh) the player stays manual.
-// Play/preview state lives in useAudioStore so it survives part navigation.
+// Exam rules: a previewSec countdown gates the FIRST play (audio locked,
+// questions visible); playback is capped at playLimit; there is no seek/pause.
+//
+// THE PLAY LIMIT IS THE SERVER'S. The audio bucket is private, and every play is
+// started by listening-audio, which counts it and refuses the one past the
+// limit. A play is a time window on the server's clock: after a refresh, exit
+// and resume, or a second tab, the player asks where the running play is and
+// RESUMES there — the tape kept rolling. Refreshing can neither buy a replay
+// nor burn one.
+//
+// The FIRST play starts on its own as soon as the recording unlocks, like the
+// real hall — but only once the page has had a user gesture (the mode picker
+// click), so a play is never spent on an autoplay the browser then blocks.
 export function AudioPlayer({ audio, label }: { audio: AudioAsset; label: string }) {
-  const url = audioUrl(audio.assetPath)
-  const playsUsed = useAudioStore((s) => s.plays[audio.assetPath] ?? 0)
+  const source = useAudioSource()
   const previewedGlobal = useAudioStore((s) => s.previewed[audio.assetPath] ?? false)
-  const usePlay = useAudioStore((s) => s.usePlay)
   const markPreviewed = useAudioStore((s) => s.markPreviewed)
   const markDone = useAudioStore((s) => s.markDone)
 
@@ -39,16 +63,96 @@ export function AudioPlayer({ audio, label }: { audio: AudioAsset; label: string
   const [current, setCurrent] = useState(0)
   const [duration, setDuration] = useState(0)
   const [failed, setFailed] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  // From the server. `null` until the first status answer arrives.
+  const [playLimit, setPlayLimit] = useState(audio.playLimit)
+  const [playsUsed, setPlaysUsed] = useState<number | null>(null)
+  const [url, setUrl] = useState('')
+  // Client-clock moment the running play began (Date.now() - offset). Null when
+  // no play is running. Where we should be = (Date.now() - anchor) / 1000.
+  const [anchor, setAnchor] = useState<number | null>(null)
 
   // Keep the element at the shared volume (store + slider below).
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume
   }, [volume])
 
-  const playsLeft = Math.max(0, audio.playLimit - playsUsed)
+  /** Seek to where the tape is and play. Returns false if the browser blocked it. */
+  const catchUp = useCallback(async () => {
+    const el = audioRef.current
+    if (!el || anchor === null) return false
+    try {
+      await whenReady(el)
+    } catch {
+      return false
+    }
+    const offset = (Date.now() - anchor) / 1000
+    if (Number.isFinite(el.duration) && offset >= el.duration - 0.25) {
+      // The play ran out while we were away.
+      setAnchor(null)
+      markDone(audio.assetPath)
+      return true
+    }
+    el.currentTime = Math.max(0, offset)
+    try {
+      await el.play()
+      return true
+    } catch {
+      return false
+    }
+  }, [anchor, audio.assetPath, markDone])
+
+  // Ask the server where this recording stands.
+  useEffect(() => {
+    if (!source) return
+    let cancelled = false
+    fetchListeningAudio(source, audio.assetPath, 'status')
+      .then((reply) => {
+        if (cancelled) return
+        if (reply.mode !== 'simulation') {
+          // Not a simulation after all — nothing to count.
+          setPlaysUsed(0)
+          setUrl(reply.url)
+          return
+        }
+        setPlayLimit(reply.playLimit)
+        setPlaysUsed(reply.playsUsed)
+        if (reply.playsUsed > 0) markPreviewed(audio.assetPath) // the preview window is long over
+        if (reply.active) {
+          setUrl(reply.active.url)
+          setAnchor(Date.now() - reply.active.offsetSec * 1000)
+        }
+      })
+      .catch(() => {
+        if (cancelled) return
+        setFailed(true)
+        markDone(audio.assetPath) // a broken recording must never deadlock submission
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [source, audio.assetPath, markPreviewed, markDone])
+
+  // A running play found on mount: pick it up where it is.
+  const resumeTried = useRef(false)
+  useEffect(() => {
+    if (resumeTried.current || anchor === null || !url || isPlaying) return
+    resumeTried.current = true
+    void catchUp()
+  }, [anchor, url, isPlaying, catchUp])
+
+  const limit = playLimit
+  const used = playsUsed ?? 0
+  const playsLeft = Math.max(0, limit - used)
+  const running = anchor !== null
   const inPreview = !previewedGlobal && previewLeft > 0
-  const locked = !inPreview && playsLeft <= 0 && !isPlaying
-  const canPlay = !inPreview && playsLeft > 0 && !isPlaying && !failed
+  const loading = playsUsed === null && !failed
+  const locked = !inPreview && !loading && playsLeft <= 0 && !running
+  const canStart = !inPreview && !loading && playsLeft > 0 && !running && !failed && !busy
+  // A play is running on the server but this tab is silent (autoplay blocked
+  // after a refresh): one tap catches up, and spends nothing.
+  const canResume = running && !isPlaying && !failed
 
   // Preview countdown — runs once, on first mount for this recording.
   useEffect(() => {
@@ -72,48 +176,91 @@ export function AudioPlayer({ audio, label }: { audio: AudioAsset; label: string
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Auto-start the first play once the recording is unlocked (immediately when
-  // previewSec is 0, else when the countdown ends). Only ever attempted for a
-  // never-played recording, and only once per mount — returning to a part or a
-  // blocked autoplay falls back to the manual play button.
-  const autoplayTried = useRef(false)
-  useEffect(() => {
-    if (autoplayTried.current || inPreview || failed || isPlaying) return
-    if (playsUsed > 0 || playsLeft <= 0) return
+  async function startPlay() {
+    if (!source || !canStart) return
+    setBusy(true)
+    try {
+      const reply = await fetchListeningAudio(source, audio.assetPath, 'start')
+      if (reply.mode !== 'simulation' || !reply.active) return
+      setPlaysUsed(reply.playsUsed)
+      setUrl(reply.active.url)
+      setAnchor(Date.now())
+      resumeTried.current = true // started here, so there is nothing to resume
+      await playFromZero(reply.active.url)
+    } catch {
+      // Refused (every play used, or taken by another tab): re-read the truth.
+      try {
+        const reply = await fetchListeningAudio(source, audio.assetPath, 'status')
+        if (reply.mode === 'simulation') {
+          setPlaysUsed(reply.playsUsed)
+          if (reply.active) {
+            setUrl(reply.active.url)
+            setAnchor(Date.now() - reply.active.offsetSec * 1000)
+          }
+        }
+      } catch {
+        setFailed(true)
+        markDone(audio.assetPath)
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function playFromZero(src: string) {
     const el = audioRef.current
     if (!el) return
-    autoplayTried.current = true
-    el.currentTime = 0
-    void el.play().catch(() => {
-      /* autoplay blocked — the student presses play instead */
-    })
-  }, [inPreview, failed, isPlaying, playsUsed, playsLeft])
+    try {
+      // Set directly: React would only apply the new src on its next render.
+      if (el.src !== src) el.src = src
+      await whenReady(el)
+      el.currentTime = 0
+      await el.play()
+    } catch {
+      /* blocked — the Resume button takes over, at the right offset */
+    }
+  }
 
-  function handlePlay() {
-    const el = audioRef.current
-    if (!el || !canPlay) return
-    el.currentTime = 0
-    void el.play().catch(() => setFailed(true))
+  // Auto-start the first play once unlocked, for a never-played recording, and
+  // only after a user gesture on this page (see the note above).
+  const autoplayTried = useRef(false)
+  useEffect(() => {
+    if (autoplayTried.current || !canStart || used > 0) return
+    const activated = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } })
+      .userActivation?.hasBeenActive
+    if (activated === false) return
+    autoplayTried.current = true
+    void startPlay()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canStart, used])
+
+  function handleButton() {
+    if (canResume) void catchUp()
+    else void startPlay()
   }
 
   const status = failed
     ? 'This recording could not be loaded.'
-    : inPreview
-      ? `Recording unlocks in ${previewLeft}s — read the questions first.`
-      : isPlaying
-        ? 'Playing…'
-        : locked
-          ? `You have used all ${audio.playLimit} plays of this recording.`
-          : `Ready — ${playsLeft} of ${audio.playLimit} play${audio.playLimit === 1 ? '' : 's'} left.`
+    : loading
+      ? 'Loading the recording…'
+      : inPreview
+        ? `Recording unlocks in ${previewLeft}s — read the questions first.`
+        : isPlaying
+          ? 'Playing…'
+          : canResume
+            ? 'The recording is running — press play to catch up.'
+            : locked
+              ? `You have used all ${limit} plays of this recording.`
+              : `Ready — ${playsLeft} of ${limit} play${limit === 1 ? '' : 's'} left.`
 
   return (
     <div className="rounded-2xl border border-line bg-brand-soft/40 p-4 shadow-card">
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
-          onClick={handlePlay}
-          disabled={!canPlay}
-          aria-label={isPlaying ? 'Recording playing' : `Play ${label}`}
+          onClick={handleButton}
+          disabled={!(canStart || canResume)}
+          aria-label={isPlaying ? 'Recording playing' : canResume ? `Resume ${label}` : `Play ${label}`}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand text-white transition-colors hover:bg-brand-deep disabled:cursor-not-allowed disabled:opacity-40"
         >
           {locked ? <LockIcon /> : isPlaying ? <SoundIcon /> : <PlayIcon />}
@@ -122,7 +269,7 @@ export function AudioPlayer({ audio, label }: { audio: AudioAsset; label: string
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-heading">{label}</span>
-            <PlayDots used={playsUsed} total={audio.playLimit} />
+            <PlayDots used={used} total={limit} />
           </div>
           <p className="tnum mt-0.5 text-xs text-ink-soft" aria-live="polite">
             {status}
@@ -158,11 +305,14 @@ export function AudioPlayer({ audio, label }: { audio: AudioAsset; label: string
         ref={audioRef}
         src={url || undefined}
         preload="auto"
-        onPlay={() => {
-          setIsPlaying(true)
-          usePlay(audio.assetPath)
+        onPlay={() => setIsPlaying(true)}
+        // No pause control exists; a pause is the browser's (an interruption).
+        // The server's tape keeps going, so the button offers a catch-up.
+        onPause={(e) => {
+          if (!e.currentTarget.ended) setIsPlaying(false)
         }}
         onEnded={() => {
+          setAnchor(null)
           setIsPlaying(false)
           setProgress(0)
           setCurrent(0)

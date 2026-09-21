@@ -1,19 +1,31 @@
 import { supabase } from './supabase'
 
-// Listening media lives in two public Storage buckets:
-//   audio  -> recordings   images -> Part 4 map/plan images
-// Both are public-read (students stream/display via the public URL) but
-// admin-only write (RLS: is_admin()). Uploads only ever happen from /admin.
+// Listening media lives in two Storage buckets, both admin-only write (RLS:
+// is_admin()); uploads only ever happen from the admin console.
+//   images -> Part 4 maps and sample photos. PUBLIC read.
+//   audio  -> recordings. PRIVATE since migration 0035: a public URL would let a
+//             student replay a simulation recording as often as they like.
+//             Students get signed URLs from the listening-audio edge function
+//             (which counts plays); admins sign their own with signedAudioUrl.
 export type MediaBucket = 'audio' | 'images'
 
-/** Resolve a stored object path to its public URL. Empty path -> ''. */
-export function publicAssetUrl(bucket: MediaBucket, assetPath: string | undefined): string {
+/** Public URL of an image. Empty path -> ''. */
+export function imageUrl(assetPath: string | undefined): string {
   if (!assetPath) return ''
-  return supabase.storage.from(bucket).getPublicUrl(assetPath).data.publicUrl
+  return supabase.storage.from('images').getPublicUrl(assetPath).data.publicUrl
 }
 
-export const audioUrl = (assetPath: string | undefined) => publicAssetUrl('audio', assetPath)
-export const imageUrl = (assetPath: string | undefined) => publicAssetUrl('images', assetPath)
+/**
+ * ADMIN ONLY: a short-lived URL for previewing a recording. Storage RLS lets
+ * only admins read the audio bucket, so this rejects for anyone else. Students
+ * go through fetchListeningAudio (src/lib/api.ts) instead.
+ */
+export async function signedAudioUrl(assetPath: string | undefined): Promise<string> {
+  if (!assetPath) return ''
+  const { data, error } = await supabase.storage.from('audio').createSignedUrl(assetPath, 60 * 60)
+  if (error || !data) throw new Error(error?.message ?? 'Could not load the recording')
+  return data.signedUrl
+}
 
 /**
  * Admin-only upload. Returns the stored object path (what goes in `assetPath`).

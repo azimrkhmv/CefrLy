@@ -56,14 +56,35 @@ export interface Passage {
   paragraphs?: { label: string; html: string }[]
 }
 
-/** Listening audio for a part (per_part mode) or the whole section (single mode). */
+/** Listening audio for a part (per_part mode) or the whole section (single mode).
+ *
+ *  THE EXAM RULE IS "EVERY QUESTION IS HEARD TWICE", and a recording can satisfy
+ *  it in one of two ways — so `playLimit` ALONE does not express it:
+ *    · a clean single-pass recording played twice  -> playLimit 2, repeatsIncluded false
+ *    · a recording that already contains its own
+ *      second play (how the official papers ship)  -> playLimit 1, repeatsIncluded true
+ *  `listensPerQuestion()` below folds the two into the number that actually
+ *  matters, and the validators reject anything that is not 2. Setting playLimit
+ *  2 on a recording that repeats itself gives FOUR listens; setting playLimit 1
+ *  on one that does not gives ONE. Both are exam-breaking and both used to pass. */
 export interface AudioAsset {
   /** Object path inside the `audio` storage bucket. */
   assetPath: string
-  /** How many times the recording may be played (real exams: 2). */
+  /** How many times the student may START this recording. */
   playLimit: number
+  /** The recording already contains the exam's second play of every question
+   *  (the official papers bake the repeat in, with its announcements and reading
+   *  pauses). When true, playLimit must be 1 — replaying would be a third and
+   *  fourth listen. */
+  repeatsIncluded?: boolean
   /** Seconds to preview the questions before the first play unlocks. */
   previewSec: number
+}
+
+/** How many times the student hears each question in this recording. The exam
+ *  rule is 2; see the AudioAsset note for why it takes both fields to say so. */
+export function listensPerQuestion(audio: AudioAsset): number {
+  return audio.playLimit * (audio.repeatsIncluded ? 2 : 1)
 }
 
 /** Listening map/plan image for Part 4 (map_labelling). */

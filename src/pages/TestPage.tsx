@@ -17,6 +17,7 @@ import { useAuth } from '../lib/auth'
 import { ACTION_LABEL_ONE } from '../lib/plans'
 import { useAnswersStore } from '../store/answers'
 import { useAudioStore } from '../store/audio'
+import { AudioSourceContext } from '../lib/audioSource'
 import { useHighlightsStore } from '../store/highlights'
 import { highlightsSupported } from '../lib/textHighlight'
 import {
@@ -206,6 +207,8 @@ export function TestPage() {
   const isPartTest = (attempt?.scope ?? 'full') === 'part'
   const catalogPath = attempt?.skill === 'listening' ? '/listening' : '/reading'
   const sessionId = test?.session.id
+  // Stable, so the listening players' effects keyed on it run once per session.
+  const audioSource = useMemo(() => (sessionId ? { sessionId } : null), [sessionId])
 
   // RESCUE: the clock ran out while the student was away (tab closed, laptop
   // shut). The attempt is over as far as the server is concerned, but this
@@ -861,6 +864,7 @@ export function TestPage() {
   const canPause = isPractice && !isListening
 
   return (
+    <AudioSourceContext.Provider value={audioSource}>
     <ExamScreen>
       {/* Slim exam top bar — replaces the app shell. Fixed height so the paper
           below scrolls independently and the timer/submit stay in reach. */}
@@ -1100,6 +1104,7 @@ export function TestPage() {
         onCancel={() => setConfirmAction(null)}
       />
     </ExamScreen>
+    </AudioSourceContext.Provider>
   )
 }
 

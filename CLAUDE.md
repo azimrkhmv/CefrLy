@@ -38,7 +38,9 @@ DUPLICATED FILES: the admin repo carries copies of `lib/auth`, `lib/supabase`,
 few components — 19 files, listed in `../CefrLyAdmin/scripts/check-shared.mjs`.
 Change any of them HERE and you must mirror the change THERE. RUN THE CHECK:
 `cd ../CefrLyAdmin && npm run check:shared` (diffs against ../cefrly, exit 1 =
-drift). STATUS 2026-09-10: 14/19 in sync; `types/test.ts`, `types/attempt.ts`,
+drift). STATUS 2026-09-21: 19/19 IN SYNC (types/test.ts merged both ways — the
+console's `repeatsIncluded` + `listensPerQuestion` came back here, and the server
+validator now enforces the same two-listens rule). History: 2026-09-10 was 14/19; `types/test.ts`, `types/attempt.ts`,
 `Skeleton.tsx`, `RouteFallback.tsx` and `index.css` drifted, ALL student-ahead
 (51 commits here since the split, 18 of them touching mirrored files). The
 dangerous case is NOT live: `types/test.ts` is identical through line 250 —
@@ -332,10 +334,18 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
   a store-reset that can fire while the draft-saver is subscribed. All
   localStorage draft ops are try/catch-guarded (blocked/full storage must not
   crash the exam). Verified live: type → Exit dialog → resume → answer intact.
-  KNOWN LIMITS (by design for now): drafts are client-side only — resuming on
-  another device restores the session/timer but not typed answers; listening
-  simulation playLimit is client-side only (exit/refresh restores plays; audio
-  URLs are public) — real enforcement needs signed URLs + server play counts.
+  CROSS-DEVICE: answers ALSO sync to `session_answers` a few seconds behind, so
+  another device resumes them (newest copy wins).
+  LISTENING PLAY LIMIT IS SERVER-SIDE (2026-09-21, migration 0035 + edge fn
+  `listening-audio`): the `audio` bucket is PRIVATE (admins read it via RLS;
+  the console previews with signedAudioUrl). Players get 2h signed URLs from
+  listening-audio via AudioSourceContext ({sessionId} in TestPage, {attemptId}
+  in ReviewPage). Simulation plays are rows in `listening_plays` (unique
+  session+asset+play_no); 'start' 403s code plays_used past playLimit. A play is
+  a TIME WINDOW: refresh/exit/2nd tab gets the running play's offset and
+  RESUMES — it can neither buy nor burn a play. Autoplay only fires after a
+  user gesture (navigator.userActivation) so a blocked autoplay never spends a
+  play. Residual hole: an issued signed URL is reusable until it expires.
 - EXIT = CANCEL (user decision 2026-07-06, supersedes save-on-exit): the Exit
   button's dialog now reads "This attempt will be cancelled and your answers
   will be discarded" (confirm: "Leave & cancel"). Confirming calls
@@ -548,8 +558,11 @@ Item = mcq (prompt OPTIONAL — Part 1 has none) | match (prompt = "Speaker 1" /
     (ForgotPasswordPage, route /forgot-password registered so it can be tested)
     but nothing links to it while SMTP is unconfigured — flip
     SHOW_FORGOT_PASSWORD in AuthPage.tsx the day mail actually sends.
-  · The sign-up "Terms"/"Privacy Policy" words are PLAIN TEXT, not links: no such
-    routes exist yet. Make them <Link>s when those pages ship.
+  · /terms and /privacy EXIST (2026-09-21, TermsPage/PrivacyPage on the shared
+    LegalShell, public routes, in sitemap/robots). The sign-up line links to them
+    in a NEW TAB (in-place nav would lose the form). The privacy page names every
+    processor (Supabase Tokyo, Vercel, Gemini, OpenRouter, Telegram) and the
+    speaking-audio retention — change it when any of those change.
 - LOGIN / SIGNUP (src/pages/AuthPage.tsx) is a user-owned imported design from
   the claude.ai Design tool ("Cefrly Welcome"). It ORIGINALLY used its own
   slightly-off palette (brand #3B2C86, page #F6F4FB, link #6D4FE0, focus #8A63E8,

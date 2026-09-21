@@ -4,6 +4,8 @@ Allow: /login
 Allow: /signup
 Allow: /pricing
 Allow: /support
+Allow: /terms
+Allow: /privacy
 Disallow: /admin
 Disallow: /test/
 Disallow: /results/
