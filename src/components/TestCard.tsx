@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { TestCatalogEntry } from '../types/attempt'
 import type { OpenSession } from '../types/test'
-import { LockIcon } from './icons'
 import { SkillTile } from './SkillTile'
 import { useScreenTooSmallForExam } from '../lib/screen'
 
@@ -67,8 +66,8 @@ export function TestCard({
             </span>
             {/* Access badge: green "Free" for everyone, brand "Premium" for paid. */}
             {isPremium ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-brand px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-white">
-                <LockIcon width={11} height={11} />
+              // The word alone says it; no lock glyph (owner call 2026-09-25).
+              <span className="inline-block rounded-full bg-brand px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-white">
                 Premium
               </span>
             ) : (
@@ -112,9 +111,8 @@ export function TestCard({
           // exam (start-session would refuse it anyway with an upgrade prompt).
           <Link
             to="/pricing"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-brand bg-brand-soft px-4 py-2 text-sm font-bold text-brand transition-colors hover:bg-brand/10"
+            className="shrink-0 rounded-xl border border-brand bg-brand-soft px-4 py-2 text-sm font-bold text-brand transition-colors hover:bg-brand/10"
           >
-            <LockIcon width={14} height={14} />
             Unlock
           </Link>
         ) : (

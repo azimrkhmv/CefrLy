@@ -15,10 +15,12 @@ import {
 import { AuthShell } from '../components/auth/AuthShell'
 import { TelegramCodeStep } from '../components/auth/TelegramCodeStep'
 import {
+  authPrimaryButtonClass,
   PasswordField,
   PasswordStrength,
   PhoneField,
 } from '../components/auth/formBits'
+import { ArrowRightIcon } from '../components/icons'
 
 // Sign up = phone + password → Telegram code (the bot checks the number typed
 // here against the student's own Telegram contact). Names are NOT asked here:
@@ -29,8 +31,17 @@ import {
 // removed on the owner's call, 2026-09-14.)
 // "Remember me" is still not shipped: Supabase already persists the session.
 
-const primaryButton =
-  'mt-[18px] w-full rounded-xl border-0 bg-brand px-4 py-[15px] text-base font-extrabold text-white shadow-[0_8px_20px_color-mix(in_srgb,var(--color-brand)_22%,transparent)] transition-[background,transform] duration-150 hover:bg-brand-deep active:translate-y-px disabled:opacity-60'
+const primaryButton = `mt-5 ${authPrimaryButtonClass}`
+
+function ButtonLabel({ busy, children }: { busy: boolean; children: string }) {
+  if (busy) return <>Please wait…</>
+  return (
+    <>
+      {children}
+      <ArrowRightIcon width={18} height={18} className="opacity-70" aria-hidden />
+    </>
+  )
+}
 
 export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
   const location = useLocation()
@@ -56,7 +67,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
       line={(cat) => (isLogin ? cat.hello : cat.helloSignup)}
       // The design gives each screen its own steady second line under the
       // cat's, rather than one shared reassurance string.
-      sub={isLogin ? 'The official reading format, timed and scored.' : 'One free account, all four papers.'}
+      sub={isLogin ? 'Every CEFR paper, marked in minutes.' : 'One free account, all four papers.'}
     >
       {isLogin ? <LoginForm from={from} expired={expired} /> : <SignupFlow from={from} />}
     </AuthShell>
@@ -68,9 +79,9 @@ function Heading({ title, intro }: { title: string; intro?: string }) {
     <>
       {/* The desktop brand panel carries this eyebrow beside the headline. */}
       <p className="mt-[34px] text-[10px] font-extrabold uppercase tracking-[0.16em] text-ink-soft lg:hidden">
-        CEFR · Reading paper
+        CEFR mock exams
       </p>
-      <h1 className="mt-2 text-[28px] font-black leading-[1.15] text-heading lg:mt-0 lg:text-[32px]">
+      <h1 className="mt-2 text-[28px] font-black leading-[1.15] text-heading lg:mt-0 lg:text-[36px]">
         {title}
       </h1>
       {intro ? (
@@ -95,14 +106,14 @@ function ErrorNote({ children }: { children: string }) {
 
 function SwitchLine({ isLogin, from }: { isLogin: boolean; from: string }) {
   return (
-    <div className="mt-6 border-t border-line pt-5 text-center">
+    <div className="mt-7 border-t border-line pt-6 text-center">
       <p className="text-[15px] font-bold text-ink-soft">
         {isLogin ? 'New to Cefrly?' : 'Already have an account?'}
       </p>
       <Link
         to={isLogin ? '/signup' : '/login'}
         state={{ from }}
-        className="mt-3 block w-full rounded-xl border-2 border-brand bg-white px-4 py-[13px] text-base font-extrabold text-brand no-underline transition-colors hover:bg-brand-soft"
+        className="glass-ghost mt-3.5 block w-full rounded-xl border-2 border-brand bg-white px-4 py-[15px] text-base font-extrabold text-brand no-underline transition-colors hover:bg-brand-soft"
       >
         {isLogin ? 'Create an account' : 'Log in'}
       </Link>
@@ -155,7 +166,7 @@ function LoginForm({ from, expired }: { from: string; expired: boolean }) {
 
       <PhoneField value={phone} onChange={setPhone} />
 
-      <div className="h-3.5" />
+      <div className="h-5" />
       <PasswordField
         id="cef-pass"
         label="Password"
@@ -177,13 +188,13 @@ function LoginForm({ from, expired }: { from: string; expired: boolean }) {
           role="status"
           className="mt-4 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800"
         >
-          Your session expired, so we signed you out. Please sign in again — your progress is saved.
+          Your session expired, so we signed you out. Please sign in again. Your progress is saved.
         </p>
       )}
       {error && <ErrorNote>{error}</ErrorNote>}
 
       <button type="submit" disabled={busy} className={primaryButton}>
-        {busy ? 'Please wait…' : 'Sign in'}
+        <ButtonLabel busy={busy}>Sign in</ButtonLabel>
       </button>
 
       <SwitchLine isLogin from={from} />
@@ -233,8 +244,8 @@ function SignupFlow({ from }: { from: string }) {
     return (
       <TelegramCodeStep
         start={start}
-        title="Enter the code"
-        intro={`Open our Telegram bot from the account with +998 ${formatLocalPhone(phone)} and press 📱 Send my number to get your code.`}
+        title="Get your code in Telegram"
+        intro={`Use the Telegram account with +998 ${formatLocalPhone(phone)}. Then come back here and type the code.`}
         confirmLabel="Confirm"
         onVerify={(code) =>
           // On success the session appears and AuthPage redirects on its own.
@@ -269,7 +280,7 @@ function SignupFlow({ from }: { from: string }) {
         </div>
       )}
 
-      <div className="h-3.5" />
+      <div className="h-5" />
       <PasswordField
         id="cef-pass"
         label="Password"
@@ -285,7 +296,7 @@ function SignupFlow({ from }: { from: string }) {
       {error && <ErrorNote>{error}</ErrorNote>}
 
       <button type="submit" disabled={busy} className={primaryButton}>
-        {busy ? 'Please wait…' : 'Continue'}
+        <ButtonLabel busy={busy}>Continue</ButtonLabel>
       </button>
 
       {/* New tab: following a link in place would throw away the half-filled form. */}

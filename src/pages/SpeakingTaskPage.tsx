@@ -42,7 +42,7 @@ import type { SpeakingTest } from '../types/test'
 function ExamScreen({ children, center }: { children: ReactNode; center?: boolean }) {
   return createPortal(
     <div
-      className={`fixed inset-0 z-50 bg-page ${
+      className={`fixed inset-0 z-50 app-bg ${
         center ? 'flex items-center justify-center px-4 py-10' : 'flex flex-col'
       }`}
     >

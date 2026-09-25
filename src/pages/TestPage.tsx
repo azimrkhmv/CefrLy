@@ -143,7 +143,7 @@ function readDraftAnswers(sessionId: string | undefined): Record<string, string>
 function ExamScreen({ children, center }: { children: ReactNode; center?: boolean }) {
   return createPortal(
     <div
-      className={`fixed inset-0 z-50 bg-page ${
+      className={`fixed inset-0 z-50 app-bg ${
         center ? 'flex items-center justify-center px-6 text-center' : 'flex flex-col'
       }`}
     >
@@ -1009,7 +1009,7 @@ export function TestPage() {
           {/* One solid recording for the whole section — pinned while the
               student scrolls and navigates parts, like a real exam player. */}
           {isListening && test.audioMode === 'single' && test.singleAudio && (
-            <div className="sticky top-0 z-20 -mx-4 bg-page px-4 pb-1 pt-2 sm:-mx-8 sm:px-8">
+            <div className="sticky top-0 z-20 -mx-4 bg-page/75 px-4 pb-1 pt-2 backdrop-blur-md sm:-mx-8 sm:px-8">
               <ListeningAudio
                 audio={test.singleAudio}
                 label="Section recording"

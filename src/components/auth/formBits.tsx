@@ -5,7 +5,12 @@ import { formatLocalPhone } from '../../lib/phoneAuth'
  *  sign up and reset stay identical. Focus lifts the border to accent and adds
  *  the soft accent ring from the design. */
 export const authInputClass =
-  'w-full box-border rounded-xl border-2 border-line bg-page px-4 py-3.5 text-[15px] font-bold text-ink outline-none transition-[border-color,box-shadow] duration-150 placeholder:font-semibold placeholder:text-ink-faint focus:border-accent focus:bg-white focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--color-accent)_13%,transparent)]'
+  'w-full box-border rounded-xl border-[1.5px] border-line bg-page px-4 py-4 text-[15px] font-bold text-ink outline-none transition-[border-color,box-shadow] duration-150 placeholder:font-semibold placeholder:text-ink-faint focus:border-accent focus:bg-white focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--color-accent)_13%,transparent)]'
+
+/** The primary button on every auth screen: brand gradient with an
+ *  accent-lifted left edge, per the owner's design. No margin — callers add it. */
+export const authPrimaryButtonClass =
+  'inline-flex w-full items-center justify-center gap-3 rounded-xl border-0 bg-linear-to-r from-[color-mix(in_srgb,var(--color-brand)_78%,var(--color-accent))] to-brand px-4 py-[17px] text-base font-extrabold text-white shadow-[0_10px_24px_color-mix(in_srgb,var(--color-brand)_26%,transparent)] transition-[filter,transform] duration-150 hover:brightness-110 active:translate-y-px disabled:opacity-60'
 
 /** Rough, deliberately forgiving password strength. Three bands, because more
  *  precision than that is theatre — the only hard rule is Supabase's 6-char
@@ -116,7 +121,7 @@ export function PhoneField({ value, onChange }: { value: string; onChange: (digi
         Phone number
       </label>
       <div className="relative w-full">
-        <span className="tnum pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[15px] font-bold text-ink-soft">
+        <span className="tnum pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[15px] font-extrabold text-ink">
           +998
         </span>
         <input

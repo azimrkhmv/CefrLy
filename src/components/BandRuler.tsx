@@ -60,7 +60,7 @@ export function BandRuler({
   const dark = tone === 'dark'
   const palette = {
     track: dark ? 'bg-white/20' : 'bg-line',
-    fill: dark ? 'bg-white' : 'bg-brand',
+    fill: dark ? 'bg-white' : 'bg-linear-to-r from-brand to-accent',
     tick: dark ? 'bg-white/30' : 'bg-ink-faint',
     litLabel: dark ? 'font-semibold text-white' : 'font-semibold text-brand',
     label: dark ? 'font-medium text-white/65' : 'font-medium text-ink-soft',

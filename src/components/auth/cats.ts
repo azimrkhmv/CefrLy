@@ -42,7 +42,7 @@ export const CATS: CatDef[] = [
     // 1065×700 — the widest, lowest composition. 132/400 are the design's own
     // numbers for this cat; the others are derived to match its mass.
     nookW: 132,
-    heroW: 400,
+    heroW: 428,
     hello: 'Oh, you again. Welcome back.',
     helloSignup: 'A new student? Fine, I’m up…',
     bye: 'Go ahead. I’ll guard the bed.',
@@ -67,7 +67,7 @@ export const CATS: CatDef[] = [
     // 738×700 — nearly square, so it needs the narrowest box to avoid towering
     // over the other two.
     nookW: 96,
-    heroW: 290,
+    heroW: 310,
     hello: 'Oh! You startled me. Welcome back.',
     helloSignup: 'A new student? I’m all eyes.',
     bye: 'Go on. I’ll be watching. Closely.',
@@ -91,7 +91,7 @@ export const CATS: CatDef[] = [
     sleepy: true,
     // 917×700 — between the other two.
     nookW: 116,
-    heroW: 370,
+    heroW: 396,
     hello: 'Welcome back. Excuse the pose.',
     helloSignup: 'A new student? I’d wave, but gravity.',
     bye: 'Go study. I’ll hold the floor down.',

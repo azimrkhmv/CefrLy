@@ -67,7 +67,7 @@ function FullScreen({ children, center }: { children: ReactNode; center?: boolea
   // which would re-anchor position:fixed, so render on <body>.
   return createPortal(
     <div
-      className={`fixed inset-0 z-50 bg-page ${
+      className={`fixed inset-0 z-50 app-bg ${
         center ? 'flex items-center justify-center px-6 text-center' : 'flex flex-col'
       }`}
     >

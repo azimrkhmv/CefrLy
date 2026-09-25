@@ -8,6 +8,7 @@
      Nunito for UI, Source Serif 4 only inside reading passages. */
   --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-pen: "Nanum Pen Script", "Bradley Hand", cursive; /* examiner's handwriting, auth panel only */
 
   --color-page: #f8f7fc; /* soft lavender-white app background */
   --color-ink: #2f2e41; /* body text, warm dark with a violet cast */
@@ -31,9 +32,31 @@
   --shadow-lift: 0 8px 20px rgb(63 38 130 / 0.1);
 }
 
-body {
+/* THE SITE BACKGROUND (owner call 2026-09-25: "every page"). The waves art
+   from the dashboard sits on a fixed layer behind everything, under a page-
+   colour wash so every white card and ink-soft label keeps its contrast.
+   A fixed ::before, not background-attachment: fixed, which iOS ignores.
+   Only the auth screens (AuthShell) paint their own, chosen art over it.
+   Full-screen overlays that must be opaque (the exam players) use .app-bg. */
+html {
   background: var(--color-page);
+}
+body {
   color: var(--color-ink);
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      color-mix(in srgb, var(--color-page) 58%, transparent),
+      color-mix(in srgb, var(--color-page) 58%, transparent)
+    ),
+    url('/app-bg.webp') center / cover no-repeat,
+    var(--color-page);
 }
 
 /* MOBILE FEELS LIKE AN APP, NOT A ZOOMABLE PAGE (owner call 2026-09-21).
@@ -223,6 +246,124 @@ html {
   );
   animation: shimmer 1.6s ease-in-out infinite;
   will-change: transform;
+}
+
+/* The same background as body::before, for full-screen fixed overlays (the
+   exam players, review/analyze) that sit above the page and must be opaque. */
+.app-bg {
+  background:
+    linear-gradient(
+      color-mix(in srgb, var(--color-page) 58%, transparent),
+      color-mix(in srgb, var(--color-page) 58%, transparent)
+    ),
+    url('/app-bg.webp') center / cover no-repeat,
+    var(--color-page);
+}
+/* Frosted panel for the app shell (sidebar, glass cards). */
+.app-glass {
+  background: color-mix(in srgb, white 58%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid color-mix(in srgb, white 80%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 90%, transparent),
+    0 18px 50px -24px color-mix(in srgb, var(--color-brand) 28%, transparent);
+}
+/* The sidebar rail: only its inner (right) edge is drawn, and the shadow
+   falls to the right, so it reads as one surface with the window edges. */
+.app-glass-rail {
+  border-width: 0 1px 0 0;
+  box-shadow: 12px 0 40px -28px color-mix(in srgb, var(--color-brand) 30%, transparent);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .app-glass {
+    background: white;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Auth form, lg and up: a frosted-glass sheet over the orbits background.
+   A real edge (1px white border + top inner highlight) and a brand-tinted
+   shadow do the work; the blur only softens the art behind the fields.
+   Solid fallback when the user asks for less transparency. */
+@media (min-width: 1024px) {
+  .auth-glass {
+    /* Near-clear: the orbits must stay visible through the sheet. A light
+       top-left sheen fading to almost nothing reads as glass, a flat white
+       fill reads as a card. */
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, white 14%, transparent),
+      color-mix(in srgb, white 3%, transparent) 60%
+    );
+    -webkit-backdrop-filter: blur(6px) saturate(160%);
+    backdrop-filter: blur(6px) saturate(160%);
+    border: 1px solid color-mix(in srgb, white 70%, transparent);
+    border-radius: 28px;
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, white 95%, transparent),
+      inset 0 -1px 0 color-mix(in srgb, white 25%, transparent),
+      0 24px 60px -28px color-mix(in srgb, var(--color-brand) 30%, transparent);
+    padding: 44px 44px 40px;
+  }
+  /* Fields go translucent with the sheet; solid again while typing so the
+     text is never fighting the art behind it. */
+  .auth-glass input {
+    background: color-mix(in srgb, white 45%, transparent);
+    border-color: color-mix(in srgb, white 80%, transparent);
+  }
+  .auth-glass input:focus {
+    background: color-mix(in srgb, white 90%, transparent);
+  }
+  .auth-glass .glass-ghost {
+    background: color-mix(in srgb, white 35%, transparent);
+  }
+  .auth-glass .glass-ghost:hover {
+    background: var(--color-brand-soft);
+  }
+}
+/* Both auth backgrounds (desktop and phone) are a mid lavender, not
+   near-white, so the usual secondary grey (ink-soft, ~2.5:1 on them) and the
+   placeholder grey fall below WCAG AA. Darken both inside the auth scene. */
+.auth-scene .text-ink-soft {
+  color: color-mix(in srgb, var(--color-ink) 82%, var(--color-ink-soft));
+}
+.auth-scene input::placeholder {
+  color: var(--color-ink-soft);
+}
+@media (min-width: 1024px) and (prefers-reduced-transparency: reduce) {
+  .auth-glass {
+    background: white;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Auth panel: the examiner's pen circles "minutes." once, on load. The path is
+   normalised to pathLength=1 so one dash length fits any word width. NEVER put
+   vector-effect="non-scaling-stroke" on it: Chrome then measures the dash in
+   screen pixels while pathLength stays in user units, so the dash comes out
+   shorter than the path and the loop never closes. */
+.pen-circle {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: pen-draw 0.9s cubic-bezier(0.65, 0, 0.35, 1) 0.35s forwards;
+}
+.pen-note {
+  opacity: 0;
+  animation: pen-note-in 0.5s ease-out 1.15s forwards;
+}
+@keyframes pen-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes pen-note-in {
+  from { opacity: 0; transform: translateY(4px) rotate(-4deg); }
+  to { opacity: 1; transform: translateY(0) rotate(-4deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pen-circle { animation: none; stroke-dashoffset: 0; }
+  .pen-note { animation: none; opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -70,7 +70,7 @@ function AdminMoved() {
     window.location.replace(ADMIN_URL + window.location.pathname)
   }, [])
   return (
-    <div className="grid min-h-screen place-items-center bg-page px-6 text-center">
+    <div className="grid min-h-screen place-items-center px-6 text-center">
       <p className="text-sm text-ink-soft">
         The admin console moved to{' '}
         <a className="font-bold text-brand hover:underline" href={ADMIN_URL}>

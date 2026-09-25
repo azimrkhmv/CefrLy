@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth'
 import { completeTelegramReset, startTelegramAuth, type TelegramStart } from '../lib/phoneAuth'
 import { AuthShell } from '../components/auth/AuthShell'
 import { ChevronLeftIcon } from '../components/auth/icons'
-import { PasswordField } from '../components/auth/formBits'
+import { authPrimaryButtonClass, PasswordField } from '../components/auth/formBits'
 import { TelegramCodeStep, TelegramIcon } from '../components/auth/TelegramCodeStep'
 
 /** "Reset your password" through @CefrLy_bot: the student shares their number
@@ -58,7 +58,7 @@ export function ForgotPasswordPage() {
         <TelegramCodeStep
           start={start}
           title="Reset your password"
-          intro="Open our Telegram bot and press 📱 Send my number. Enter the code and your new password below."
+          intro="First get your code from our Telegram bot. Then come back here to set a new password."
           confirmLabel="Save new password"
           onVerify={verify}
           onRestart={() => setStart(null)}
@@ -111,7 +111,7 @@ export function ForgotPasswordPage() {
             type="button"
             onClick={begin}
             disabled={busy}
-            className="flex w-full items-center justify-center gap-2.5 rounded-xl border-0 bg-brand px-4 py-[15px] text-base font-extrabold text-white shadow-[0_8px_20px_color-mix(in_srgb,var(--color-brand)_22%,transparent)] transition-[background,transform] duration-150 hover:bg-brand-deep active:translate-y-px disabled:opacity-60"
+            className={authPrimaryButtonClass}
           >
             <TelegramIcon />
             {busy ? 'Please wait…' : 'Get a code in Telegram'}

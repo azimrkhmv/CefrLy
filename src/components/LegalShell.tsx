@@ -18,8 +18,8 @@ export function LegalShell({
   children: ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-page">
-      <header className="border-b border-line bg-white">
+    <div className="min-h-screen">
+      <header className="border-b border-white/70 bg-white/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Logo />
           <nav className="flex items-center gap-4 text-sm">

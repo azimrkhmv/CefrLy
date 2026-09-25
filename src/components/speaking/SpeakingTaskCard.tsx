@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import type { SpeakingCatalogItem } from '../../lib/speakingCatalog'
 import { PART_LABEL } from '../../lib/speakingFixtures'
 import { hasSpeakingDraft } from '../../lib/speakingDraft'
-import { CloseIcon, LockIcon, MicIcon, PlayIcon } from '../icons'
+import { CloseIcon, MicIcon, PlayIcon } from '../icons'
 
 // ONE tile for every speaking card — the yellow microphone, whatever the part
 // (owner call). Writing colour-codes its tiles per task type; Speaking
@@ -71,10 +71,9 @@ export function SpeakingTaskCard({
             ) : null}
             {checkLocked && (
               <span
-                className="inline-flex items-center gap-1 rounded-full bg-page px-2 py-0.5 text-xs font-bold text-ink-soft"
+                className="inline-block rounded-full bg-page px-2 py-0.5 text-xs font-bold text-ink-soft"
                 title="Practice is free. The AI band score and feedback need Pro or Premium."
               >
-                <LockIcon width={11} height={11} />
                 {lockLabel}
               </span>
             )}

@@ -1,6 +1,8 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchMyAttempts, fetchMyProfile } from '../lib/api'
+import { fetchWritingAttempts } from '../lib/writingGrading'
+import { fetchSpeakingAttempts } from '../lib/speakingGrading'
 import { useAuth } from '../lib/auth'
 import { useNavDrawer } from '../components/navDrawer'
 import { BAND_INFO, BAND_ORDER, BAND_THRESHOLDS } from '../lib/bands'
@@ -9,13 +11,14 @@ import type { AttemptSummary } from '../types/attempt'
 import type { Band } from '../types/test'
 import type { SelfLevel, StudyTimeframe, WeakArea } from '../types/profile'
 import { BandRuler } from '../components/BandRuler'
-import { Sparkline } from '../components/Sparkline'
+import { ScoreChart } from '../components/ScoreChart'
 import { BAND_CAT, BAND_QUIP, BandCat, QuipBubble } from '../components/BandCat'
 import { useCountUp } from '../lib/motion'
 import { SHOW_WRITING } from '../lib/features'
 import {
   ArrowRightIcon,
   BookIcon,
+  ChevronDownIcon,
   ClipboardIcon,
   ClockIcon,
   HeadphonesIcon,
@@ -27,10 +30,11 @@ import {
 } from '../components/icons'
 
 const MAX = 35
-// Borderless elevated cards (the "adorned" look): soft lavender shadow + a
-// half-opacity hairline so they don't wash out on the pale page.
-const CARD = 'rounded-2xl bg-white shadow-soft ring-1 ring-line/50'
-const CARD_HERO = 'rounded-2xl bg-white shadow-lift ring-1 ring-line/50'
+// Glass cards over the app background (owner design 2026-09-24): mostly-white
+// frosted fill so text contrast never depends on the art behind, a white
+// hairline edge and a soft brand-tinted shadow.
+const CARD = 'rounded-[24px] bg-white/75 shadow-soft ring-1 ring-white/80 backdrop-blur-md'
+const CARD_HERO = 'rounded-[28px] bg-white/80 shadow-lift ring-1 ring-white/80 backdrop-blur-md'
 const KICKER = 'text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft'
 
 /** A full-mock attempt — the only kind that carries a CEFR band. Part drills
@@ -57,20 +61,42 @@ function greetingName(email?: string, meta?: Record<string, unknown>): string {
   return first ? first.charAt(0).toUpperCase() + first.slice(1) : ''
 }
 
+/** A change since the previous mock. Only ever built from real attempts. */
+type Delta = { text: string; up: boolean; title: string }
+
+function DeltaChip({ delta }: { delta: Delta }) {
+  return (
+    <span
+      title={delta.title}
+      // Under the number until the tiles are wide enough (2xl): a corner chip
+      // collided with "Mocks taken" / "Average" in narrower tiles, up to and
+      // including 1280px. 2xl and up: pinned to the tile's top-right corner.
+      className={`tnum mt-1.5 inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold 2xl:absolute 2xl:right-4 2xl:top-4 2xl:mt-0 ${
+        delta.up ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'
+      }`}
+    >
+      <span aria-hidden>{delta.up ? '↑' : '↓'}</span> {delta.text}
+      <span className="sr-only"> ({delta.title})</span>
+    </span>
+  )
+}
+
 function StatTile({
   Icon,
   label,
   value,
   sub,
+  delta,
 }: {
   Icon: (props: { width?: number; height?: number }) => React.ReactElement
   label: string
   value: string
   sub?: string
+  delta?: Delta | null
 }) {
   return (
-    <div className={`flex items-center gap-4 p-5 ${CARD}`}>
-      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
+    <div className={`relative flex items-center gap-4 p-5 ${CARD}`}>
+      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
         <Icon width={22} height={22} />
       </span>
       <div className="min-w-0">
@@ -85,6 +111,7 @@ function StatTile({
             </span>
           )}
         </p>
+        {delta && <DeltaChip delta={delta} />}
       </div>
     </div>
   )
@@ -181,7 +208,7 @@ function LevelSnapshot({
         <HeroCat exam={exam} width={138} height={150} />
       </div>
 
-      <div className="mt-6 pt-20 sm:pt-24">
+      <div className="mt-2 pt-20">
         <BandRuler
           band={displayBand}
           score={rulerScore}
@@ -197,58 +224,73 @@ function LevelSnapshot({
 }
 
 const SKILLS = [
-  { key: 'reading', name: 'Reading', Icon: BookIcon, desc: '35 questions · 5 parts · 60 min', to: '/reading', tile: 'bg-brand-soft text-brand' },
-  { key: 'listening', name: 'Listening', Icon: HeadphonesIcon, desc: '35 questions · 6 parts · ~35 min', to: '/listening', tile: 'bg-sun-soft text-sun-ink' },
-  // Concealed: `to: null` makes the card render as an inert "soon" tile, the
-  // same treatment every unshipped skill already had.
-  { key: 'writing', name: 'Writing', Icon: PenIcon, desc: 'Two emails · one forum post', to: SHOW_WRITING ? '/writing' : null, tile: 'bg-brand-soft text-brand' },
-  { key: 'speaking', name: 'Speaking', Icon: MicIcon, desc: '4 parts · interview & talk', to: '/speaking', tile: 'bg-rose-50 text-rose-800' },
+  { key: 'reading', name: 'Reading', Icon: BookIcon, to: '/reading' },
+  { key: 'listening', name: 'Listening', Icon: HeadphonesIcon, to: '/listening' },
+  // Concealed: `to: null` makes the card render as an inert "soon" tile.
+  { key: 'writing', name: 'Writing', Icon: PenIcon, to: SHOW_WRITING ? '/writing' : null },
+  { key: 'speaking', name: 'Speaking', Icon: MicIcon, to: '/speaking' },
 ] as const
 
-function SkillsRoadmap({ weakAreas }: { weakAreas?: WeakArea[] }) {
+type SkillKey = (typeof SKILLS)[number]['key']
+/** Best FULL-paper mark per skill: /35 for Reading and Listening, the /75
+ *  rating for Writing and Speaking. Drills never count (they carry no band). */
+type SkillBest = Partial<Record<SkillKey, { score: number; total: number }>>
+
+function SkillsRoadmap({ weakAreas, bests }: { weakAreas?: WeakArea[]; bests: SkillBest }) {
   return (
     <section>
       <h2 className="mb-4 text-xl font-extrabold text-heading">Your CEFR skills</h2>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {SKILLS.map(({ key, name, Icon, desc, to, tile }) => {
-          const available = to !== null
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {SKILLS.map(({ key, name, Icon, to }) => {
           const focus = weakAreas?.includes(key as WeakArea) ?? false
-          return (
-            <div key={key} className={`${CARD} p-5 ${available ? '' : 'opacity-80'}`}>
-              <div className="flex items-center justify-between">
-                <span className={`grid h-12 w-12 place-items-center rounded-xl ${tile}`}>
-                  <Icon width={22} height={22} />
-                </span>
-                <span className="flex items-center gap-1.5">
+          const best = bests[key]
+          const pct = best ? Math.round((best.score / best.total) * 100) : 0
+          const body = (
+            <>
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
+                <Icon width={22} height={22} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className={`font-extrabold ${to ? 'text-heading' : 'text-ink-soft'}`}>{name}</p>
                   {/* the student named this skill a struggle at onboarding */}
-                  {focus && (
-                    <span className="rounded-full bg-sun-soft px-2.5 py-0.5 text-[11px] font-bold text-sun-ink">
+                  {focus ? (
+                    <span className="rounded-full bg-sun-soft px-2 py-0.5 text-[10px] font-bold text-sun-ink">
                       Your focus
                     </span>
-                  )}
-                  {available ? (
-                    <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-bold text-brand">
-                      Available
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-page px-2.5 py-0.5 text-[11px] font-bold lowercase text-ink-soft">
-                      soon
-                    </span>
-                  )}
+                  ) : to ? (
+                    <ChevronDownIcon
+                      width={16}
+                      height={16}
+                      className="-rotate-90 text-ink-soft transition-transform group-hover:translate-x-0.5"
+                    />
+                  ) : null}
+                </div>
+                <p className="tnum mt-1 text-right text-xs font-bold text-ink-soft">
+                  {!to ? 'Coming soon' : best ? `${best.score}/${best.total}` : 'Not taken yet'}
+                </p>
+                <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-brand-soft" aria-hidden>
+                  <span
+                    className="block h-full rounded-full bg-linear-to-r from-brand to-accent"
+                    style={{ width: `${pct}%` }}
+                  />
                 </span>
               </div>
-              <p className={`mt-3 font-extrabold ${available ? 'text-heading' : 'text-ink-soft'}`}>{name}</p>
-              <p className="mt-0.5 text-sm text-ink-soft">{desc}</p>
-              {to ? (
-                <Link
-                  to={to}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-ink transition-colors hover:border-brand hover:text-brand"
-                >
-                  Practice <ArrowRightIcon width={15} height={15} />
-                </Link>
-              ) : (
-                <p className="mt-4 text-sm font-semibold text-ink-soft">Coming soon</p>
-              )}
+            </>
+          )
+          const cls = `group flex items-center gap-4 p-4 ${CARD}`
+          return to ? (
+            <Link
+              key={key}
+              to={to}
+              aria-label={`${name}${best ? `, best ${best.score} out of ${best.total}` : ''}`}
+              className={`${cls} transition-shadow hover:shadow-pop`}
+            >
+              {body}
+            </Link>
+          ) : (
+            <div key={key} className={`${cls} opacity-80`}>
+              {body}
             </div>
           )
         })}
@@ -405,6 +447,18 @@ export function HomePage() {
     queryFn: fetchMyProfile,
     enabled: !!session,
   })
+  // Best Writing/Speaking marks for the skills row. Same query keys as My
+  // results, so the two pages share one cached copy.
+  const { data: writingAttempts } = useQuery({
+    queryKey: ['writing-attempts'],
+    queryFn: fetchWritingAttempts,
+    enabled: !!session,
+  })
+  const { data: speakingAttempts } = useQuery({
+    queryKey: ['speaking-attempts'],
+    queryFn: fetchSpeakingAttempts,
+    enabled: !!session,
+  })
   const exam =
     profile?.studyTimeframe && profile.studyTimeframe !== 'no_date'
       ? { label: TIMEFRAME_CHIP[profile.studyTimeframe], past: false }
@@ -451,28 +505,72 @@ export function HomePage() {
     ? Math.round(fullAttempts.reduce((sum, a) => sum + a.rawScore, 0) / fullAttempts.length)
     : 0
   const chron = hasAttempts ? [...fullAttempts].reverse().map((a) => a.rawScore) : []
+  // The chart shows the most recent eight, like the design.
+  const trend = chron.slice(-8)
+
+  // Deltas: what the LATEST mock changed. All from real attempts; a chip is
+  // only shown when there is something to compare against and it moved.
+  const prev = fullAttempts.slice(1) // every mock before the latest
+  const fmt = (n: number) => (Number.isInteger(n) ? String(Math.abs(n)) : Math.abs(n).toFixed(1))
+  const weekAgo = Date.now() - 7 * 24 * 3600 * 1000
+  const thisWeek = fullAttempts.filter((a) => new Date(a.createdAt).getTime() >= weekAgo).length
+  const deltas: Record<'mocks' | 'avg' | 'best' | 'latest', Delta | null> = {
+    mocks: thisWeek > 0 ? { text: `+${thisWeek}`, up: true, title: `${thisWeek} in the last 7 days` } : null,
+    avg: null,
+    best: null,
+    latest: null,
+  }
+  if (latest && prev.length > 0) {
+    const prevAvg = prev.reduce((sum, a) => sum + a.rawScore, 0) / prev.length
+    const exactAvg = fullAttempts.reduce((sum, a) => sum + a.rawScore, 0) / fullAttempts.length
+    const dAvg = Math.round((exactAvg - prevAvg) * 10) / 10
+    if (dAvg !== 0) deltas.avg = { text: `${dAvg > 0 ? '+' : '-'}${fmt(dAvg)}`, up: dAvg > 0, title: 'change in your average after your latest mock' }
+    const prevBest = Math.max(...prev.map((a) => a.rawScore))
+    if (best!.rawScore > prevBest) deltas.best = { text: `+${best!.rawScore - prevBest}`, up: true, title: 'your latest mock set a new best' }
+    const dLatest = latest.rawScore - prev[0].rawScore
+    if (dLatest !== 0) deltas.latest = { text: `${dLatest > 0 ? '+' : '-'}${Math.abs(dLatest)}`, up: dLatest > 0, title: 'compared with the mock before it' }
+  }
+
+  const skillBests: SkillBest = {}
+  for (const a of fullAttempts) {
+    const k = a.skill as SkillKey
+    if ((k === 'reading' || k === 'listening') && a.rawScore > (skillBests[k]?.score ?? -1)) {
+      skillBests[k] = { score: a.rawScore, total: a.total }
+    }
+  }
+  for (const [k, rows] of [['writing', writingAttempts], ['speaking', speakingAttempts]] as const) {
+    for (const r of rows ?? []) {
+      if (r.status === 'done' && r.scope === 'full' && r.rating != null && r.rating > (skillBests[k]?.score ?? -1)) {
+        skillBests[k] = { score: r.rating, total: 75 }
+      }
+    }
+  }
 
   return (
     <div className="space-y-10">
       {/* greeting */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-heading">
+          <h1 className="text-3xl font-extrabold text-heading sm:text-[34px]">
             {hasAttempts ? 'Welcome back' : 'Welcome to Cefrly'}
-            {name ? `, ${name}` : ''}
+            {name && (
+              <>
+                , <span className="text-accent-deep">{name}</span>
+              </>
+            )}
           </h1>
-          {!hasAttempts && (
-            <p className="mt-1 text-sm text-ink-soft">
-              Let’s find your English level and build from there.
-            </p>
-          )}
+          <p className="mt-1 text-[15px] font-semibold text-ink-soft">
+            {hasAttempts
+              ? 'Keep going! You’re building real progress.'
+              : 'Let’s find your English level and build from there.'}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {hasAttempts && (
             <button
               type="button"
               onClick={openNav}
-              className="group inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-deep"
+              className="group inline-flex items-center gap-2 rounded-full bg-linear-to-r from-accent-deep to-brand px-6 py-3 text-sm font-bold text-white shadow-[0_10px_24px_color-mix(in_srgb,var(--color-brand)_26%,transparent)] transition-[filter] hover:brightness-110"
             >
               Start a test
               <ArrowRightIcon
@@ -505,31 +603,35 @@ export function HomePage() {
             exam={exam}
           />
 
-          <section className={chron.length >= 2 ? 'grid grid-cols-1 gap-5 lg:grid-cols-[1fr_1.3fr]' : ''}>
-            <div className="grid grid-cols-2 gap-5">
-              <StatTile Icon={ClipboardIcon} label="Mocks taken" value={String(fullAttempts.length)} />
-              <StatTile Icon={TrendUpIcon} label="Average" value={`${avg}/${MAX}`} />
+          <section className={chron.length >= 2 ? 'grid grid-cols-1 gap-5 lg:grid-cols-[1fr_1.15fr]' : ''}>
+            <div className="grid grid-cols-2 gap-4">
+              <StatTile Icon={ClipboardIcon} label="Mocks taken" value={String(fullAttempts.length)} delta={deltas.mocks} />
+              <StatTile Icon={TrendUpIcon} label="Average" value={`${avg}/${MAX}`} delta={deltas.avg} />
               <StatTile
                 Icon={StarIcon}
                 label="Best"
                 value={`${best!.rawScore}/${MAX}`}
                 sub={BAND_INFO[best!.band].label}
+                delta={deltas.best}
               />
               <StatTile
                 Icon={ClockIcon}
                 label="Latest"
                 value={`${latest!.rawScore}/${MAX}`}
                 sub={BAND_INFO[latest!.band].label}
+                delta={deltas.latest}
               />
             </div>
             {chron.length >= 2 && (
               <div className={`${CARD} p-5`}>
-                <div className="flex items-baseline justify-between">
-                  <p className="text-sm font-semibold text-ink-soft">Score trend</p>
-                  <p className="tnum text-xs font-semibold text-ink-soft">last {chron.length} attempts</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-lg font-extrabold text-heading">Score trend</p>
+                  <p className="tnum rounded-full bg-white/80 px-3 py-1 text-xs font-bold text-ink-soft ring-1 ring-line">
+                    Last {trend.length} attempts
+                  </p>
                 </div>
                 <div className="mt-3">
-                  <Sparkline scores={chron} />
+                  <ScoreChart scores={trend} max={MAX} />
                 </div>
               </div>
             )}
@@ -537,7 +639,7 @@ export function HomePage() {
         </>
       )}
 
-      <SkillsRoadmap weakAreas={profile?.weakAreas} />
+      <SkillsRoadmap weakAreas={profile?.weakAreas} bests={skillBests} />
 
       {hasAnyAttempts && <RecentActivity attempts={attempts!} />}
     </div>

@@ -37,10 +37,11 @@ import {
 export const COMMUNITY_URL = 'https://t.me/cefrly'
 export const ADMIN_URL = 'https://t.me/cefr_qabul'
 
-// Sidebar design "2b — Rail & tint": quiet muted rows; the active row gets a
-// 3px brand rail on the left plus a lavender tint fading to the right.
+// Glass sidebar (owner design 2026-09-24): quiet rows; the active row is a
+// frosted white pill with its icon seated in a white disc. No left rail (the
+// 3px brand bar was removed on the owner's call, 2026-09-25).
 const navItemBase =
-  'group relative flex items-center gap-3.5 rounded-[10px] py-2 text-sm font-bold transition-colors'
+  'group relative flex items-center gap-3 rounded-2xl py-1.5 text-sm font-bold transition-colors'
 
 function NavItem({
   to,
@@ -63,19 +64,20 @@ function NavItem({
       className={({ isActive }) =>
         `${navItemBase} ${
           isActive
-            ? 'bg-gradient-to-r from-brand-soft to-transparent pl-4 pr-3 text-brand'
-            : 'px-3 text-ink-soft hover:bg-page'
+            ? 'bg-white/70 pl-3 pr-3 text-brand shadow-card'
+            : 'px-3 text-ink-soft hover:bg-white/45'
         }`
       }
     >
       {({ isActive }) => (
         <>
-          {isActive && (
-            <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-brand" />
-          )}
           {/* ink-soft, not ink-faint — ink-faint is 2.0:1 and misses even the
               3:1 non-text contrast minimum for icons. */}
-          <span className={isActive ? 'text-brand' : 'text-ink-soft group-hover:text-ink'}>
+          <span
+            className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${
+              isActive ? 'bg-white text-brand shadow-card' : 'text-ink-soft group-hover:text-ink'
+            }`}
+          >
             {icon}
           </span>
           <span>{label}</span>
@@ -151,7 +153,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         {/* Full mock test card: the WHOLE 4-skill CEFR exam (Reading ·
             Listening · Writing · Speaking), not just Reading. Stats describe
             the full test; sleeping cat rests on the card's bottom edge. */}
-        <div className="overflow-hidden rounded-2xl bg-brand-soft px-4 pb-0 pt-3">
+        <div className="overflow-hidden rounded-2xl bg-white/55 px-4 pb-0 pt-3 ring-1 ring-white/80">
           <p className="text-sm font-extrabold text-brand-deep">Full mock test</p>
           <div className="mt-2 flex gap-6">
             <MockStat num="4" label="Sections" />
@@ -173,7 +175,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           onClick={onNavigate}
           // accent-deep, not accent: white on --color-accent is 4.2:1 and fails
           // WCAG AA for 14px text. accent-deep is 5.7:1 and reads the same.
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent-deep px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-brand"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-accent-deep to-brand px-4 py-3 text-sm font-bold text-white shadow-[0_8px_20px_color-mix(in_srgb,var(--color-brand)_25%,transparent)] transition-[filter] hover:brightness-110"
         >
           <UsersIcon width={17} height={17} />
           Join CEFR Community
@@ -232,7 +234,8 @@ export function Layout() {
 
   return (
     <NavDrawerContext.Provider value={navDrawer}>
-    <div className="min-h-screen bg-page text-ink">
+    {/* The waves background comes from body::before (index.css). */}
+    <div className="min-h-screen text-ink">
       {!isSupabaseConfigured && (
         <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-800">
           Supabase is not configured — copy <code className="font-mono">.env.example</code> to{' '}
@@ -241,7 +244,9 @@ export function Layout() {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-line bg-white lg:block">
+      {/* Frosted glass, flush to the top, bottom and left edges of the window
+          (owner call: one connected rail, not a floating card). */}
+      <aside className="app-glass app-glass-rail fixed inset-y-0 left-0 z-30 hidden w-72 lg:block">
         <SidebarContent />
       </aside>
 
@@ -268,7 +273,11 @@ export function Layout() {
       )}
 
       <div className="lg:pl-72">
-        <header className="sticky top-0 z-20 bg-page">
+        {/* Phones: a light blur band, so content scrolling under the menu
+            button stays legible. Desktop: fully clear (a band drew a visible
+            strip across the art); the title and avatar pills carry their own
+            frosted fill. */}
+        <header className="sticky top-0 z-20 bg-[color-mix(in_srgb,var(--color-page)_35%,transparent)] backdrop-blur-md lg:bg-transparent lg:backdrop-blur-none">
           <div className="flex h-16 items-center gap-3 px-4 sm:px-8">
             <button
               onClick={() => setDrawerOpen(true)}
@@ -277,7 +286,7 @@ export function Layout() {
             >
               <MenuIcon width={22} height={22} />
             </button>
-            <span className="inline-flex items-center gap-2 text-base font-extrabold text-heading lg:rounded-full lg:bg-white lg:px-4 lg:py-2 lg:text-sm lg:font-bold lg:shadow-card">
+            <span className="inline-flex items-center gap-2 text-base font-extrabold text-heading lg:rounded-full lg:bg-white/75 lg:px-4 lg:py-2 lg:text-sm lg:font-bold lg:shadow-card lg:ring-1 lg:ring-white/80">
               <PageIcon width={15} height={15} className="hidden text-brand lg:block" />
               {pageTitle}
             </span>
@@ -286,7 +295,7 @@ export function Layout() {
                 <div className="relative">
                   <button
                     onClick={() => setMenuOpen((v) => !v)}
-                    className="flex items-center gap-1 rounded-full bg-white py-1 pl-1 pr-2 shadow-card transition-transform hover:scale-[1.03]"
+                    className="flex items-center gap-1 rounded-full bg-white/75 py-1 pl-1 pr-2 shadow-card ring-1 ring-white/80 transition-transform hover:scale-[1.03]"
                     aria-label="Account menu"
                     aria-expanded={menuOpen}
                   >

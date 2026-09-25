@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from 'react'
 import qrcode from 'qrcode-generator'
 import { fetchTelegramStatus, TelegramExpiredError, type TelegramStart } from '../../lib/phoneAuth'
+import { authPrimaryButtonClass } from './formBits'
 
 /** Telegram's official brand blue — the one raw hex on this screen, like
  *  Google's colours were on the old sign-in button. */
@@ -14,10 +15,15 @@ export function TelegramIcon({ size = 22 }: { size?: number }) {
   )
 }
 
-/** "Enter the code" (design: Kodni kiriting). Shows the bot link + QR, six code
- *  boxes and the request's countdown. The parent owns what happens with the
- *  code (`onVerify`) and may put extra fields above the button (reset uses it
- *  for the new password). */
+/** The Telegram code flow, in TWO screens so nobody has to guess the order
+ *  (owner call 2026-09-22 — one screen with the bot, the QR, the code boxes and
+ *  the password fields all at once confused people):
+ *   1. "bot"  — numbered steps + Open Telegram bot (+ QR on big screens). Moves
+ *               on BY ITSELF the moment the bot sends the code (status poll —
+ *               there is deliberately no manual "next" button).
+ *   2. "code" — six boxes, then any extra fields the parent passes as children
+ *               (reset puts the new password here), then the confirm button.
+ *  The parent owns what happens with the code (`onVerify`). */
 export function TelegramCodeStep({
   start,
   title,
@@ -42,6 +48,7 @@ export function TelegramCodeStep({
   const [phone, setPhone] = useState<string | null>(null)
   const [codeSent, setCodeSent] = useState(false)
   const [now, setNow] = useState(() => Date.now())
+  const [stage, setStage] = useState<'bot' | 'code'>('bot')
   const boxes = useRef<(HTMLInputElement | null)[]>([])
 
   const secondsLeft = Math.max(0, Math.floor((new Date(start.expiresAt).getTime() - now) / 1000))
@@ -71,11 +78,26 @@ export function TelegramCodeStep({
     }
     void tick()
     const t = window.setInterval(tick, codeSent ? 15000 : 3000)
+    // Coming back from Telegram: check at once instead of waiting for the poll.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void tick()
+    }
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       stop = true
       window.clearInterval(t)
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [start.token, expired, codeSent])
+
+  // The bot sent the code: go straight to the boxes.
+  useEffect(() => {
+    if (codeSent) setStage('code')
+  }, [codeSent])
+
+  useEffect(() => {
+    if (stage === 'code') boxes.current[0]?.focus()
+  }, [stage])
 
   const qrSvg = useMemo(() => {
     const qr = qrcode(0, 'M')
@@ -144,10 +166,87 @@ export function TelegramCodeStep({
         <button
           type="button"
           onClick={onRestart}
-          className="mt-6 w-full rounded-xl bg-brand px-4 py-[15px] text-base font-extrabold text-white transition-colors hover:bg-brand-deep"
+          className={`mt-6 ${authPrimaryButtonClass}`}
         >
           Start over
         </button>
+      </div>
+    )
+  }
+
+  const telegramButton = (label: string) => (
+    <a
+      href={start.botUrl}
+      target="_blank"
+      rel="noreferrer"
+      className="flex w-full items-center justify-center gap-2.5 rounded-xl px-4 py-[14px] text-base font-extrabold text-white no-underline shadow-[0_8px_20px_rgba(42,171,238,0.28)] transition-[filter] hover:brightness-95"
+      style={{ background: TELEGRAM_BLUE }}
+    >
+      <TelegramIcon />
+      {label}
+    </a>
+  )
+
+  const footer = (
+    <>
+      <p className="tnum mt-4 text-xs font-semibold text-ink-soft">
+        Time left to finish: {mm}:{ss}
+      </p>
+      <button
+        type="button"
+        onClick={onRestart}
+        className="mt-1 border-0 bg-transparent p-1 text-sm font-extrabold text-brand underline-offset-2 hover:underline"
+      >
+        Start over
+      </button>
+    </>
+  )
+
+  if (stage === 'bot') {
+    return (
+      <div className="flex flex-col items-center text-center">
+        <span
+          className="mt-6 grid h-16 w-16 place-items-center rounded-full text-white lg:mt-0"
+          style={{ background: TELEGRAM_BLUE }}
+        >
+          <TelegramIcon size={30} />
+        </span>
+        <h1 className="mt-4 text-[28px] font-black leading-[1.15] text-heading">{title}</h1>
+        <p className="mt-2 text-[15px] font-semibold leading-[1.45] text-ink-soft">{intro}</p>
+
+        <ol className="mt-5 flex w-full flex-col gap-2.5 text-left">
+          {[
+            'Open our Telegram bot.',
+            'Press Start.',
+            'Press 📱 Send my number — the bot replies with a 6-digit code.',
+          ].map((text, i) => (
+            <li key={i} className="flex items-start gap-3 rounded-xl bg-brand-soft px-4 py-3">
+              <span className="tnum grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand text-xs font-extrabold text-white">
+                {i + 1}
+              </span>
+              <span className="text-sm font-bold leading-6 text-heading">{text}</span>
+            </li>
+          ))}
+        </ol>
+
+        <div className="mt-5 w-full">{telegramButton('Open Telegram bot')}</div>
+
+        {/* A QR only helps when the site is on a computer and Telegram is on
+            the phone; on a phone the button above is the way. */}
+        <div className="hidden flex-col items-center lg:flex">
+          <div
+            className="mt-4 h-32 w-32 rounded-xl border border-line bg-white p-2.5 [&>svg]:h-full [&>svg]:w-full"
+            aria-label="QR code that opens the Telegram bot"
+            role="img"
+            dangerouslySetInnerHTML={{ __html: qrSvg }}
+          />
+          <p className="mt-2 text-xs font-semibold text-ink-soft">or scan it with your phone</p>
+        </div>
+
+        <p role="status" className="mt-5 text-sm font-semibold text-ink-soft">
+          This page moves on by itself once the code is sent.
+        </p>
+        {footer}
       </div>
     )
   }
@@ -160,37 +259,16 @@ export function TelegramCodeStep({
       >
         <TelegramIcon size={30} />
       </span>
-      <h1 className="mt-4 text-[28px] font-black leading-[1.15] text-heading">{title}</h1>
-      <p className="mt-2 text-[15px] font-semibold leading-[1.45] text-ink-soft">{intro}</p>
-
-      <a
-        href={start.botUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-5 flex w-full items-center justify-center gap-2.5 rounded-xl px-4 py-[14px] text-base font-extrabold text-white no-underline shadow-[0_8px_20px_rgba(42,171,238,0.28)] transition-[filter] hover:brightness-95"
-        style={{ background: TELEGRAM_BLUE }}
-      >
-        <TelegramIcon />
-        Open Telegram bot
-      </a>
-
-      <div
-        className="mt-4 h-36 w-36 rounded-xl border border-line bg-white p-2.5 [&>svg]:h-full [&>svg]:w-full"
-        aria-label="QR code that opens the Telegram bot"
-        role="img"
-        dangerouslySetInnerHTML={{ __html: qrSvg }}
-      />
-      <p className="mt-2 text-xs font-semibold text-ink-soft">or scan the QR code with your phone</p>
-
+      <h1 className="mt-4 text-[28px] font-black leading-[1.15] text-heading">Enter the code</h1>
       <p
         role="status"
-        className={`mt-5 w-full rounded-xl px-4 py-2.5 text-sm font-bold ${
+        className={`mt-3 w-full rounded-xl px-4 py-2.5 text-sm font-bold ${
           codeSent ? 'bg-emerald-50 text-emerald-800' : 'bg-brand-soft text-brand-deep'
         }`}
       >
         {codeSent && phone
           ? `Code sent to ${phone} in Telegram.`
-          : 'In the bot, press Start, then 📱 Send my number.'}
+          : 'Type the 6-digit code the bot sent you.'}
       </p>
 
       <div className="mt-5 flex justify-center gap-2 sm:gap-2.5" role="group" aria-label="6-digit code">
@@ -227,24 +305,22 @@ export function TelegramCodeStep({
       <button
         type="submit"
         disabled={busy}
-        className="mt-5 w-full rounded-xl border-0 bg-brand px-4 py-[15px] text-base font-extrabold text-white shadow-[0_8px_20px_color-mix(in_srgb,var(--color-brand)_22%,transparent)] transition-[background,transform] duration-150 hover:bg-brand-deep active:translate-y-px disabled:opacity-60"
+        className={`mt-5 ${authPrimaryButtonClass}`}
       >
         {busy ? 'Checking…' : confirmLabel}
       </button>
 
       <p className="mt-4 text-sm font-semibold text-ink-soft">
-        Didn’t get a code? Press 📱 in the bot again.
+        No code?{' '}
+        <button
+          type="button"
+          onClick={() => setStage('bot')}
+          className="border-0 bg-transparent p-0 font-extrabold text-brand underline-offset-2 hover:underline"
+        >
+          Back to the Telegram steps
+        </button>
       </p>
-      <p className="tnum mt-2 text-xs font-semibold text-ink-soft">
-        Time left to finish: {mm}:{ss}
-      </p>
-      <button
-        type="button"
-        onClick={onRestart}
-        className="mt-2 border-0 bg-transparent p-1 text-sm font-extrabold text-brand underline-offset-2 hover:underline"
-      >
-        Start over
-      </button>
+      {footer}
     </form>
   )
 }

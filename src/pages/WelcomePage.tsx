@@ -250,7 +250,7 @@ export function WelcomePage() {
 
   if (done) {
     return (
-      <div className="flex min-h-screen flex-col bg-page px-5 py-8">
+      <div className="flex min-h-screen flex-col px-5 py-8">
         <div className="mx-auto w-full max-w-xl">
           <Logo />
         </div>
@@ -282,7 +282,9 @@ export function WelcomePage() {
   const meta = STEP_META[step]
 
   return (
-    <div className="min-h-screen bg-page px-5 py-8">
+    // The waves background comes from body::before; the step card is frosted
+    // glass over it.
+    <div className="min-h-screen px-5 py-8">
       <div className="mx-auto w-full max-w-xl">
         <div className="flex items-center justify-between">
           <Logo />
@@ -299,7 +301,7 @@ export function WelcomePage() {
           <p className="tnum text-xs font-bold uppercase tracking-[0.14em] text-ink-soft">
             Step {step + 1} of {STEP_COUNT}
           </p>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-line/70">
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/60">
             <div
               className="h-full rounded-full bg-brand motion-safe:transition-[width] motion-safe:duration-500"
               style={{ width: `${((step + 1) / STEP_COUNT) * 100}%` }}
@@ -307,7 +309,7 @@ export function WelcomePage() {
           </div>
         </div>
 
-        <main className="mt-6 rounded-2xl bg-white p-6 shadow-lift ring-1 ring-line/50 sm:p-8">
+        <main className="mt-6 rounded-[28px] bg-white/80 p-6 shadow-lift ring-1 ring-white/80 backdrop-blur-md sm:p-8">
           {meta.quip && (
             <div className="mb-5 flex items-end gap-3">
               <BandCat height={48} />

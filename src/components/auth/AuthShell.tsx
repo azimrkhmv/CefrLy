@@ -7,7 +7,6 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 import { CATS, pickCatIndex, type CatDef } from "./cats";
-import { HaloCurves } from "./icons";
 
 /** Shared chrome for every auth surface (sign in / sign up / reset password),
  *  built from design "Auth Redesign 1c — form first, cat in the nook".
@@ -15,9 +14,18 @@ import { HaloCurves } from "./icons";
  *  Two layouts, one tree:
  *  · Under lg  — a single form-first column. Header is logo + one link; the cat
  *    lives at the bottom in the reassurance nook, where nothing crops it.
- *  · lg and up — a two-column split: brand panel (logo, headline, halo, big cat
+ *  · lg and up — a two-column split: brand panel (logo, headline, big cat
  *    under its line) beside the form. "Auth Redesign Final" dropped the
  *    floating trust badge that the earlier 1c import carried.
+ *
+ *  BACKGROUND (owner's design, 2026-09-24): one lavender "orbits" image
+ *  (public/auth-bg.webp) spans the WHOLE page, both columns, with NOTHING laid
+ *  over it — no panel fill, no white wash on the form side (a wash drew a hard
+ *  seam down the middle; owner call). It replaced the inline HaloCurves art.
+ *  Anchored left-bottom so the orbit rings stay behind the cat at any aspect
+ *  ratio. Under lg a separate PORTRAIT cut (public/auth-bg-mobile.webp) takes
+ *  over, anchored bottom so its rings sit behind the reassurance nook. Both
+ *  live in CSS media rules, so each device downloads only its own image.
  *
  *  The mascot rotates per load and can be poked (see cats.ts); poking swaps its
  *  line to one of that cat's quips. BOTH layouts render that line — the desktop
@@ -92,10 +100,10 @@ export function AuthShell({
   const catAnim = cat.sleepy ? "cat-sleep" : "cat-idle";
 
   return (
-    <div className="bg-white font-sans text-ink lg:grid lg:min-h-screen lg:grid-cols-2">
+    <div className="auth-scene bg-page bg-[url(/auth-bg-mobile.webp)] bg-cover bg-[position:center_bottom] bg-no-repeat lg:bg-[url(/auth-bg.webp)] lg:bg-[position:left_bottom] font-sans text-ink lg:grid lg:min-h-screen lg:grid-cols-[54fr_46fr]">
       {/* ── Brand panel (desktop only) ─────────────────────────────────────
           Decorative: the form beside it is the page's <main> landmark. */}
-      <section className="relative hidden overflow-hidden bg-page px-14 pt-11 lg:flex lg:flex-col">
+      <section className="relative hidden overflow-hidden px-14 pt-11 lg:flex lg:flex-col">
         <Link to="/" className="relative z-[2] flex w-fit items-center gap-3">
           <img
             src="/logo-cat.webp"
@@ -115,17 +123,45 @@ export function AuthShell({
           </span>
         </Link>
 
-        <p className="relative z-[2] mt-[90px] text-xs font-extrabold uppercase tracking-[0.16em] text-ink-soft">
-          CEFR · Reading paper
-        </p>
-        {/* Styled as a headline but not a heading element: the form's own
-            "Welcome back" is this page's <h1>, and two competing h1s (or an
-            h1 that only exists above lg) would break the heading order. */}
-        <p className="relative z-[2] mt-2.5 max-w-[460px] text-[34px] font-black leading-[1.18] text-heading">
-          The official reading format, timed and scored.
-        </p>
-
-        <HaloCurves className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-auto w-full" />
+        {/* Pitch block: an exam paper that has just been marked. A tight
+            display headline, the examiner's pen circling "minutes.", and one
+            handwritten margin note carrying the facts (Behance research,
+            2026-09-24: Talkie's mascot-and-scribble type, Graphéine's
+            Toulouse block, "portfo/io"'s single hand-made glyph). Nothing is
+            laid over the background art. The headline is a <p>, not a
+            heading: the form's "Welcome back" is this page's <h1>, and an h1
+            that only exists above lg would break the heading order. */}
+        <div className="relative z-[2] mt-14 xl:mt-20 2xl:mt-28">
+          <p className="text-[40px] font-black leading-[1.08] text-heading xl:text-[50px] 2xl:text-[56px]">
+            Every CEFR paper,
+            <br />
+            marked in{' '}
+            <span className="relative inline-block text-brand">
+              minutes.
+              <svg
+                aria-hidden
+                viewBox="0 0 200 80"
+                preserveAspectRatio="none"
+                className="pointer-events-none absolute -left-[10%] -top-[22%] h-[146%] w-[128%] overflow-visible text-accent"
+              >
+                <path
+                  className="pen-circle"
+                  pathLength={1}
+                  d="M152 10 C 112 0, 34 4, 14 28 C 0 46, 30 74, 104 74 C 168 74, 198 54, 190 32 C 184 14, 150 4, 112 8"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.2}
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+          </p>
+          <p className="pen-note mt-4 ml-[18%] whitespace-nowrap font-pen text-[26px] leading-[1.05] text-brand 2xl:mt-6 2xl:text-[30px]">
+            Reading, Listening, Writing, Speaking.
+            <br />
+            AI marks your writing and speaking.
+          </p>
+        </div>
 
         {/* The cat's line, beside the cat, so the mascot has a voice on desktop
             too (the nook that renders `nookLine` below is lg:hidden, so the
@@ -135,8 +171,8 @@ export function AuthShell({
             silently clip the words. min(heroW, 50%) lets the cushion shrink on
             narrow desktops and stop growing at its designed size on wide ones.
             -ml-3 keeps it at the design's left-11 despite the panel's px-14;
-            -mb-1 lets it bleed off the bottom edge. */}
-        <div className="relative z-[1] mt-auto -mb-1 -ml-3">
+            mb-8 seats the cushion on the orbit rings, clear of the edge. */}
+        <div className="relative z-[1] mt-auto mb-8 -ml-3">
           <button
             type="button"
             onClick={() => poke(heroRef)}
@@ -179,7 +215,7 @@ export function AuthShell({
       </section>
 
       {/* ── Form column ───────────────────────────────────────────────────── */}
-      <main className="relative flex min-h-screen flex-col px-6 pb-7 pt-4 lg:min-h-0 lg:grid lg:place-items-center lg:border-l lg:border-line lg:px-[72px] lg:py-12">
+      <main className="relative flex min-h-screen flex-col px-6 pb-7 pt-4 lg:min-h-0 lg:grid lg:place-items-center lg:px-[72px] lg:py-12">
         {/* Mobile header: logo + the one contextual link. */}
         <div className="flex items-center justify-between lg:hidden">
           <Link to="/" className="flex items-center gap-2.5">
@@ -214,15 +250,21 @@ export function AuthShell({
           </span>
         )}
 
-        <div className="flex w-full max-w-[400px] flex-1 flex-col lg:flex-none">
-          {children}
+        <div className="auth-glass flex w-full max-w-[456px] flex-1 flex-col lg:max-w-[544px] lg:flex-none">
+          {/* Phones: the form floats in the middle of whatever height is
+              left between the logo and the cat's nook (my-auto splits the
+              spare space above and below it), so the nook stays pinned to the
+              bottom and a tall screen gets breathing room under the logo
+              instead of one big gap above the cat. With no spare space it sits
+              right under the header, as before. */}
+          <div className="my-auto lg:my-0">{children}</div>
 
           {/* Reassurance nook — mobile only. On desktop the trust badge and the
               big cat on the brand panel carry this instead. mt-auto pins it to
               the bottom of tall screens (as the design's reset screen does)
               while pt-7 keeps the designed gap on short ones. */}
-          <div className="mt-auto pt-7 lg:hidden">
-            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-end gap-x-3 overflow-hidden rounded-[20px] bg-page px-[18px]">
+          <div className="pt-7 lg:hidden">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-end gap-x-3 overflow-hidden rounded-[20px] bg-page/80 px-[18px]">
               <button
                 type="button"
                 onClick={() => poke(nookRef)}
@@ -259,3 +301,4 @@ export function AuthShell({
     </div>
   );
 }
+
