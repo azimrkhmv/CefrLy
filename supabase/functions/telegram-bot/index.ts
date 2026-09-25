@@ -258,7 +258,7 @@ async function handleStart(admin: Admin, msg: TgMessage) {
   if (!token) {
     await send(
       msg.chat.id,
-      `Welcome to <b>Cefrly</b>${name}! 👋\n\nPractise real-format CEFR mock exams: Reading, Listening, Writing and Speaking, with your band and a full review after every test.\n\nSigning up on the website? Press ${BTN_PHONE} when it asks for your code.`,
+      `Welcome to <b>Cefrly bot</b>${name}! 👋\n\nPractise real-format CEFR mock exams: Reading, Listening, Writing and Speaking, with your band and a full review after every test.\n\nSigning up on the website? Press ${BTN_PHONE} when it asks for your code.`,
     )
     return
   }
@@ -289,7 +289,7 @@ async function handleStart(admin: Admin, msg: TgMessage) {
   const what = request.purpose === 'reset' ? 'reset your password' : 'finish signing up'
   await send(
     msg.chat.id,
-    `Welcome to <b>Cefrly</b>${name}! 👋\n\nTo ${what}, press ${BTN_PHONE} below. I'll reply with a 6-digit code.`,
+    `Welcome to <b>Cefrly bot</b>${name}! 👋\n\nTo ${what}, press ${BTN_PHONE} below. I'll reply with a 6-digit code.`,
   )
 }
 
